@@ -6,7 +6,11 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Components/WidgetComponent.h"
+#include "HUD/Overhead_UserWidget.h"
 //#include "InputActionValue.h"
+#include "Weapons/Weapon.h"
+#include "Net/UnrealNetwork.h"
 
 
 // Sets default values
@@ -15,6 +19,7 @@ ABlasterCharacter::ABlasterCharacter()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	bReplicates = true; //it is true by default, no need
 	//Setup SpringArm and Camera: 
 	  //normally we attach SpringArm too 'RootComponent' (which is capsule here), but LATER ON we will use 'Crouch' function - that we need to scale the capsule/root component DOWN, so if a parent is scaled its attached childs will scaled too, including relative location to the parent LOL, hence the location of SpringArm to its parent change ABNORMALLY, we dont want it so perhaps GetMesh() is the choice here
 	  //But scale Capsule/RootComponent will also Scale GetMesh() and hence scale SpringArm as well LOL, so what next to solve this? well we'll see dont worry
@@ -27,15 +32,11 @@ ABlasterCharacter::ABlasterCharacter()
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName); //the Socket name is optional I think, whether or not you specify it it will au-to attacj to that 'SocketName' by default behaviour LOL
 	Camera->bUsePawnControlRotation = false; //optional because it already attach to SpringArm that is set to use it already above, but if not do this 2 same code 'MAY' run twice in the same frame, not good.
 
+	//Setup UWidgetComponent:
+	Overhead_WidgetComponent = CreateDefaultSubobject<UWidgetComponent>("Overhead_WidgetComponent");
+	Overhead_WidgetComponent->SetupAttachment(RootComponent);
 }
 
-// Called every frame
-void ABlasterCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-// Called when the game starts or when spawned
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -51,12 +52,21 @@ void ABlasterCharacter::BeginPlay()
 		//the priority=0 is just for fun, there is only one IMC we're gonna add to our Blaster Character: 
 		if(EISubsystem) EISubsystem->AddMappingContext(IMC_Blaster, 0);
 	}
+
+	//call the helper function to change text of the underlying widget of the widget component:
+	if (Overhead_WidgetComponent)
+	{
+		UOverhead_UserWidget* Overhead_UserWidget = Cast<UOverhead_UserWidget>(Overhead_WidgetComponent->GetUserWidgetObject());
+		if (Overhead_UserWidget) Overhead_UserWidget->ShowPlayerNetRole(this);
+	}
 }
 
+void ABlasterCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	if (OverlappingWeapon) OverlappingWeapon->ShowPickupWidget(true);
+}
 
-
-
-// Called to bind functionality to input
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -69,6 +79,12 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedPlayerInputComponent->BindAction(IA_Look, ETriggerEvent::Triggered, this, &ThisClass::Input_Look);
 		EnhancedPlayerInputComponent->BindAction(IA_Jump, ETriggerEvent::Triggered, this, &ThisClass::Input_Jump);
 	}
+}
+
+void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
 }
 
 void ABlasterCharacter::Input_Move(const FInputActionValue& Value)
@@ -112,3 +128,17 @@ void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 {
 	Super::Jump();
 }
+
+void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
+{
+	OverlappingWeapon = InWeapon;
+}
+
+void ABlasterCharacter::SetWeaponPickWidgetVisibility(bool bIsVisible)
+{
+	if (OverlappingWeapon)
+	{
+		OverlappingWeapon->GetPickupWidgetComponent()->SetVisibility(bIsVisible);
+	}
+}
+

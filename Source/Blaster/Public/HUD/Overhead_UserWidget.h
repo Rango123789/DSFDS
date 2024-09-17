@@ -15,6 +15,21 @@ class BLASTER_API UOverhead_UserWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	class UTextBlock* DisplayText;
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* LocalRole_TextBlock;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* RemoteRole_TextBlock;
+
+	//Stephen use APawn, but the function is from AActor!
+	UFUNCTION(BlueprintCallable)
+	void ShowPlayerNetRole(AActor* InActor);
+
+	UFUNCTION(BlueprintCallable)
+	void SetTextContent(FString TextToDisplay , UTextBlock* TextBlock);
+
+	////I dont think this is needed LOL
+	//virtual void NativeDestruct() override;
+
 };
  

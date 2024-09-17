@@ -20,7 +20,7 @@ public:
 
 //category2: virtual functions:
 	/**<Actor>*/
-
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	 /**</Actor>*/
 
 	/**<X>*/
@@ -61,16 +61,21 @@ protected:
 	//enum states:
 
 	//pointer to external classes:
-
+	UPROPERTY(Replicated)
+	class AWeapon* OverlappingWeapon;
 	//arrays:
 
 	//class type:
 
 //category2: UActorComponents   
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(VisibleAnywhere)
 	class USpringArmComponent* SpringArm; //CameraBoom
-	UPROPERTY(EditAnywhere)
-	class UCameraComponent* Camera;       //FollowCamera
+	UPROPERTY(VisibleAnywhere)
+	class UCameraComponent* Camera;       //FollowCamera 
+
+	UPROPERTY(VisibleAnywhere)
+	class UWidgetComponent* Overhead_WidgetComponent;
+
 
 //category3: Engine types      
 	//montages:
@@ -121,7 +126,8 @@ private:
 public:	
 	/***Setters and Getters***/
 
-
-
+	void SetOverlappingWeapon(AWeapon* InWeapon);
+	UFUNCTION(BlueprintCallable)
+	void SetWeaponPickWidgetVisibility(bool bIsVisible = true);
 
 };

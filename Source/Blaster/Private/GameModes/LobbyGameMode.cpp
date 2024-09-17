@@ -10,7 +10,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 
 	int NumOfPlayers = GameState->PlayerArray.Num();
 
-	if (GetNumPlayers() == 2)
+	if (GetNumPlayers() == 2) //change back to 2 after test NetRole
 	{
 		//you can also check the box UseSeamlessTravel in BP___GameMode used by its appropriate level too: 
 		bUseSeamlessTravel = true;
