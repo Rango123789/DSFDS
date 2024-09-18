@@ -44,7 +44,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	//OnRep_ can't be called on server so it will work for all clients, except the server
 	// hence need additional work for the server separately, independent from this replication LOL
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon , COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(ABlasterCharacter, LastOverlappingWeapon, COND_OwnerOnly);
+	//DOREPLIFETIME_CONDITION(ABlasterCharacter, LastOverlappingWeapon, COND_OwnerOnly);
 
 	//DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
 }
@@ -74,16 +74,17 @@ void ABlasterCharacter::BeginPlay()
 }
 
 //this can't only be called on client copies: adding param/using it or not doesn't matter
-void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* UpdatedWeapon)
+void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
-	//can use 'UpdatedWeapon as well
+	//Reacheaching this OnRep boby the OverlappingWeapon must be assigned new value already
+	//hence either of them will be executed, but not both I'm sure :D :D
 	if (OverlappingWeapon)
 	{
 		OverlappingWeapon->ShowPickupWidget(true);
 	}
-	else if (LastOverlappingWeapon)
+	else if (LastWeapon)
 	{
-		LastOverlappingWeapon->ShowPickupWidget(false);
+		LastWeapon->ShowPickupWidget(false);
 	}
 }
 
@@ -91,26 +92,22 @@ void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* UpdatedWeapon)
 //hence MANUAL work condition can count on it!
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
 {
+	//before the time we assign it a new value, check if it is not null
+	//then should turn it OFF, before it receive new value that is surely null :D :D
+	//if it is nullptr, then it will pass this line, without turning it off it is surely already OFF from last time LOL
+	//if it is nullptr, it will pass this line and to be turn ON in the final block!
+	if (OverlappingWeapon ) //&& IsLocallyControlled() , &&InWeapon == nullptr - no need
+	{
+		OverlappingWeapon->ShowPickupWidget(false);
+	}
+
 	OverlappingWeapon = InWeapon;
 
-	if (InWeapon)
+    //if it is assigned new value, but it is not null, then I think we have to turn it ON
+	//if it is assigned new value, but it is null, then it will pass this line, it is OFF by first block above, which is exactly what we want.
+	if (OverlappingWeapon &&  IsLocallyControlled())
 	{
-		LastOverlappingWeapon = InWeapon;
-	}
-	//put it here or with if below are both ok!
-	//&&  IsLocallyControlled() is OPTIONAL somehow! but I have a doubt that if you dont add it, you will/may do the dupicate action that is already by OnRep_ which take care of all client devices :).  
-	else if (LastOverlappingWeapon && IsLocallyControlled() ) 
-	{
-		LastOverlappingWeapon->ShowPickupWidget(false);
-	}
-
-	//extra MANUAL work: to make it work on server to , since OnRep can't call in the server
-	//the condition no need to exclude when it is in-client controlled char, since this function is to be called inside ::SphareOverlap that is set to be called in-server copy only 
-	if (InWeapon &&  IsLocallyControlled())
-		// GetRemoteRole() ==ENetRole::ROLE_AutonomousProxy ) - NOT work
-		//( GetRemoteRole() ==ENetRole::ROLE_AutonomousProxy && GetLocalRole() ==ENetRole::ROLE_Authority ) ) - NOT work
-	{
-		InWeapon->ShowPickupWidget(true);
+		OverlappingWeapon->ShowPickupWidget(true);
 	}
 }
 

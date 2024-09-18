@@ -39,7 +39,7 @@ public:
 //category4: callbacks 
 
 	UFUNCTION()
-	void OnRep_OverlappingWeapon(AWeapon* UpdatedWeapon);
+	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
 protected:
 	/***functions***/
@@ -65,9 +65,6 @@ protected:
 	//pointer to external classes:
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
 	class AWeapon* OverlappingWeapon;
-
-	UPROPERTY(Replicated)
-	AWeapon* LastOverlappingWeapon;
 
 	//arrays:
 
