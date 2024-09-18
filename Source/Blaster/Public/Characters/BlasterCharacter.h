@@ -30,14 +30,16 @@ public:
 //category3: regular functions: 
 	//montages:
 
-	   //sound and effects:
+	//sound and effects:
 
 	//bool functions:
 
 	//BP-callale functions:
+	
 //category4: callbacks 
 
-
+	UFUNCTION()
+	void OnRep_OverlappingWeapon(AWeapon* UpdatedWeapon);
 
 protected:
 	/***functions***/
@@ -61,8 +63,9 @@ protected:
 	//enum states:
 
 	//pointer to external classes:
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
 	class AWeapon* OverlappingWeapon;
+
 	//arrays:
 
 	//class type:
@@ -115,8 +118,6 @@ private:
 	class UInputAction* IA_Look;
 	UPROPERTY(EditAnywhere)
 	class UInputAction* IA_Jump;
-
-
 	//montages:
 
 	//sound and effects:
@@ -127,7 +128,8 @@ public:
 	/***Setters and Getters***/
 
 	void SetOverlappingWeapon(AWeapon* InWeapon);
-	UFUNCTION(BlueprintCallable)
-	void SetWeaponPickWidgetVisibility(bool bIsVisible = true);
+
+	//UFUNCTION(BlueprintCallable)
+	//void SetWeaponPickWidgetVisibility(bool bIsVisible = true);
 
 };

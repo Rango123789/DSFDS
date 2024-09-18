@@ -46,11 +46,11 @@ AWeapon::AWeapon()
 	Overhead_WidgetComponent->SetupAttachment(RootComponent);
 }
 
-void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AWeapon, Pickup_WidgetComponent);
-}
+//void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+//{
+//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+//	//DOREPLIFETIME(AWeapon, Pickup_WidgetComponent);
+//}
 
 // Called when the game starts or when spawned
 void AWeapon::BeginPlay()
@@ -103,7 +103,13 @@ void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* 
 	if (BlasterCharacter && Pickup_WidgetComponent)
 	{
 		BlasterCharacter->SetOverlappingWeapon(this);
-		//Pickup_WidgetComponent->SetVisibility(true);
+		
+		// //if we do it here we can use replication trick from char having this class as replicated member.
+		//if (HasAuthority() && BlasterCharacter->GetRemoteRole() == ENetRole::ROLE_AutonomousProxy)
+		//{
+		//	//focus on the server copy only! the rest has been taken cared already, do not mess it up LOL:
+		//	Pickup_WidgetComponent->SetVisibility(true);
+		//}
 	}
 }
 
@@ -111,10 +117,10 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 {
 	//USceneComponent::SetVisibility() - TIRE1 , the visibility of the UUserWidget_TIRE2 and TextBlock_TIRE3 is still true by default and we dont care:
 	ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
-	if (BlasterCharacter && Pickup_WidgetComponent) 
+	if (BlasterCharacter) 
 	{
 		BlasterCharacter->SetOverlappingWeapon(nullptr);
-		//Pickup_WidgetComponent->SetVisibility(false);
+		//Pickup_WidgetComponent->SetVisibility(false);  //if we do it here we can use replication trick from char having this class as replicated member.
 	}
 }
 

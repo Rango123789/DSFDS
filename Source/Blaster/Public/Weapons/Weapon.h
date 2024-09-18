@@ -30,7 +30,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 //category2: virtual functions:
     /**<Actor>*/                                                                               
-    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    //virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     /**</Actor>*/
 
     /**<X>*/
@@ -88,7 +88,8 @@ protected: //base
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     class USphereComponent* Sphere;
 
-    UPROPERTY(VisibleAnywhere, Replicated)
+    //UPROPERTY(VisibleAnywhere, Replicated)
+    UPROPERTY(VisibleAnywhere)
     class UWidgetComponent* Pickup_WidgetComponent;
 
     UPROPERTY(VisibleAnywhere)

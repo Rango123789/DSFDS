@@ -37,6 +37,17 @@ ABlasterCharacter::ABlasterCharacter()
 	Overhead_WidgetComponent->SetupAttachment(RootComponent);
 }
 
+void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	//OnRep_ can't be called on server so it will work for all clients, except the server
+	// hence need additional work for the server separately, independent from this replication LOL
+	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon , COND_OwnerOnly);
+
+	//DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
+}
+
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -61,10 +72,19 @@ void ABlasterCharacter::BeginPlay()
 	}
 }
 
+void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* UpdatedWeapon)
+{
+	//if (OverlappingWeapon) OverlappingWeapon->ShowPickupWidget(true);
+}
+
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (OverlappingWeapon) OverlappingWeapon->ShowPickupWidget(true);
+	if (  OverlappingWeapon &&  
+		IsLocallyControlled() )
+		//( (GetLocalRole() == ENetRole::ROLE_AutonomousProxy && GetRemoteRole() == ENetRole::ROLE_Authority) ||
+		//  (GetRemoteRole() == ENetRole::ROLE_AutonomousProxy && GetLocalRole() == ENetRole::ROLE_Authority ) ) ) - NOT WORK!
+	OverlappingWeapon->ShowPickupWidget(true); //move to OnRep
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -79,12 +99,6 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedPlayerInputComponent->BindAction(IA_Look, ETriggerEvent::Triggered, this, &ThisClass::Input_Look);
 		EnhancedPlayerInputComponent->BindAction(IA_Jump, ETriggerEvent::Triggered, this, &ThisClass::Input_Jump);
 	}
-}
-
-void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
 }
 
 void ABlasterCharacter::Input_Move(const FInputActionValue& Value)
@@ -134,11 +148,11 @@ void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
 	OverlappingWeapon = InWeapon;
 }
 
-void ABlasterCharacter::SetWeaponPickWidgetVisibility(bool bIsVisible)
-{
-	if (OverlappingWeapon)
-	{
-		OverlappingWeapon->GetPickupWidgetComponent()->SetVisibility(bIsVisible);
-	}
-}
+//void ABlasterCharacter::SetWeaponPickWidgetVisibility(bool bIsVisible)
+//{
+//	if (OverlappingWeapon)
+//	{
+//		OverlappingWeapon->GetPickupWidgetComponent()->SetVisibility(bIsVisible);
+//	}
+//}
 
