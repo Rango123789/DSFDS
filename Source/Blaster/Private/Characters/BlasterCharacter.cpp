@@ -44,6 +44,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	//OnRep_ can't be called on server so it will work for all clients, except the server
 	// hence need additional work for the server separately, independent from this replication LOL
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon , COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(ABlasterCharacter, LastOverlappingWeapon, COND_OwnerOnly);
 
 	//DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
 }
@@ -72,19 +73,56 @@ void ABlasterCharacter::BeginPlay()
 	}
 }
 
+//this can't only be called on client copies: adding param/using it or not doesn't matter
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* UpdatedWeapon)
 {
-	//if (OverlappingWeapon) OverlappingWeapon->ShowPickupWidget(true);
+	//can use 'UpdatedWeapon as well
+	if (OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(true);
+	}
+	else if (LastOverlappingWeapon)
+	{
+		LastOverlappingWeapon->ShowPickupWidget(false);
+	}
+}
+
+//this will be called in Weapon::Overlap which could only happen in-server copy
+//hence MANUAL work condition can count on it!
+void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
+{
+	OverlappingWeapon = InWeapon;
+
+	if (InWeapon)
+	{
+		LastOverlappingWeapon = InWeapon;
+	}
+	//put it here or with if below are both ok!
+	//&&  IsLocallyControlled() is OPTIONAL somehow! but I have a doubt that if you dont add it, you will/may do the dupicate action that is already by OnRep_ which take care of all client devices :).  
+	else if (LastOverlappingWeapon && IsLocallyControlled() ) 
+	{
+		LastOverlappingWeapon->ShowPickupWidget(false);
+	}
+
+	//extra MANUAL work: to make it work on server to , since OnRep can't call in the server
+	//the condition no need to exclude when it is in-client controlled char, since this function is to be called inside ::SphareOverlap that is set to be called in-server copy only 
+	if (InWeapon &&  IsLocallyControlled())
+		// GetRemoteRole() ==ENetRole::ROLE_AutonomousProxy ) - NOT work
+		//( GetRemoteRole() ==ENetRole::ROLE_AutonomousProxy && GetLocalRole() ==ENetRole::ROLE_Authority ) ) - NOT work
+	{
+		InWeapon->ShowPickupWidget(true);
+	}
 }
 
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (  OverlappingWeapon &&  
-		IsLocallyControlled() )
-		//( (GetLocalRole() == ENetRole::ROLE_AutonomousProxy && GetRemoteRole() == ENetRole::ROLE_Authority) ||
-		//  (GetRemoteRole() == ENetRole::ROLE_AutonomousProxy && GetLocalRole() == ENetRole::ROLE_Authority ) ) ) - NOT WORK!
-	OverlappingWeapon->ShowPickupWidget(true); //move to OnRep
+/*Alternative, not good for performance - NOT used*/
+	//if (  OverlappingWeapon &&  
+	//	IsLocallyControlled() ) //WORK
+	//	//( (GetLocalRole() == ENetRole::ROLE_AutonomousProxy && GetRemoteRole() == ENetRole::ROLE_Authority) ||
+	//	//  (GetRemoteRole() == ENetRole::ROLE_AutonomousProxy && GetLocalRole() == ENetRole::ROLE_Authority ) ) ) - NOT WORK!
+	//OverlappingWeapon->ShowPickupWidget(true); //move to OnRep, but OnRep can't be called in server hence ready to do extra work.
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -141,11 +179,6 @@ void ABlasterCharacter::Input_Look(const FInputActionValue& Value)
 void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 {
 	Super::Jump();
-}
-
-void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
-{
-	OverlappingWeapon = InWeapon;
 }
 
 //void ABlasterCharacter::SetWeaponPickWidgetVisibility(bool bIsVisible)

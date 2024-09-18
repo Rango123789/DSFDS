@@ -66,6 +66,9 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
 	class AWeapon* OverlappingWeapon;
 
+	UPROPERTY(Replicated)
+	AWeapon* LastOverlappingWeapon;
+
 	//arrays:
 
 	//class type:
