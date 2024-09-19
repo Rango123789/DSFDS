@@ -2,6 +2,7 @@
 
 
 #include "Characters/BlasterCharacter.h"
+#include "CharacterComponents/CombatComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
@@ -33,8 +34,12 @@ ABlasterCharacter::ABlasterCharacter()
 	Camera->bUsePawnControlRotation = false; //optional because it already attach to SpringArm that is set to use it already above, but if not do this 2 same code 'MAY' run twice in the same frame, not good.
 
 	//Setup UWidgetComponent:
-	Overhead_WidgetComponent = CreateDefaultSubobject<UWidgetComponent>("Overhead_WidgetComponent");
+	Overhead_WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Overhead_WidgetComponent"));
 	Overhead_WidgetComponent->SetupAttachment(RootComponent);
+
+	//Setup UCombatComponent: We will replicate this Component[/pointer object] ; it is not SceneComponent so...
+	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+	CombatComponent->SetIsReplicated(true); // || ->SetIsReplicatedByDefault(true) || ->bReplicates = true
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -47,6 +52,13 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	//DOREPLIFETIME_CONDITION(ABlasterCharacter, LastOverlappingWeapon, COND_OwnerOnly);
 
 	//DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
+}
+
+void ABlasterCharacter::PostInitializeComponents()
+{
+	//supposedly all components should be initialized and not null before this Post, but still I want to check as good practice:
+	Super::PostInitializeComponents();
+	if (CombatComponent) CombatComponent->Character = this;
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -133,6 +145,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
  		EnhancedPlayerInputComponent->BindAction(IA_Move, ETriggerEvent::Triggered, this, &ThisClass::Input_Move );
 		EnhancedPlayerInputComponent->BindAction(IA_Look, ETriggerEvent::Triggered, this, &ThisClass::Input_Look);
 		EnhancedPlayerInputComponent->BindAction(IA_Jump, ETriggerEvent::Triggered, this, &ThisClass::Input_Jump);
+		EnhancedPlayerInputComponent->BindAction(IA_EKeyPressed, ETriggerEvent::Triggered, this, &ThisClass::Input_EKeyPressed);
 	}
 }
 
@@ -176,6 +189,16 @@ void ABlasterCharacter::Input_Look(const FInputActionValue& Value)
 void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 {
 	Super::Jump();
+}
+
+void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
+{
+	//Without "HasAuthority()" both server add clients can pick. Server pick, clients see it. 
+	// where clients pick the server dont see it - but WHY? Because the COLLISION in clients doesn't exist? well but they has reference to OverlappingWeapon decently right? Because replication only from Server to Clients, or because ReplicatedUsing?
+	//With "Hasauthority()" only server can pick, clients see it - but HOW? because "Aweapon && Char::OverlappingWeapon" are set to replicated? 
+	// where Clients can't even pick - make sense
+	if (CombatComponent && OverlappingWeapon && HasAuthority() ) 
+		CombatComponent->EquipWeapon(OverlappingWeapon);
 }
 
 //void ABlasterCharacter::SetWeaponPickWidgetVisibility(bool bIsVisible)

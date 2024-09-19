@@ -21,6 +21,7 @@ public:
 //category2: virtual functions:
 	/**<Actor>*/
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void PostInitializeComponents() override;
 	 /**</Actor>*/
 
 	/**<X>*/
@@ -79,6 +80,8 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	class UWidgetComponent* Overhead_WidgetComponent;
 
+	UPROPERTY(VisibleAnywhere)
+	class UCombatComponent* CombatComponent;
 
 //category3: Engine types      
 	//montages:
@@ -101,6 +104,7 @@ private:
 	void Input_Move(const struct FInputActionValue & Value); //in UE5.2 need to forward-declare this struct
 	void Input_Look(const FInputActionValue & Value);
 	void Input_Jump(const FInputActionValue & Value);
+	void Input_EKeyPressed(const FInputActionValue& Value);
 
 /***data members****/
 //Category1: Enums , arrays, pointers to external classes
@@ -118,6 +122,8 @@ private:
 	class UInputAction* IA_Look;
 	UPROPERTY(EditAnywhere)
 	class UInputAction* IA_Jump;
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_EKeyPressed;
 	//montages:
 
 	//sound and effects:

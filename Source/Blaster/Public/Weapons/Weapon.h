@@ -10,7 +10,7 @@ UENUM(BlueprintType)
 enum class EWeaponState : uint8
 {
     EWS_Initial UMETA(DisplayName = "Initial"), //Stephen add "Initial State"
-    EWS_Picked UMETA(DisplayName = "Picked"),   //stephen: equipped - sound too violent to me
+    EWS_Equipped UMETA(DisplayName = "Equipped"),   //stephen: equipped - sound too violent to me
     EWS_Droppped UMETA(DisplayName = "Dropped"),
 
     EWP_MAX UMETA(DisplayName = "DefaultMAX"), //for the sake of knowing now many sematic values of this enum
@@ -130,4 +130,6 @@ public:
     UWidgetComponent* GetPickupWidgetComponent() { return Pickup_WidgetComponent; }
 
     void ShowPickupWidget(bool bShowWdiget);
+
+    void SetWeaponState(EWeaponState InState) { WeaponState = InState; }
 };
