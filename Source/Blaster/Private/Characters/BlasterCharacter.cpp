@@ -201,7 +201,7 @@ void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 	// Because CombatComponent->SetIsReplicated() indirectly here in this hosting class? But We didn't mark CombatComponent with 'Replicated' from hosting class perspective yet right? So this is NOT yet relevant! it is only self-replicated so far.
 	//With "Hasauthority()" only server can pick, clients see it - but HOW? because "Aweapon && Char::OverlappingWeapon" are set to replicated? 
 	// where Clients can't even pick - make sense
-	if (CombatComponent && OverlappingWeapon &&HasAuthority() )  //&& HasAuthority()
+	if (CombatComponent && OverlappingWeapon && HasAuthority())  //&& HasAuthority()
 		CombatComponent->EquipWeapon(OverlappingWeapon);
 }
 

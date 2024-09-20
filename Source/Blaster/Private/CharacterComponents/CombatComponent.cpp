@@ -5,6 +5,7 @@
 #include "Weapons/Weapon.h"
 #include "Characters/BlasterCharacter.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "Components/SphereComponent.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -35,22 +36,25 @@ void UCombatComponent::EquipWeapon(AWeapon* InWeapon)
 {
 	if (InWeapon == nullptr || Character == nullptr) return;
 
-	//state and assignment:
+	//this is not replicated unless you mark it 'Replicated' here
 	EquippedWeapon = InWeapon;
 
+	//this function change "custom type's value", no way it is replicated
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped) ;
 
-	EquippedWeapon->GetSphere()->SetCollisionEnadled(ECollisionEnabled::NoCollision); //I just add it
+	//I just add it, COLLISION wont be replicated as experience from lass lesson; the only place can have Collision is the server, so you can simply turn it OFF from the server is ENOUGH, no matter via which controlled char you turn it OFF, there is ONLY one copy of weapon in each device, so yeah! hence this code will stay here to be called via INPUT-callback with 'HasAuthority()' condition I guess. We'll see after we make the clients pick the weapon by the other way around. Away I try this for the case without HasAuthority, so it should work after then too.
+	EquippedWeapon->GetSphere()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	//attachment: you can always use "AActor::AttachToComponent( Parent , AttachmentRules , SocketName = NONE)
-	//you must go the SKM and its skeleton and add the same socket name for it to work LOL.
+	//this is replicated from server to clients via UE5 OnRep_
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
 	if(RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
 
-	//set owner: I like to set owner after the attachment
+	//I'm checking this:
 	EquippedWeapon->SetOwner(Character);
 
-	//cosmetic:
+	//It is not replicated, however you dont need to turn it OFF for the other devices that ALREADY dont see it (from the last lesson)
+	// BUT what if other devices themself overlap with the picked weapon? hell no, it shows the widget LOL, hence its collision should be turn off from the server as well (clients is disabled from the beginning)
+	//What if I want it to replicated? UNLESS I check UWidgetComponent::"component replicate" from BP_Character GLOBALLY? and register it from AWeapon locally? - i believe i tried it and it worked! but it is not the way to go here )
 	EquippedWeapon->ShowPickupWidget(false);
 }
 
