@@ -194,10 +194,14 @@ void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 {
 	//Without "HasAuthority()" both server add clients can pick. Server pick, clients see it. 
-	// where clients pick the server dont see it - but WHY? Because the COLLISION in clients doesn't exist? well but they has reference to OverlappingWeapon decently right? Because replication only from Server to Clients, or because ReplicatedUsing?
+	// where clients pick the server dont see it - but WHY? 
+	// where one client pick, other client dont see it as well - by WHY?
+	// Because the COLLISION in clients doesn't exist? well but they has reference to OverlappingWeapon decently right? 
+	// Because replication only from Server to Clients, or because ReplicatedUsing?
+	// Because CombatComponent->SetIsReplicated() indirectly here in this hosting class? But We didn't mark CombatComponent with 'Replicated' from hosting class perspective yet right? So this is NOT yet relevant! it is only self-replicated so far.
 	//With "Hasauthority()" only server can pick, clients see it - but HOW? because "Aweapon && Char::OverlappingWeapon" are set to replicated? 
 	// where Clients can't even pick - make sense
-	if (CombatComponent && OverlappingWeapon && HasAuthority() ) 
+	if (CombatComponent && OverlappingWeapon &&HasAuthority() )  //&& HasAuthority()
 		CombatComponent->EquipWeapon(OverlappingWeapon);
 }
 

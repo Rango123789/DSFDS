@@ -129,6 +129,8 @@ public:
 /***Setters and Getters***/
     UWidgetComponent* GetPickupWidgetComponent() { return Pickup_WidgetComponent; }
 
+    USphereComponent* GetSphere() { return Sphere; }
+
     void ShowPickupWidget(bool bShowWdiget);
 
     void SetWeaponState(EWeaponState InState) { WeaponState = InState; }

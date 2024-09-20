@@ -10,7 +10,7 @@ UCombatComponent::UCombatComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false; //if you tick later, then turn it on
 
 	// ...
 }
@@ -39,6 +39,8 @@ void UCombatComponent::EquipWeapon(AWeapon* InWeapon)
 	EquippedWeapon = InWeapon;
 
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped) ;
+
+	EquippedWeapon->GetSphere()->SetCollisionEnadled(ECollisionEnabled::NoCollision); //I just add it
 
 	//attachment: you can always use "AActor::AttachToComponent( Parent , AttachmentRules , SocketName = NONE)
 	//you must go the SKM and its skeleton and add the same socket name for it to work LOL.

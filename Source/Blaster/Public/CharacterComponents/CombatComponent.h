@@ -25,8 +25,6 @@ private:
 	class AWeapon* EquippedWeapon;  //and more
 
 public:	
-	friend ABlasterCharacter;
+	friend class ABlasterCharacter; //since already forward-declare, so 'class' here is optional!
 
-
-		
 };
