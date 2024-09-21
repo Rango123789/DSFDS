@@ -38,9 +38,11 @@ public:
 	//BP-callale functions:
 	
 //category4: callbacks 
-
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
+
+	UFUNCTION(Server, Reliable) //this is important event, so we make it Reliable as well
+	void ServerEKeyPressed();
 
 protected:
 	/***functions***/
@@ -58,6 +60,9 @@ protected:
 //category3: regular functions 
 
 //category4: callbacks
+
+//category5: replication
+
 
 /***data members****/
 //Category1: Enums , arrays, pointers to external classes
@@ -90,7 +95,7 @@ protected:
 
 //category4: basic and primitive types
 
-
+//category5: replication
 
 private: 
 	/***functions***/
@@ -105,6 +110,8 @@ private:
 	void Input_Look(const FInputActionValue & Value);
 	void Input_Jump(const FInputActionValue & Value);
 	void Input_EKeyPressed(const FInputActionValue& Value);
+
+//category5: replication
 
 /***data members****/
 //Category1: Enums , arrays, pointers to external classes

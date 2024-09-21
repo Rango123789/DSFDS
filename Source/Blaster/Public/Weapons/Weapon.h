@@ -30,7 +30,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 //category2: virtual functions:
     /**<Actor>*/                                                                               
-    //virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     /**</Actor>*/
 
     /**<X>*/
@@ -73,8 +73,12 @@ protected: //base
 /***data members****/
 //Category1: Enums , arrays, pointers to external classes
     //enum states:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(ReplicatedUsing=OnRep_WeaponState , EditAnywhere, BlueprintReadWrite)
     EWeaponState WeaponState{EWeaponState::EWS_Initial};
+
+    UFUNCTION()
+    void OnRep_WeaponState();
+
     //pointer to external classes:
 
     //arrays:
@@ -133,5 +137,5 @@ public:
 
     void ShowPickupWidget(bool bShowWdiget);
 
-    void SetWeaponState(EWeaponState InState) { WeaponState = InState; }
+    void SetWeaponState(EWeaponState InState);
 };

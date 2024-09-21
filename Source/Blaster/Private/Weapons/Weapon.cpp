@@ -46,11 +46,11 @@ AWeapon::AWeapon()
 	Overhead_WidgetComponent->SetupAttachment(RootComponent);
 }
 
-//void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-//{
-//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//	//DOREPLIFETIME(AWeapon, Pickup_WidgetComponent);
-//}
+void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AWeapon, WeaponState);
+}
 
 // Called when the game starts or when spawned
 void AWeapon::BeginPlay()
@@ -88,6 +88,7 @@ void AWeapon::BeginPlay()
 		if (Overhead_UserWidget) Overhead_UserWidget->ShowPlayerNetRole(this);
 	}
 }
+
 
 // Called every frame
 void AWeapon::Tick(float DeltaTime)
@@ -127,4 +128,36 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 void AWeapon::ShowPickupWidget(bool bShowWdiget)
 {
 	if (Pickup_WidgetComponent)	Pickup_WidgetComponent->SetVisibility(bShowWdiget);
+}
+
+//to be called in ::Equip(), hence to be called in Input_EKeyPressed(), either in the server or a client (but NOT both, but NOT more than one), if in a client, this client again send RPC to execute in the server gain :D :D
+void AWeapon::SetWeaponState(EWeaponState InState)
+{
+	 WeaponState = InState; //WeaponState is 2-way replicated, so we dont worry about it, no matter it is called on client or server copy
+	 
+	 //hitchhiking code: the reason why we need it here is for the care it is called on server-controlled-char copy
+	 //these code below is not currently replicated, hence mind to do it "in 2 places" 
+	 switch (WeaponState)
+	 {
+	 case EWeaponState::EWS_Equipped : 
+		 ShowPickupWidget(false); 
+		 if(Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		 return;
+	 }
+}
+
+//Will trigger as WeaponState is changed (say by SetWeaponState() ), [Server->clients]
+//I dont think we need this function, because we have 'SetWeaponState' under 'GOLDEN pattern' (always execute on server) ?
+// YES IT WORK WITHOUT THIS FUNCTION LOL, stephen didn't realize this and 'OVERKILL'
+//this REDUDANT code will be called on all clients
+void AWeapon::OnRep_WeaponState()
+{
+	//hitchhiking code: after this (and above...) you can remove 2 statements from CombatCompoent::Equip() now.
+	//switch (WeaponState)
+	//{
+	//case EWeaponState::EWS_Equipped:
+	//	ShowPickupWidget(false);
+	//	//if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //surely redudant TIRE2 lol, COLLISION is only in the server so far
+	//	return;
+	//}
 }

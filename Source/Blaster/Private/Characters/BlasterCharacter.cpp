@@ -39,7 +39,7 @@ ABlasterCharacter::ABlasterCharacter()
 
 	//Setup UCombatComponent: We will replicate this Component[/pointer object] ; it is not SceneComponent so...
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
-	CombatComponent->SetIsReplicated(true); // || ->SetIsReplicatedByDefault(true) || ->bReplicates = true
+	CombatComponent->SetIsReplicated(true); // || ->SetIsReplicatedByDefault(true) || ->bReplicates = true || directly set it from the local class AWeapon is also fine - I refer to do it where the local class is LOL. But it may set back false if it is within the other class?, It could be LOL.
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -99,6 +99,7 @@ void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 		LastWeapon->ShowPickupWidget(false);
 	}
 }
+
 
 //this will be called in Weapon::Overlap which could only happen in-server copy
 //hence MANUAL work condition can count on it!
@@ -193,6 +194,7 @@ void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 
 void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 {
+	if (CombatComponent == nullptr || OverlappingWeapon == nullptr) return;
 	//Without "HasAuthority()" both server add clients can pick. Server pick, clients see it. 
 	// where clients pick the server dont see it - but WHY? 
 	// where one client pick, other client dont see it as well - by WHY?
@@ -201,15 +203,18 @@ void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 	// Because CombatComponent->SetIsReplicated() indirectly here in this hosting class? But We didn't mark CombatComponent with 'Replicated' from hosting class perspective yet right? So this is NOT yet relevant! it is only self-replicated so far.
 	//With "Hasauthority()" only server can pick, clients see it - but HOW? because "Aweapon && Char::OverlappingWeapon" are set to replicated? 
 	// where Clients can't even pick - make sense
-	if (CombatComponent && OverlappingWeapon && HasAuthority())  //&& HasAuthority()
-		CombatComponent->EquipWeapon(OverlappingWeapon);
+	if (HasAuthority())
+	{
+		CombatComponent->EquipWeapon(OverlappingWeapon); // (*)
+	}
+	else
+	{
+		ServerEKeyPressed(); //its body is purposely indeptical with (*), for clear reason 
+	}
 }
 
-//void ABlasterCharacter::SetWeaponPickWidgetVisibility(bool bIsVisible)
-//{
-//	if (OverlappingWeapon)
-//	{
-//		OverlappingWeapon->GetPickupWidgetComponent()->SetVisibility(bIsVisible);
-//	}
-//}
-
+//must add _Implementation(), where __RPC is already defined by UE5 itself by the RPC token LOL
+void ABlasterCharacter::ServerEKeyPressed_Implementation()
+{
+	if (CombatComponent) CombatComponent->EquipWeapon(OverlappingWeapon);
+}
