@@ -28,21 +28,30 @@ public:
 
 	 /**</X>*/
 
-//category3: regular functions: 
-	//montages:
 
-	//sound and effects:
-
-	//bool functions:
-
-	//BP-callale functions:
-	
-//category4: callbacks 
+//category3: callbacks and RPC
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
 	UFUNCTION(Server, Reliable) //this is important event, so we make it Reliable as well
 	void ServerEKeyPressed();
+
+	UFUNCTION(Server, Reliable) 
+	void ServerSetIsAiming(bool InIsAiming);
+
+//category4: regular functions: 
+	//montages:
+
+	//sound and effects:
+
+	//bool functions:
+	bool IsWeaponEquipped();
+	bool IsAming();
+
+	//BP-callale functions:
+	
+	//others:
+	void SetIsAiming(bool InIsAiming);	
 
 protected:
 	/***functions***/
@@ -103,15 +112,18 @@ private:
 
 //category2: virtual functions:
 
-//category3: regular functions 
-
-//category4: callbacks
+//category3: callbacks
 	void Input_Move(const struct FInputActionValue & Value); //in UE5.2 need to forward-declare this struct
 	void Input_Look(const FInputActionValue & Value);
 	void Input_Jump(const FInputActionValue & Value);
 	void Input_EKeyPressed(const FInputActionValue& Value);
+	void Input_Crouch(const FInputActionValue& Value);
+	void Input_Aim_Pressed(const FInputActionValue& Value);
+	void Input_Aim_Released(const FInputActionValue& Value);
 
-//category5: replication
+//category4: regular functions 
+	
+
 
 /***data members****/
 //Category1: Enums , arrays, pointers to external classes
@@ -131,6 +143,14 @@ private:
 	class UInputAction* IA_Jump;
 	UPROPERTY(EditAnywhere)
 	class UInputAction* IA_EKeyPressed;
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_Crouch;
+
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_Aim_Pressed;
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_Aim_Released;
+
 	//montages:
 
 	//sound and effects:

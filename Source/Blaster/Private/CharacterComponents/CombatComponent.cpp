@@ -6,6 +6,7 @@
 #include "Characters/BlasterCharacter.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
+#include "Net/UnrealNetwork.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -32,7 +33,7 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 }
 
 //Instead of doing it from AWeapon::Equip() we do it here, hence it should do all the stuff we usually did here
-void UCombatComponent::EquipWeapon(AWeapon* InWeapon)
+void UCombatComponent::Equip(AWeapon* InWeapon)
 {
 	if (InWeapon == nullptr || Character == nullptr) return;
 
@@ -60,5 +61,12 @@ void UCombatComponent::EquipWeapon(AWeapon* InWeapon)
 	//What if I want it to replicated? UNLESS I check UWidgetComponent::"component replicate" from BP_Character GLOBALLY? and register it from AWeapon locally? - i believe i tried it and it worked! but it is not the way to go here )
 	
 	//EquippedWeapon->ShowPickupWidget(false);
+	
+}
+
+void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
+	DOREPLIFETIME(UCombatComponent, bIsAiming);
 }
 

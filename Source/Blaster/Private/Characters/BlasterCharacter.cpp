@@ -12,7 +12,7 @@
 //#include "InputActionValue.h"
 #include "Weapons/Weapon.h"
 #include "Net/UnrealNetwork.h"
-
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -40,6 +40,9 @@ ABlasterCharacter::ABlasterCharacter()
 	//Setup UCombatComponent: We will replicate this Component[/pointer object] ; it is not SceneComponent so...
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	CombatComponent->SetIsReplicated(true); // || ->SetIsReplicatedByDefault(true) || ->bReplicates = true || directly set it from the local class AWeapon is also fine - I refer to do it where the local class is LOL. But it may set back false if it is within the other class?, It could be LOL.
+
+	//make sure you can
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -85,6 +88,17 @@ void ABlasterCharacter::BeginPlay()
 	}
 }
 
+//return true if EquippedWeapon is NOT null
+bool ABlasterCharacter::IsWeaponEquipped()
+{
+	return (CombatComponent && CombatComponent->EquippedWeapon);
+}
+
+bool ABlasterCharacter::IsAming()
+{
+	return (CombatComponent && CombatComponent->bIsAiming);
+}
+
 //this can't only be called on client copies: adding param/using it or not doesn't matter
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
@@ -99,6 +113,7 @@ void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 		LastWeapon->ShowPickupWidget(false);
 	}
 }
+
 
 
 //this will be called in Weapon::Overlap which could only happen in-server copy
@@ -147,6 +162,11 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedPlayerInputComponent->BindAction(IA_Look, ETriggerEvent::Triggered, this, &ThisClass::Input_Look);
 		EnhancedPlayerInputComponent->BindAction(IA_Jump, ETriggerEvent::Triggered, this, &ThisClass::Input_Jump);
 		EnhancedPlayerInputComponent->BindAction(IA_EKeyPressed, ETriggerEvent::Triggered, this, &ThisClass::Input_EKeyPressed);
+		EnhancedPlayerInputComponent->BindAction(IA_Crouch, ETriggerEvent::Triggered, this, &ThisClass::Input_Crouch);
+
+		EnhancedPlayerInputComponent->BindAction(IA_Aim_Pressed, ETriggerEvent::Triggered, this, &ThisClass::Input_Aim_Pressed);
+		EnhancedPlayerInputComponent->BindAction(IA_Aim_Released, ETriggerEvent::Triggered, this, &ThisClass::Input_Aim_Released);
+
 	}
 }
 
@@ -205,7 +225,7 @@ void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 	// where Clients can't even pick - make sense
 	if (HasAuthority())
 	{
-		CombatComponent->EquipWeapon(OverlappingWeapon); // (*)
+		CombatComponent->Equip(OverlappingWeapon); // (*)
 	}
 	else
 	{
@@ -213,8 +233,40 @@ void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 	}
 }
 
-//must add _Implementation(), where __RPC is already defined by UE5 itself by the RPC token LOL
 void ABlasterCharacter::ServerEKeyPressed_Implementation()
 {
-	if (CombatComponent) CombatComponent->EquipWeapon(OverlappingWeapon);
+	if (CombatComponent) CombatComponent->Equip(OverlappingWeapon);
+}
+
+void ABlasterCharacter::Input_Crouch(const FInputActionValue& Value)
+{
+	if (!bIsCrouched) Crouch();
+	else UnCrouch();
+}
+
+
+void ABlasterCharacter::Input_Aim_Pressed(const FInputActionValue& Value)
+{
+	SetIsAiming(true);
+}
+
+
+void ABlasterCharacter::Input_Aim_Released(const FInputActionValue& Value)
+{
+	SetIsAiming(false);
+}
+
+void ABlasterCharacter::SetIsAiming(bool InIsAiming)
+{
+	if (CombatComponent == nullptr) return;
+	//golden pattern with HasAuthority OPTIONAL, if not add, when changes originate from a client, the client see it first
+	// if add, changes could only originate from the server as the else mean "call from client but execute from server first"
+	CombatComponent->bIsAiming = InIsAiming;
+
+	ServerSetIsAiming(InIsAiming);
+}
+
+void ABlasterCharacter::ServerSetIsAiming_Implementation(bool InIsAiming)
+{
+	if (CombatComponent) CombatComponent->bIsAiming = InIsAiming;
 }

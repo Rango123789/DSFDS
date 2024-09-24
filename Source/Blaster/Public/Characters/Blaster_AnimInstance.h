@@ -40,6 +40,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bIsAccelerating; //THIS IS NEW! - SEE explain below
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bEquippedWeapon;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsCrouched;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsAiming;
 };
 
 /*Now you may be wondering why we're using this (bIsAccelaring) rather than the speed.
