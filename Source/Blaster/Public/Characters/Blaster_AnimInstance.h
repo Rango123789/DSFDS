@@ -45,9 +45,14 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bIsCrouched;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bIsAiming;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	float YawOffset{};
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	float Lean{};
+
 };
 
 /*Now you may be wondering why we're using this (bIsAccelaring) rather than the speed.

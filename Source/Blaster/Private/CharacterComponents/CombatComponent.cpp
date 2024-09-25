@@ -7,6 +7,7 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -16,6 +17,14 @@ UCombatComponent::UCombatComponent()
 
 	// ...
 }
+
+void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
+	DOREPLIFETIME(UCombatComponent, bIsAiming);
+}
+
+
 
 void UCombatComponent::BeginPlay()
 {
@@ -37,36 +46,36 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 {
 	if (InWeapon == nullptr || Character == nullptr) return;
 
-	//this is not replicated unless you mark it 'Replicated' here
 	EquippedWeapon = InWeapon;
 
-	//this function change "custom type's value", no way it is replicated
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped) ;
 
-	//I just add it, COLLISION wont be replicated as experience from lass lesson; the only place can have Collision is the server, so you can simply turn it OFF from the server is ENOUGH, no matter via which controlled char you turn it OFF, there is ONLY one copy of weapon in each device, so yeah! hence this code will stay here to be called via INPUT-callback with 'HasAuthority()' condition I guess. We'll see after we make the clients pick the weapon by the other way around. Away I try this for the case without HasAuthority, so it should work after then too.
-	// This problem is solved! now focusing on other statements around that may not be replicated	
-	
-	//EquippedWeapon->GetSphere()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	//this is replicated from server to clients via UE5 OnRep_
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
 	if(RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
 
-	//I'm checking this, yes if it is set from the server, it can be replicated to clients
-	//also you have OnRep_SetOwner() to use when the need arise!
 	EquippedWeapon->SetOwner(Character);
 
-	//It is not replicated, however you dont need to turn it OFF for the other devices that ALREADY dont see it (from the last lesson)
-	// BUT what if other devices themself overlap with the picked weapon? hell no, it shows the widget LOL, hence its collision should be turn off from the server as well (clients is disabled from the beginning)
-	//What if I want it to replicated? UNLESS I check UWidgetComponent::"component replicate" from BP_Character GLOBALLY? and register it from AWeapon locally? - i believe i tried it and it worked! but it is not the way to go here )
-	
+	//EquippedWeapon->GetSphere()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	//EquippedWeapon->ShowPickupWidget(false);
 	
+	//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
+	Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
+	Character->bUseControllerRotationYaw = true; //at first it is false
 }
 
-void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+//this is to fix the owning client can't update these on itself (weird case, can't explain :D )
+void UCombatComponent::OnRep_EquippedWeapon()
 {
-	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
-	DOREPLIFETIME(UCombatComponent, bIsAiming);
-}
+	//this OnRep_ is called whenever it changes, so you dont want to DoAction when it is changed to NOT valid value but null :D :D
+	//it is easy to forget this LOL, but yeah :D 
+	if (EquippedWeapon == nullptr || Character == nullptr) return;
 
+	//the condition is optional, but since I know only that owning client have problem, so I only need to let this code run on that client LOL, hell yeah!
+
+	if (Character->IsLocallyControlled())
+	{
+		Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
+		Character->bUseControllerRotationYaw = true; //at first it is false
+
+	}
+}

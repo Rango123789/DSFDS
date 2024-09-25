@@ -4,7 +4,8 @@
 #include "Characters/Blaster_AnimInstance.h"
 #include "Characters/BlasterCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
-
+#include <Kismet/KismetMathLibrary.h>
+//#include "Math/MathFwd.h"
 
 void UBlaster_AnimInstance::NativeInitializeAnimation()
 {
@@ -38,4 +39,33 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsCrouched = BlasterCharacter->bIsCrouched;
 
 	bIsAiming = BlasterCharacter->IsAming();
+
+	//Offset Yaw for strafing
+	FRotator AimRotation = BlasterCharacter->GetBaseAimRotation();
+
+	FVector Velocity = BlasterCharacter->GetVelocity();
+	FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(Velocity);
+
+    FRotator RotationDelta = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation , AimRotation ) ;
+						  //= (MovementRotation - MovementRotation).Normalize(); 
+	   //if APawn::GetBaseAimRotation() && GetVelocity() are built-in replicated, then YawOffset will be replicated too as UNIVERSAL rule(as currently it is put in Tick-LIKE, and each Anim for each character will update every frame!)
+	YawOffset = RotationDelta.Yaw;
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -19,6 +19,9 @@ public:
 	void Equip(class AWeapon* InWeapon);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UFUNCTION()
+	void OnRep_EquippedWeapon();
 protected:
 	virtual void BeginPlay() override;
 
@@ -27,7 +30,7 @@ private:
 	class ABlasterCharacter* Character; //to let this comp aware of its hosting object
 
 	//the Equipped Pose relying on this to know whether Char has a weapon or not, so that to choose "which group of anims: equipped or not"
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon) //just upgrade it to 'Using' for fixing a client can't change bOrient on itself :D :D
 	class AWeapon* EquippedWeapon;      //and more
 	
 	UPROPERTY(Replicated)

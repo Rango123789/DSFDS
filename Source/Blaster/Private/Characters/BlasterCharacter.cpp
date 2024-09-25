@@ -261,9 +261,9 @@ void ABlasterCharacter::SetIsAiming(bool InIsAiming)
 	if (CombatComponent == nullptr) return;
 	//golden pattern with HasAuthority OPTIONAL, if not add, when changes originate from a client, the client see it first
 	// if add, changes could only originate from the server as the else mean "call from client but execute from server first"
-	CombatComponent->bIsAiming = InIsAiming;
 
-	ServerSetIsAiming(InIsAiming);
+	if(HasAuthority()) CombatComponent->bIsAiming = InIsAiming;
+	else ServerSetIsAiming(InIsAiming);
 }
 
 void ABlasterCharacter::ServerSetIsAiming_Implementation(bool InIsAiming)
