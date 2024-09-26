@@ -50,8 +50,13 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float YawOffset{};
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float Lean{};
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FRotator CharacterRotationLastFrame;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FRotator CharacterRotation;
 
 };
 
