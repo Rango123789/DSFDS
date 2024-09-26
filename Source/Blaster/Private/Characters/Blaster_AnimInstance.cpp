@@ -44,28 +44,37 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	FRotator AimRotation = BlasterCharacter->GetBaseAimRotation();
 	FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(BlasterCharacter->GetVelocity());
 
-    FRotator RotationDelta = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation , AimRotation ) ;
-						  //= (MovementRotation - MovementRotation).GetNormalized();  can't use .Normalize() in the same line because it doesn't return FRotator
-	   //if APawn::GetBaseAimRotation() && GetVelocity() are built-in replicated, then YawOffset will be replicated too as UNIVERSAL rule(as currently it is put in Tick-LIKE, and each Anim for each character will update every frame!)
-	YawOffset = RotationDelta.Yaw;
+    FRotator Delta1 = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation , AimRotation );
+	    //this store the whole FRotator, this fix!
+	DeltaRotation = FMath::RInterpTo(DeltaRotation, Delta1, DeltaSeconds, 5.f);
+	YawOffset = DeltaRotation.Yaw;
+
+	//    //this ONLY store Yaw, this look Equivalent, but it doesn't fix LOL
+	//DeltaYaw = FMath::FInterpTo(DeltaYaw, Delta1.Yaw, DeltaSeconds, 5.f);
+	//YawOffset = DeltaYaw;
+	//       //Add this line will make it work by this way, not test yet but trust me!
+	//if (YawOffset > 180) YawOffset = YawOffset - 360;
+	//if (YawOffset < -180) YawOffset = YawOffset + 360;
+
+	//    //at first:
+	//YawOffset = Delta1.Yaw; //this is the first problem
+
+	//    //my try
+	//YawOffset = FMath::FInterpTo(YawOffset, Delta1.Yaw, DeltaSeconds, 5.f); 
+	//		//Add this line will make it work by this way, not test yet but trust me!
+	//if (YawOffset > 180) YawOffset = YawOffset - 360;
+	//if (YawOffset < -180) YawOffset = YawOffset + 360;
 
 //Leaning Angle for leaning:
-	//the idea is when we rotate mouse -> Camera/Actor's Rotation change, we use this to decide the leaning angle:
-	// - if Rotation Yaw = 90* , the BS_2D will rotate all the way to Lean_R animation (leaning 10 or 20 degree)
-	//  - if Rotation Yaw = -90* , the BS_2D will rotate all the way to Lean_L animation (leaning 10 or 20 degree)
 
-	CharacterRotationLastFrame = CharacterRotation; //OPTIONAL: set 'CharacterRotation' for first time in NativeInitializeAnimation if you want :D , if not the first Delta will goes wrong I guess, but you wont even notice it I think :D 
+	CharacterRotationLastFrame = CharacterRotation; 
 	CharacterRotation = BlasterCharacter->GetActorRotation();
 
-	const FRotator Delta = (CharacterRotation - CharacterRotationLastFrame).GetNormalized();
-	const float Target = Delta.Yaw / DeltaSeconds; // <=> how many Yaw degree it will rotate in a second, like Rotating Speed in physics
-	Lean = FMath::FInterpTo(Lean, Target, DeltaSeconds, 5.f); //Stephen add 'const float Interpo = , but no need! 
+	const FRotator Delta2 = (CharacterRotation - CharacterRotationLastFrame).GetNormalized();
+	const float Target = Delta2.Yaw / DeltaSeconds; 
+	Lean = FMath::FInterpTo(Lean, Target, DeltaSeconds, 5.f); 
 
-	//if you Clamp it within [-90, 90] the Backward_Lean_R/L will never get effective? = incorrect!
-	//it will reduce the "MAX leaning possible" from "10/20 degree" to "5/10 degree"? = verified!
-	//So in case you rotate your mouse +/-180 GLOBALLY you will face in opposite direction, and you will lean 50% the Max LOCALLY
-	
-	//Lean = FMath::Clamp(Lean, -90.f, 90.f); //why not -180, to 180?
+	//Lean = FMath::Clamp(Lean, -180.f, 180.f); //why not -180, to 180?
 	Lean = FMath::Clamp(Lean, -90.f, 90.f); //why not -180, to 180?
 
 	UE_LOG(LogTemp, Warning, TEXT("YawOffset: %d"), YawOffset);

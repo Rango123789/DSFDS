@@ -58,6 +58,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FRotator CharacterRotation;
 
+	FRotator DeltaRotation;
+	float DeltaYaw;
 };
 
 /*Now you may be wondering why we're using this (bIsAccelaring) rather than the speed.
