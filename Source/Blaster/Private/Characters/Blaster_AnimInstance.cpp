@@ -45,9 +45,28 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(BlasterCharacter->GetVelocity());
 
     FRotator Delta1 = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation , AimRotation );
-	    //this store the whole FRotator, this fix!
+	    //this store the whole FRotator, this fix! = in fact it has .GetNormalized() inside
 	DeltaRotation = FMath::RInterpTo(DeltaRotation, Delta1, DeltaSeconds, 5.f);
 	YawOffset = DeltaRotation.Yaw;
+//Leaning Angle for leaning:
+
+	CharacterRotationLastFrame = CharacterRotation; 
+	CharacterRotation = BlasterCharacter->GetActorRotation();
+
+	const FRotator Delta2 = (CharacterRotation - CharacterRotationLastFrame).GetNormalized();
+	const float Target = Delta2.Yaw / DeltaSeconds; 
+	Lean = FMath::FInterpTo(Lean, Target, DeltaSeconds, 5.f); 
+
+	//Lean = FMath::Clamp(Lean, -180.f, 180.f); //why not -180, to 180?
+	Lean = FMath::Clamp(Lean, -90.f, 90.f); //why not -180, to 180?
+
+	AO_Yaw = BlasterCharacter->GetAO_Yaw();
+	AO_Pitch = BlasterCharacter->GetAO_Pitch();
+
+	UE_LOG(LogTemp, Warning, TEXT("YawOffset: %d"), YawOffset);
+}
+
+
 
 	//    //this ONLY store Yaw, this look Equivalent, but it doesn't fix LOL
 	//DeltaYaw = FMath::FInterpTo(DeltaYaw, Delta1.Yaw, DeltaSeconds, 5.f);
@@ -64,24 +83,6 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	//		//Add this line will make it work by this way, not test yet but trust me!
 	//if (YawOffset > 180) YawOffset = YawOffset - 360;
 	//if (YawOffset < -180) YawOffset = YawOffset + 360;
-
-//Leaning Angle for leaning:
-
-	CharacterRotationLastFrame = CharacterRotation; 
-	CharacterRotation = BlasterCharacter->GetActorRotation();
-
-	const FRotator Delta2 = (CharacterRotation - CharacterRotationLastFrame).GetNormalized();
-	const float Target = Delta2.Yaw / DeltaSeconds; 
-	Lean = FMath::FInterpTo(Lean, Target, DeltaSeconds, 5.f); 
-
-	//Lean = FMath::Clamp(Lean, -180.f, 180.f); //why not -180, to 180?
-	Lean = FMath::Clamp(Lean, -90.f, 90.f); //why not -180, to 180?
-
-	UE_LOG(LogTemp, Warning, TEXT("YawOffset: %d"), YawOffset);
-}
-
-
-
 
 
 

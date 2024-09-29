@@ -43,6 +43,9 @@ ABlasterCharacter::ABlasterCharacter()
 
 	//make sure you can
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+	//assign its value here (or BeginPlay()), so surely all character instances has it
+	MaxWalkSpeed_Backup = GetCharacterMovement()->MaxWalkSpeed;
+	AimWalkSpeed = 300.f;
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -86,6 +89,13 @@ void ABlasterCharacter::BeginPlay()
 		UOverhead_UserWidget* Overhead_UserWidget = Cast<UOverhead_UserWidget>(Overhead_WidgetComponent->GetUserWidgetObject());
 		if (Overhead_UserWidget) Overhead_UserWidget->ShowPlayerNetRole(this);
 	}
+}
+
+void ABlasterCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+    
+	SetupAimOffsetVariables(DeltaTime);
 }
 
 //return true if EquippedWeapon is NOT null
@@ -137,17 +147,6 @@ void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
 	{
 		OverlappingWeapon->ShowPickupWidget(true);
 	}
-}
-
-void ABlasterCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-/*Alternative, not good for performance - NOT used*/
-	//if (  OverlappingWeapon &&  
-	//	IsLocallyControlled() ) //WORK
-	//	//( (GetLocalRole() == ENetRole::ROLE_AutonomousProxy && GetRemoteRole() == ENetRole::ROLE_Authority) ||
-	//	//  (GetRemoteRole() == ENetRole::ROLE_AutonomousProxy && GetLocalRole() == ENetRole::ROLE_Authority ) ) ) - NOT WORK!
-	//OverlappingWeapon->ShowPickupWidget(true); //move to OnRep, but OnRep can't be called in server hence ready to do extra work.
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -250,7 +249,6 @@ void ABlasterCharacter::Input_Aim_Pressed(const FInputActionValue& Value)
 	SetIsAiming(true);
 }
 
-
 void ABlasterCharacter::Input_Aim_Released(const FInputActionValue& Value)
 {
 	SetIsAiming(false);
@@ -262,11 +260,85 @@ void ABlasterCharacter::SetIsAiming(bool InIsAiming)
 	//golden pattern with HasAuthority OPTIONAL, if not add, when changes originate from a client, the client see it first
 	// if add, changes could only originate from the server as the else mean "call from client but execute from server first"
 
-	if(HasAuthority()) CombatComponent->bIsAiming = InIsAiming;
-	else ServerSetIsAiming(InIsAiming);
+	if (HasAuthority())
+	{
+		CombatComponent->bIsAiming = InIsAiming;
+		if(GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
+	}
+	else 
+	ServerSetIsAiming(InIsAiming);
 }
+
 
 void ABlasterCharacter::ServerSetIsAiming_Implementation(bool InIsAiming)
 {
-	if (CombatComponent) CombatComponent->bIsAiming = InIsAiming;
+	if (CombatComponent)
+	{
+		CombatComponent->bIsAiming = InIsAiming;
+		if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
+	}
 }
+
+void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
+{
+	//UPDATE: this setup is meant for when you have a weapon, and you can skip this if you didn't have any
+	//this does improve performance, so why not:
+	if (CombatComponent == nullptr)  return; //see comment below, or [ComboCheckUPDATE] to see why we should not do if (A || A->B)
+	if (CombatComponent->EquippedWeapon == nullptr) return;
+    
+	//these lines are just for readibility:
+	float GroundSpeed = GetVelocity().Size2D();
+	bool IsInAir = GetCharacterMovement()->IsFalling();
+
+	if (GroundSpeed == 0.f && !IsInAir  ) //stand still, not jumping
+	{
+		//when char stop moving, you set bUseYaw=false, GetBaseAimRotation() will start to differ from Actor facing direction
+		bUseControllerRotationYaw = false; //no need to change bOrient... = true, as it is IRRELEVANT as stop moving
+		
+		FRotator DeltaRotation = GetBaseAimRotation() - BaseAimRotation_SinceStopMoving;
+		AO_Yaw = DeltaRotation.GetNormalized().Yaw; //either normalized it here or above, but do NOT forget it!
+	}
+	else //running or jumping
+	{
+		//when moving OR IsInAir we allow it to use Yaw again, let actor and Camera will face in the same direction again, I think this is absolutely good behaviour!
+		//it only saves the updated value for the current frame when it is moving+, and it will stop saving  when it is stop moving , and will 'KEEP' this value until Char moves again :
+		bUseControllerRotationYaw = true;
+
+		BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
+		
+		AO_Yaw = 0; //you can't forget this line, this will reset AO_Aim to AO_CC pose as moving or jumping! skip this line and you see the pose get stuck where it is as you move/jump back
+	}
+
+	AO_Pitch = GetBaseAimRotation().Pitch; //can call it here or outside in Tick(), better here to keep Tick clean!
+}
+
+/*
+(1) if (A && A->B) __
+<=>if A is wrong, the if will fail, so A->B wont be executed, hence wont cause any crash
+
+(2) if (A || A->B) __
+<=>if A is wrong, then A->B is stilled checked, causing a crash
+
+; anyway this condition is "nonsense" and stupid LOL
+; DO NOT use this
+
+**Solution1A: I like this
+if(A==nullptr) return;
+if(A->B) DoAction();
+
+**Solution1B: I like this
+if(A==nullptr) return;
+if(A->B == nullptr) return; //if DoAction() is 'return' itself
+
+**Solution2: the origin - NOT prefered
+if(A)
+{
+  if (A->B)
+}
+
+**Solution3: not perpect but some may want to use (said Stephen )
+if (A && A->B == nullptr) return;
+
+->if A succeed, keep check A->B = this is WANTED
+->if A fails, skip if check and pass the return line; but still to the next =this is UNWANTED
+*/

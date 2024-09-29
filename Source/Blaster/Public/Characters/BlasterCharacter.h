@@ -52,6 +52,7 @@ public:
 	
 	//others:
 	void SetIsAiming(bool InIsAiming);	
+	void SetupAimOffsetVariables(float DeltaTime);
 
 protected:
 	/***functions***/
@@ -103,8 +104,15 @@ protected:
 	//sound and effects:
 
 //category4: basic and primitive types
+	UPROPERTY(EditAnywhere)
+	float MaxWalkSpeed_Backup; //backup for initial MaxWalkSpeed, set its value in constructor!
+	UPROPERTY(EditAnywhere)
+	float AimWalkSpeed; //to change MaxWalkSpeed = AimWalkSpeed when we aim
 
-//category5: replication
+	float AO_Yaw; //DeltaYawSinceStopMovingJumping
+	float AO_Pitch; //the Pitch of ControlRotation<-Camera
+
+	FRotator BaseAimRotation_SinceStopMoving;
 
 private: 
 	/***functions***/
@@ -161,6 +169,9 @@ public:
 	/***Setters and Getters***/
 
 	void SetOverlappingWeapon(AWeapon* InWeapon);
+
+	float GetAO_Yaw() { return AO_Yaw; }
+	float GetAO_Pitch() { return AO_Pitch; }
 
 	//UFUNCTION(BlueprintCallable)
 	//void SetWeaponPickWidgetVisibility(bool bIsVisible = true);

@@ -58,8 +58,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FRotator CharacterRotation;
 
-	FRotator DeltaRotation;
-	float DeltaYaw;
+	FRotator DeltaRotation; //used here, but no use in ABP
+	float DeltaYaw; //no need any more
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	float AO_Yaw; //DeltaYawSinceStopMovingJumping
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	float AO_Pitch; //the Pitch of ControlRotation<-Camera
 };
 
 /*Now you may be wondering why we're using this (bIsAccelaring) rather than the speed.
