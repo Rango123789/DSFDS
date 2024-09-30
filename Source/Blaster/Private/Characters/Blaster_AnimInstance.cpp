@@ -63,7 +63,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	AO_Yaw = BlasterCharacter->GetAO_Yaw();
 	AO_Pitch = BlasterCharacter->GetAO_Pitch();
 
-	UE_LOG(LogTemp, Warning, TEXT("YawOffset: %d"), YawOffset);
+	//UE_LOG(LogTemp, Warning, TEXT("YawOffset: %f"), YawOffset);
 }
 
 

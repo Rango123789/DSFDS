@@ -295,8 +295,10 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 		//when char stop moving, you set bUseYaw=false, GetBaseAimRotation() will start to differ from Actor facing direction
 		bUseControllerRotationYaw = false; //no need to change bOrient... = true, as it is IRRELEVANT as stop moving
 		
-		FRotator DeltaRotation = GetBaseAimRotation() - BaseAimRotation_SinceStopMoving;
-		AO_Yaw = DeltaRotation.GetNormalized().Yaw; //either normalized it here or above, but do NOT forget it!
+		//add normalized or not: now add it so that it work withing [-180, 180] beyond this, it snaps to the opposite direction:
+		//you may be think mouse could only go [-x ->0->x] so better not normalized it, but it make us only move [-90/left ->0] and I have no idea why :D :D, and still it still snap when we go beyond -180. It is because 'GetBaseAimRotation()/Any FRotator is locally normalized' I guess
+		FRotator DeltaRotation = (GetBaseAimRotation() - BaseAimRotation_SinceStopMoving).GetNormalized();
+		AO_Yaw = DeltaRotation.Yaw;
 	}
 	else //running or jumping
 	{
@@ -309,7 +311,23 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 		AO_Yaw = 0; //you can't forget this line, this will reset AO_Aim to AO_CC pose as moving or jumping! skip this line and you see the pose get stuck where it is as you move/jump back
 	}
 
-	AO_Pitch = GetBaseAimRotation().Pitch; //can call it here or outside in Tick(), better here to keep Tick clean!
+	//add .GetNormalized() fix it!
+	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; //can call it here or outside in Tick(), better here to keep Tick clean!
+
+	AO_Pitch = GetBaseAimRotation().Pitch;
+
+	UE_LOG(LogTemp, Warning, TEXT("AO_Pitch: %f"), AO_Pitch); //before
+
+	//Stephen Idea: (no need my idea work already)
+	if (AO_Pitch > 90.f && !IsLocallyControlled())
+	{
+		FVector2D InRange(270.f, 360.f);
+		FVector2D OutRange(-90.f, 0.f);
+
+		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("AO_Pitch: %f"), AO_Pitch); //after
 }
 
 /*
