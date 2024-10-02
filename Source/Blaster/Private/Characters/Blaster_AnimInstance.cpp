@@ -4,8 +4,9 @@
 #include "Characters/Blaster_AnimInstance.h"
 #include "Characters/BlasterCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include <Kismet/KismetMathLibrary.h>
-//#include "Math/MathFwd.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "CharacterComponents/CombatComponent.h"
+#include "Weapons/Weapon.h"
 
 void UBlaster_AnimInstance::NativeInitializeAnimation()
 {
@@ -21,6 +22,8 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	Super::NativeUpdateAnimation(DeltaSeconds); //it is in fact empty LOL
 	
 	if(BlasterCharacter == nullptr) BlasterCharacter = Cast<ABlasterCharacter>(TryGetPawnOwner());
+
+
 	if (BlasterCharacter == nullptr) return;
 
 	bIsInAir = 	BlasterCharacter->GetCharacterMovement()->IsFalling();
@@ -35,6 +38,8 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	//bIsAccelerating = CurrentInputAcceleration.Size() == 0.f ? false : true; //the 0.f is important here LOL, '0' is stupid
 
 	bEquippedWeapon = BlasterCharacter->IsWeaponEquipped();
+
+	EquippedWeapon = BlasterCharacter->GetEquippedWeapon(); //NEW
 
 	bIsCrouched = BlasterCharacter->bIsCrouched;
 
@@ -63,11 +68,39 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	AO_Yaw = BlasterCharacter->GetAO_Yaw();
 	AO_Pitch = BlasterCharacter->GetAO_Pitch();
 
-	//UE_LOG(LogTemp, Warning, TEXT("YawOffset: %f"), YawOffset);
+
+	//do the if so that you dont have to check it inside, and also return soon for performance
+	//the last one ('bEuippedWeapon') could be redudant, better double-kill than left over? :D :D
+	if(EquippedWeapon && EquippedWeapon->GetWeaponMesh() && BlasterCharacter->GetMesh()  && bEquippedWeapon ) 
+	{
+		//this line is nonsense, we try to get Socket of the weapon, not Socket of BlasterCharacter :D :D :
+		//const USkeletalMeshSocket * LeftHandSocket_InWeapon = BlasterCharacter->GetMesh()->GetSocketByName(FName("LeftHandSocket")); - you STUPID! :d :d
+		
+		const FTransform RightHandSocket_Transform_InWeapon_WorldSpace 
+			= EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("LeftHandSocket_InWeapon"), ERelativeTransformSpace::RTS_World); //this socket is in WeaponMesh of the Weapon, not not the Character Mesh
+
+		FVector OutLocation; //Location to be relative to "Right_Hand bone"
+		FRotator OutRotation; //Rotation to be relative to "Right_Hand bone"
+
+		//you must check Character's skeleton for the actual name of 'Right_Hand bone':
+		BlasterCharacter->GetMesh()->TransformToBoneSpace(
+			FName("hand_r"),
+			RightHandSocket_Transform_InWeapon_WorldSpace.GetLocation(),
+			RightHandSocket_Transform_InWeapon_WorldSpace.GetRotation().Rotator(),
+			OutLocation,
+			OutRotation
+		);
+
+		RightHandSocket_Transform_InWeapon.SetLocation(OutLocation);
+		RightHandSocket_Transform_InWeapon.SetRotation(FQuat(OutRotation));
+	}
+
 }
 
+//USkeletalMeshComponent : public USkinnedMeshComponent 
+// USkinnedMeshComponent::GetSocketTransform()
 
-
+	//UE_LOG(LogTemp, Warning, TEXT("YawOffset: %f"), YawOffset);
 	//    //this ONLY store Yaw, this look Equivalent, but it doesn't fix LOL
 	//DeltaYaw = FMath::FInterpTo(DeltaYaw, Delta1.Yaw, DeltaSeconds, 5.f);
 	//YawOffset = DeltaYaw;

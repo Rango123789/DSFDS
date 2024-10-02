@@ -9,7 +9,6 @@
 #include "EnhancedInputSubsystems.h"
 #include "Components/WidgetComponent.h"
 #include "HUD/Overhead_UserWidget.h"
-//#include "InputActionValue.h"
 #include "Weapons/Weapon.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -147,6 +146,12 @@ void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
 	{
 		OverlappingWeapon->ShowPickupWidget(true);
 	}
+}
+
+AWeapon* ABlasterCharacter::GetEquippedWeapon()
+{
+	if (CombatComponent == nullptr) return nullptr;
+	else return CombatComponent->EquippedWeapon;
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -312,23 +317,23 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 	}
 
 	//add .GetNormalized() fix it!
-	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; //can call it here or outside in Tick(), better here to keep Tick clean!
+	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; 
 
-	AO_Pitch = GetBaseAimRotation().Pitch;
-
-	UE_LOG(LogTemp, Warning, TEXT("AO_Pitch: %f"), AO_Pitch); //before
-
-	//Stephen Idea: (no need my idea work already)
-	if (AO_Pitch > 90.f && !IsLocallyControlled())
-	{
-		FVector2D InRange(270.f, 360.f);
-		FVector2D OutRange(-90.f, 0.f);
-
-		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch);
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("AO_Pitch: %f"), AO_Pitch); //after
 }
+	//AO_Pitch = GetBaseAimRotation().Pitch;
+
+	//UE_LOG(LogTemp, Warning, TEXT("AO_Pitch: %f"), AO_Pitch); //before
+
+	////Stephen Idea: (no need my idea work already)
+	//if (AO_Pitch > 90.f && !IsLocallyControlled())
+	//{
+	//	FVector2D InRange(270.f, 360.f);
+	//	FVector2D OutRange(-90.f, 0.f);
+
+	//	AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch);
+	//}
+
+	//UE_LOG(LogTemp, Warning, TEXT("AO_Pitch: %f"), AO_Pitch); //after
 
 /*
 (1) if (A && A->B) __

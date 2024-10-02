@@ -88,7 +88,7 @@ protected: //base
 //category2: UActorComponents
     UPROPERTY(VisibleAnywhere)
     USkeletalMeshComponent* WeaponMesh; //NEW1: look at assets, guns are all SKM instead of SM for good
-
+                                        //no need to forward declare no include it in UE5.2+ ?
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     class USphereComponent* Sphere;
 
@@ -132,6 +132,8 @@ private: //FINAL child
 public:
 /***Setters and Getters***/
     UWidgetComponent* GetPickupWidgetComponent() { return Pickup_WidgetComponent; }
+
+    USkeletalMeshComponent* GetWeaponMesh(){ return WeaponMesh; }
 
     USphereComponent* GetSphere() { return Sphere; }
 

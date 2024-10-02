@@ -65,6 +65,12 @@ protected:
 	float AO_Yaw; //DeltaYawSinceStopMovingJumping
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float AO_Pitch; //the Pitch of ControlRotation<-Camera
+
+	class AWeapon* EquippedWeapon;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FTransform RightHandSocket_Transform_InWeapon; //Transform of 
+
 };
 
 /*Now you may be wondering why we're using this (bIsAccelaring) rather than the speed.

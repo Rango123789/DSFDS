@@ -173,6 +173,10 @@ public:
 	float GetAO_Yaw() { return AO_Yaw; }
 	float GetAO_Pitch() { return AO_Pitch; }
 
+	UCombatComponent* GetCombatComponent() { return CombatComponent; }
+
+	AWeapon* GetEquippedWeapon();
+
 	//UFUNCTION(BlueprintCallable)
 	//void SetWeaponPickWidgetVisibility(bool bIsVisible = true);
 
