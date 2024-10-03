@@ -24,8 +24,6 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(UCombatComponent, bIsAiming);
 }
 
-
-
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();

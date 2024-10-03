@@ -73,9 +73,8 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	//the last one ('bEuippedWeapon') could be redudant, better double-kill than left over? :D :D
 	if(EquippedWeapon && EquippedWeapon->GetWeaponMesh() && BlasterCharacter->GetMesh()  && bEquippedWeapon ) 
 	{
-		//this line is nonsense, we try to get Socket of the weapon, not Socket of BlasterCharacter :D :D :
-		//const USkeletalMeshSocket * LeftHandSocket_InWeapon = BlasterCharacter->GetMesh()->GetSocketByName(FName("LeftHandSocket")); - you STUPID! :d :d
-		
+
+		//you must name the socket in weapon exactly like this "LeftHandSocket_InWeapon": 		
 		const FTransform RightHandSocket_Transform_InWeapon_WorldSpace 
 			= EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("LeftHandSocket_InWeapon"), ERelativeTransformSpace::RTS_World); //this socket is in WeaponMesh of the Weapon, not not the Character Mesh
 
@@ -91,10 +90,10 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 			OutRotation
 		);
 
-		RightHandSocket_Transform_InWeapon.SetLocation(OutLocation);
-		RightHandSocket_Transform_InWeapon.SetRotation(FQuat(OutRotation));
-	}
+		LefttHandSocket_Transform_InWeapon.SetLocation(OutLocation);
+		LefttHandSocket_Transform_InWeapon.SetRotation(FQuat(OutRotation));
 
+	}
 }
 
 //USkeletalMeshComponent : public USkinnedMeshComponent 

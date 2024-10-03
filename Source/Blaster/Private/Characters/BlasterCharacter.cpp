@@ -123,8 +123,6 @@ void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 	}
 }
 
-
-
 //this will be called in Weapon::Overlap which could only happen in-server copy
 //hence MANUAL work condition can count on it!
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)

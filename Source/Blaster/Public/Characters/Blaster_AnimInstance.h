@@ -69,7 +69,7 @@ protected:
 	class AWeapon* EquippedWeapon;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FTransform RightHandSocket_Transform_InWeapon; //Transform of 
+	FTransform LefttHandSocket_Transform_InWeapon; //Transform of 
 
 };
 
