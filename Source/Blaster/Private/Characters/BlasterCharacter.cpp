@@ -45,6 +45,7 @@ ABlasterCharacter::ABlasterCharacter()
 	//assign its value here (or BeginPlay()), so surely all character instances has it
 	MaxWalkSpeed_Backup = GetCharacterMovement()->MaxWalkSpeed;
 	AimWalkSpeed = 300.f;
+
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -88,6 +89,8 @@ void ABlasterCharacter::BeginPlay()
 		UOverhead_UserWidget* Overhead_UserWidget = Cast<UOverhead_UserWidget>(Overhead_WidgetComponent->GetUserWidgetObject());
 		if (Overhead_UserWidget) Overhead_UserWidget->ShowPlayerNetRole(this);
 	}
+
+	BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
 }
 
 void ABlasterCharacter::Tick(float DeltaTime)
@@ -295,28 +298,65 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 
 	if (GroundSpeed == 0.f && !IsInAir  ) //stand still, not jumping
 	{
-		//when char stop moving, you set bUseYaw=false, GetBaseAimRotation() will start to differ from Actor facing direction
-		bUseControllerRotationYaw = false; //no need to change bOrient... = true, as it is IRRELEVANT as stop moving
-		
-		//add normalized or not: now add it so that it work withing [-180, 180] beyond this, it snaps to the opposite direction:
-		//you may be think mouse could only go [-x ->0->x] so better not normalized it, but it make us only move [-90/left ->0] and I have no idea why :D :D, and still it still snap when we go beyond -180. It is because 'GetBaseAimRotation()/Any FRotator is locally normalized' I guess
-		FRotator DeltaRotation = (GetBaseAimRotation() - BaseAimRotation_SinceStopMoving).GetNormalized();
-		AO_Yaw = DeltaRotation.Yaw;
+		bUseControllerRotationYaw = true; //from false in last lesson
+
+		FRotator DeltaRotation = (GetBaseAimRotation() - BaseAimRotation_SinceStopMoving);
+
+		AO_Yaw = DeltaRotation.GetNormalized().Yaw;
+
+		//TurnInPlace(DeltaTime);
+
+		if (TurningInPlace == ETurningInPlace::RTIP_NoTurning)
+		{
+			AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = AO_Yaw;
+		}
+		else
+		{
+			AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = FMath::FInterpTo(
+				AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero,
+				0.f,
+				DeltaTime,
+				5.f        //meaning 1/2=0.2 sec to get it done
+			);
+			BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
+		}
+
+		if (AO_Yaw > 90.f)
+		{
+			SetTurningInPlace(ETurningInPlace::RTIP_TurnRight);
+		}
+		if (AO_Yaw < -90.f)
+		{
+			SetTurningInPlace(ETurningInPlace::RTIP_TurnLeft);
+		}
 	}
 	else //running or jumping
 	{
-		//when moving OR IsInAir we allow it to use Yaw again, let actor and Camera will face in the same direction again, I think this is absolutely good behaviour!
-		//it only saves the updated value for the current frame when it is moving+, and it will stop saving  when it is stop moving , and will 'KEEP' this value until Char moves again :
-		bUseControllerRotationYaw = true;
+		bUseControllerRotationYaw = true; //already true from last lesson ->now you can remove both lines
 
 		BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
 		
-		AO_Yaw = 0; //you can't forget this line, this will reset AO_Aim to AO_CC pose as moving or jumping! skip this line and you see the pose get stuck where it is as you move/jump back
+		AO_Yaw = 0; 
+
+		SetTurningInPlace(ETurningInPlace::RTIP_NoTurning);
 	}
 
 	//add .GetNormalized() fix it!
 	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; 
 
+	UE_LOG(LogTemp, Warning, TEXT("AO_Yaw: %f"), AO_Yaw); 
+}
+void ABlasterCharacter::TurnInPlace(float DeltaTime)
+{
+	//Stephen decide to turn when we reach 90 (turn right) or -90 (turn left), though I think 120 is better as we want player as some leeway :D :D  right? You can factorize this function into TurnInPlace(DeltaTime), Stephen does this
+	if (AO_Yaw > 90.f)
+	{
+		SetTurningInPlace(ETurningInPlace::RTIP_TurnRight);
+	}
+	if (AO_Yaw < -90.f)
+	{
+		SetTurningInPlace(ETurningInPlace::RTIP_TurnLeft);
+	}
 }
 	//AO_Pitch = GetBaseAimRotation().Pitch;
 

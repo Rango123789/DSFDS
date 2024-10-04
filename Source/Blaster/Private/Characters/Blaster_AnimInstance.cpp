@@ -68,6 +68,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	AO_Yaw = BlasterCharacter->GetAO_Yaw();
 	AO_Pitch = BlasterCharacter->GetAO_Pitch();
 
+	TurningInPlace = BlasterCharacter->GetTurningInPlace();
 
 	//do the if so that you dont have to check it inside, and also return soon for performance
 	//the last one ('bEuippedWeapon') could be redudant, better double-kill than left over? :D :D

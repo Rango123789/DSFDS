@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Blaster/CharacterTypes.h"
 #include "BlasterCharacter.generated.h"
+
 
 UCLASS()
 class BLASTER_API ABlasterCharacter : public ACharacter
@@ -54,6 +56,8 @@ public:
 	void SetIsAiming(bool InIsAiming);	
 	void SetupAimOffsetVariables(float DeltaTime);
 
+	void TurnInPlace(float DeltaTime);
+
 protected:
 	/***functions***/
 //category1: auto-generated functions:
@@ -77,6 +81,9 @@ protected:
 /***data members****/
 //Category1: Enums , arrays, pointers to external classes
 	//enum states:
+	ETurningInPlace TurningInPlace = ETurningInPlace::RTIP_NoTurning;
+
+
 
 	//pointer to external classes:
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
@@ -112,7 +119,11 @@ protected:
 	float AO_Yaw; //DeltaYawSinceStopMovingJumping
 	float AO_Pitch; //the Pitch of ControlRotation<-Camera
 
+	float AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero;
+
 	FRotator BaseAimRotation_SinceStopMoving;
+
+
 
 private: 
 	/***functions***/
@@ -177,7 +188,7 @@ public:
 
 	AWeapon* GetEquippedWeapon();
 
-	//UFUNCTION(BlueprintCallable)
-	//void SetWeaponPickWidgetVisibility(bool bIsVisible = true);
+	void SetTurningInPlace(ETurningInPlace InValue) { TurningInPlace = InValue; }
 
+	ETurningInPlace GetTurningInPlace() { return TurningInPlace; }
 };

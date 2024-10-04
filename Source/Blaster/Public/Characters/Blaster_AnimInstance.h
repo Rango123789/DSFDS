@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "Blaster/CharacterTypes.h"
 #include "Blaster_AnimInstance.generated.h"
-
 /**
  * 
  */
@@ -70,6 +70,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FTransform LefttHandSocket_Transform_InWeapon; //Transform of 
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite) //we need to edit it in Turn animation back to "no turning" :D , additional to when not moving from Char
+	ETurningInPlace TurningInPlace = ETurningInPlace::RTIP_NoTurning;
 
 };
 
