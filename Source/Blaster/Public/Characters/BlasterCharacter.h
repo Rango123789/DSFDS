@@ -27,7 +27,7 @@ public:
 	 /**</Actor>*/
 
 	/**<X>*/
-
+	void Jump() override;
 	 /**</X>*/
 
 
@@ -55,8 +55,6 @@ public:
 	//others:
 	void SetIsAiming(bool InIsAiming);	
 	void SetupAimOffsetVariables(float DeltaTime);
-
-	void TurnInPlace(float DeltaTime);
 
 protected:
 	/***functions***/
@@ -123,7 +121,11 @@ protected:
 
 	FRotator BaseAimRotation_SinceStopMoving;
 
+	UPROPERTY(EditAnywhere)
+	float InterpSpeed_Turning = 3.5f;
 
+	UPROPERTY(EditAnywhere)
+	float X_stop = 1.f;
 
 private: 
 	/***functions***/
