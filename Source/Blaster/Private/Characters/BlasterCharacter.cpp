@@ -67,11 +67,11 @@ void ABlasterCharacter::PostInitializeComponents()
 	if (CombatComponent) CombatComponent->Character = this;
 }
 
-//use 'else' if you want press TWICE to jump, dont use 'else' if you want press ONCE to jump from Crouch state
+//use 'else' if you want press TWICE to jump, dont use 'else' if you want press ONCE to jump from Crouch state - no , either case lead to the same end: press TWICE to jump.
 void ABlasterCharacter::Jump()
 {
 	if (bIsCrouched) UnCrouch();
-	Super::Jump();
+	else Super::Jump();
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -221,7 +221,7 @@ void ABlasterCharacter::Input_Look(const FInputActionValue& Value)
 
 void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 {
-	Super::Jump(); //you just override it, so call the new version instead
+	//Super::Jump(); //you just override it, so call the new version instead
 
 	Jump();
 }

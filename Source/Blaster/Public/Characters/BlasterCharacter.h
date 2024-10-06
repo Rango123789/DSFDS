@@ -14,7 +14,7 @@ class BLASTER_API ABlasterCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
-	/***functions***/
+/***functions***/
 //category1: auto-generated functions:
 	ABlasterCharacter();
 	virtual void Tick(float DeltaTime) override;
