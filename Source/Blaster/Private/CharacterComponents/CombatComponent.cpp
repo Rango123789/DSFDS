@@ -15,7 +15,6 @@ UCombatComponent::UCombatComponent()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = false; //if you tick later, then turn it on
 
-	// ...
 }
 
 void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -28,8 +27,16 @@ void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
-	
+	//assign its value here (or BeginPlay()), so surely all character instances has it
+	MaxWalkSpeed_Backup = Character->GetCharacterMovement()->MaxWalkSpeed;
+	AimWalkSpeed = 300.f;
+}
+
+
+
+void UCombatComponent::SetIsFiring(bool InIsFiring)
+{
+	bIsFiring = InIsFiring;
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -75,5 +82,25 @@ void UCombatComponent::OnRep_EquippedWeapon()
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
 		Character->bUseControllerRotationYaw = true; //at first it is false
 
+	}
+}
+
+void UCombatComponent::SetIsAiming(bool InIsAiming)
+{
+	if (Character->HasAuthority())
+	{
+		bIsAiming = InIsAiming;
+		if (Character->GetCharacterMovement()) Character->GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
+	}
+	else
+		ServerSetIsAiming(InIsAiming);
+}
+
+void UCombatComponent::ServerSetIsAiming_Implementation(bool InIsAiming) //REPLACE
+{
+	if (Character)
+	{
+		bIsAiming = InIsAiming;
+		if (Character->GetCharacterMovement()) Character->GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
 	}
 }

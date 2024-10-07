@@ -42,9 +42,6 @@ ABlasterCharacter::ABlasterCharacter()
 
 	//make sure you can
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
-	//assign its value here (or BeginPlay()), so surely all character instances has it
-	MaxWalkSpeed_Backup = GetCharacterMovement()->MaxWalkSpeed;
-	AimWalkSpeed = 300.f;
 
 }
 
@@ -179,6 +176,8 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedPlayerInputComponent->BindAction(IA_Aim_Pressed, ETriggerEvent::Triggered, this, &ThisClass::Input_Aim_Pressed);
 		EnhancedPlayerInputComponent->BindAction(IA_Aim_Released, ETriggerEvent::Triggered, this, &ThisClass::Input_Aim_Released);
 
+		EnhancedPlayerInputComponent->BindAction(IA_Fire_Pressed, ETriggerEvent::Triggered, this, &ThisClass::Input_Fire_Pressed);
+		EnhancedPlayerInputComponent->BindAction(IA_Fire_Released, ETriggerEvent::Triggered, this, &ThisClass::Input_Fire_Released);
 	}
 }
 
@@ -261,38 +260,49 @@ void ABlasterCharacter::Input_Crouch(const FInputActionValue& Value)
 
 void ABlasterCharacter::Input_Aim_Pressed(const FInputActionValue& Value)
 {
-	SetIsAiming(true);
+	CombatComponent->SetIsAiming(true);
 }
 
 void ABlasterCharacter::Input_Aim_Released(const FInputActionValue& Value)
 {
-	SetIsAiming(false);
+	CombatComponent->SetIsAiming(false);
 }
 
-void ABlasterCharacter::SetIsAiming(bool InIsAiming)
+void ABlasterCharacter::Input_Fire_Pressed(const FInputActionValue& Value)
 {
 	if (CombatComponent == nullptr) return;
-	//golden pattern with HasAuthority OPTIONAL, if not add, when changes originate from a client, the client see it first
-	// if add, changes could only originate from the server as the else mean "call from client but execute from server first"
-
-	if (HasAuthority())
-	{
-		CombatComponent->bIsAiming = InIsAiming;
-		if(GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
-	}
-	else 
-	ServerSetIsAiming(InIsAiming);
+	CombatComponent->bIsFiring = true;
 }
 
-
-void ABlasterCharacter::ServerSetIsAiming_Implementation(bool InIsAiming)
+void ABlasterCharacter::Input_Fire_Released(const FInputActionValue& Value)
 {
-	if (CombatComponent)
-	{
-		CombatComponent->bIsAiming = InIsAiming;
-		if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
-	}
+	if (CombatComponent == nullptr) return;
+	CombatComponent->bIsFiring = false;
 }
+
+////Stephen create this in UActorComponent instead.
+//void ABlasterCharacter::SetIsAiming(bool InIsAiming) //REPLACE
+//{
+//	if (CombatComponent == nullptr) return;
+//
+//	if (HasAuthority())
+//	{
+//		CombatComponent->bIsAiming = InIsAiming;
+//		if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
+//	}
+//	else
+//		ServerSetIsAiming(InIsAiming);
+//}
+
+
+//void ABlasterCharacter::ServerSetIsAiming_Implementation(bool InIsAiming) //REPLACE
+//{
+//	if (CombatComponent)
+//	{
+//		CombatComponent->bIsAiming = InIsAiming;
+//		if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
+//	}
+//}
 
 void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 {

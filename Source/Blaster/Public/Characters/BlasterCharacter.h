@@ -38,8 +38,8 @@ public:
 	UFUNCTION(Server, Reliable) //this is important event, so we make it Reliable as well
 	void ServerEKeyPressed();
 
-	UFUNCTION(Server, Reliable) 
-	void ServerSetIsAiming(bool InIsAiming);
+	//UFUNCTION(Server, Reliable) 
+	//void ServerSetIsAiming(bool InIsAiming); //REPLACE
 
 //category4: regular functions: 
 	//montages:
@@ -53,7 +53,7 @@ public:
 	//BP-callale functions:
 	
 	//others:
-	void SetIsAiming(bool InIsAiming);	
+	//void SetIsAiming(bool InIsAiming);	//REPLACE
 	void SetupAimOffsetVariables(float DeltaTime);
 
 protected:
@@ -109,10 +109,10 @@ protected:
 	//sound and effects:
 
 //category4: basic and primitive types
-	UPROPERTY(EditAnywhere)
-	float MaxWalkSpeed_Backup; //backup for initial MaxWalkSpeed, set its value in constructor!
-	UPROPERTY(EditAnywhere)
-	float AimWalkSpeed; //to change MaxWalkSpeed = AimWalkSpeed when we aim
+	//UPROPERTY(EditAnywhere) //REPLACE
+	//float MaxWalkSpeed_Backup; //backup for initial MaxWalkSpeed, set its value in constructor!
+	//UPROPERTY(EditAnywhere)
+	//float AimWalkSpeed; //REPLACE
 
 	float AO_Yaw; //DeltaYawSinceStopMovingJumping
 	float AO_Pitch; //the Pitch of ControlRotation<-Camera
@@ -141,6 +141,8 @@ private:
 	void Input_Crouch(const FInputActionValue& Value);
 	void Input_Aim_Pressed(const FInputActionValue& Value);
 	void Input_Aim_Released(const FInputActionValue& Value);
+	void Input_Fire_Pressed(const FInputActionValue& Value);
+	void Input_Fire_Released(const FInputActionValue& Value);
 
 //category4: regular functions 
 	
@@ -171,6 +173,13 @@ private:
 	class UInputAction* IA_Aim_Pressed;
 	UPROPERTY(EditAnywhere)
 	class UInputAction* IA_Aim_Released;
+
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_Fire_Pressed;
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_Fire_Released;
+
+
 
 	//montages:
 

@@ -36,8 +36,21 @@ private:
 	UPROPERTY(Replicated)
 	bool bIsAiming{};
 
+	void SetIsAiming(bool InIsAiming);	//REPLACE
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetIsAiming(bool InIsAiming); //REPLACE
+
+	UPROPERTY(Replicated)
+	bool bIsFiring{};
+
+	UPROPERTY(EditAnywhere)
+	float MaxWalkSpeed_Backup; //backup for initial MaxWalkSpeed, set its value in constructor!
+	UPROPERTY(EditAnywhere)
+	float AimWalkSpeed; //to change MaxWalkSpeed = AimWalkSpeed when we aim
 
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
+	void SetIsFiring(bool InIsFiring);
 
 };
