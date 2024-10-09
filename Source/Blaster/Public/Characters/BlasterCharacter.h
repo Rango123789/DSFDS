@@ -43,12 +43,15 @@ public:
 
 //category4: regular functions: 
 	//montages:
-
+	void PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName = "");
+	void PlayFireMontage();
+	void StopFireMontage();
 	//sound and effects:
 
 	//bool functions:
 	bool IsWeaponEquipped();
 	bool IsAming();
+	bool IsAFiring();
 
 	//BP-callale functions:
 	
@@ -80,9 +83,6 @@ protected:
 //Category1: Enums , arrays, pointers to external classes
 	//enum states:
 	ETurningInPlace TurningInPlace = ETurningInPlace::RTIP_NoTurning;
-
-
-
 	//pointer to external classes:
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
 	class AWeapon* OverlappingWeapon;
@@ -105,6 +105,8 @@ protected:
 
 //category3: Engine types      
 	//montages:
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* AM_FireMontage;
 
 	//sound and effects:
 

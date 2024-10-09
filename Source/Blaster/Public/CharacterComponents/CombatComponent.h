@@ -26,6 +26,24 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
+//***function***
+	void SetIsAiming(bool InIsAiming);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetIsAiming(bool InIsAiming);
+
+	void Fire(bool InIsFiring);
+
+	UFUNCTION(Server, Reliable)
+	void ServerFire(bool InIsFiring);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastFire(bool InIsFiring);
+
+	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
+	void DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
+
+//***data member***
 	//this no need to be replicated, it is set for all version back in Char::PostInitializeComponents
 	class ABlasterCharacter* Character; //to let this comp aware of its hosting object
 
@@ -35,11 +53,6 @@ private:
 	
 	UPROPERTY(Replicated)
 	bool bIsAiming{};
-
-	void SetIsAiming(bool InIsAiming);	//REPLACE
-
-	UFUNCTION(Server, Reliable)
-	void ServerSetIsAiming(bool InIsAiming); //REPLACE
 
 	UPROPERTY(Replicated)
 	bool bIsFiring{};
@@ -51,6 +64,6 @@ private:
 
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
-	void SetIsFiring(bool InIsFiring);
+
 
 };

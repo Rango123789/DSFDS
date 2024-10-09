@@ -47,6 +47,8 @@ protected:
 	bool bIsCrouched;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bIsAiming;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsFiring;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float YawOffset{};

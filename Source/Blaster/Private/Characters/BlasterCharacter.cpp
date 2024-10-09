@@ -115,6 +115,11 @@ bool ABlasterCharacter::IsAming()
 	return (CombatComponent && CombatComponent->bIsAiming);
 }
 
+bool ABlasterCharacter::IsAFiring()
+{
+	return (CombatComponent && CombatComponent->bIsFiring);
+}
+
 //this can't only be called on client copies: adding param/using it or not doesn't matter
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
@@ -179,6 +184,39 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedPlayerInputComponent->BindAction(IA_Fire_Pressed, ETriggerEvent::Triggered, this, &ThisClass::Input_Fire_Pressed);
 		EnhancedPlayerInputComponent->BindAction(IA_Fire_Released, ETriggerEvent::Triggered, this, &ThisClass::Input_Fire_Released);
 	}
+}
+
+void ABlasterCharacter::PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && InMontage)
+	{
+		AnimInstance->Montage_Play(InMontage);
+
+		AnimInstance->Montage_JumpToSection(InName, InMontage);
+	}
+}
+
+void ABlasterCharacter::PlayFireMontage()
+{
+	if (CombatComponent == nullptr || AM_FireMontage == nullptr) return;
+
+	//from AM_ asset from BP, you must name its sections to match these below:
+	FName SectionName = CombatComponent->bIsAiming ? FName("RifleAim") : FName("RifleHip");
+
+	PlayMontage_SpecificSection(AM_FireMontage, SectionName);
+}
+
+void ABlasterCharacter::StopFireMontage()
+{
+	if (AM_FireMontage == nullptr) return;
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+	if (AnimInstance) AnimInstance->Montage_Stop(0.2f, AM_FireMontage);
+
+	//AnimInstance->PlaySlotAnimationAsDynamicMontage();
+	//GetMesh()->PlayAnimation();
 }
 
 void ABlasterCharacter::Input_Move(const FInputActionValue& Value)
@@ -260,24 +298,26 @@ void ABlasterCharacter::Input_Crouch(const FInputActionValue& Value)
 
 void ABlasterCharacter::Input_Aim_Pressed(const FInputActionValue& Value)
 {
+	if (CombatComponent == nullptr) return;
 	CombatComponent->SetIsAiming(true);
 }
 
 void ABlasterCharacter::Input_Aim_Released(const FInputActionValue& Value)
 {
+	if (CombatComponent == nullptr) return;
 	CombatComponent->SetIsAiming(false);
 }
 
 void ABlasterCharacter::Input_Fire_Pressed(const FInputActionValue& Value)
 {
 	if (CombatComponent == nullptr) return;
-	CombatComponent->bIsFiring = true;
+	CombatComponent->Fire(true);
 }
 
 void ABlasterCharacter::Input_Fire_Released(const FInputActionValue& Value)
 {
 	if (CombatComponent == nullptr) return;
-	CombatComponent->bIsFiring = false;
+	CombatComponent->Fire(false);
 }
 
 ////Stephen create this in UActorComponent instead.

@@ -44,6 +44,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bIsCrouched = BlasterCharacter->bIsCrouched;
 
 	bIsAiming = BlasterCharacter->IsAming();
+	bIsFiring = BlasterCharacter->IsAFiring();
 
 //Offset Yaw for strafing:
 	FRotator AimRotation = BlasterCharacter->GetBaseAimRotation();
@@ -53,6 +54,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	    //this store the whole FRotator, this fix! = in fact it has .GetNormalized() inside
 	DeltaRotation = FMath::RInterpTo(DeltaRotation, Delta1, DeltaSeconds, 5.f);
 	YawOffset = DeltaRotation.Yaw;
+//Leaning Angle for leaning:
 //Leaning Angle for leaning:
 
 	CharacterRotationLastFrame = CharacterRotation; 

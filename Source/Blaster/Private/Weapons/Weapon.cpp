@@ -6,6 +6,7 @@
 #include "Characters/BlasterCharacter.h"
 #include "HUD/Overhead_UserWidget.h" //for testing
 #include "Net/UnrealNetwork.h"
+#include "Animation/AnimationAsset.h"
 
 // Sets default values
 AWeapon::AWeapon()
@@ -14,7 +15,7 @@ AWeapon::AWeapon()
 	PrimaryActorTick.bCanEverTick = true;
 
 	//We want replicate this Weapon accross all clients from the server:
-	//bReplicates = true; //NEW1
+	bReplicates = true; //NEW1
 
 	//Setup WeaponMesh:
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>("WeaponMesh");
@@ -160,4 +161,9 @@ void AWeapon::OnRep_WeaponState()
 	//	//if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //surely redudant TIRE2 lol, COLLISION is only in the server so far
 	//	return;
 	//}
+}
+
+void AWeapon::PlayFireAnimation()
+{
+	if(WeaponMesh && AS_FireAnimation)  WeaponMesh->PlayAnimation(AS_FireAnimation , false);
 }

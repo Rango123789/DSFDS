@@ -39,6 +39,7 @@ public:
 
 //category3: regular functions: 
     //montages:
+    void PlayFireAnimation();
 
     //sound and effects:
 
@@ -101,8 +102,11 @@ protected: //base
 
 //category3: Engine types      
     //montages:
+    UPROPERTY(EditAnywhere)
+    class UAnimationAsset* AS_FireAnimation; //AS = Animation Sequence , AA = Animation Asset
 
-    //sound and e4rvvffects:
+
+    //sound and effects:
 
 //category4: basic and primitive types
 
