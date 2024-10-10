@@ -12,6 +12,7 @@
 #include "Weapons/Weapon.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Engine/SkeletalMeshSocket.h"//test
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -311,13 +312,13 @@ void ABlasterCharacter::Input_Aim_Released(const FInputActionValue& Value)
 void ABlasterCharacter::Input_Fire_Pressed(const FInputActionValue& Value)
 {
 	if (CombatComponent == nullptr) return;
-	CombatComponent->Fire(true);
+	CombatComponent->Input_Fire(true);
 }
 
 void ABlasterCharacter::Input_Fire_Released(const FInputActionValue& Value)
 {
 	if (CombatComponent == nullptr) return;
-	CombatComponent->Fire(false);
+	CombatComponent->Input_Fire(false);
 }
 
 ////Stephen create this in UActorComponent instead.
@@ -417,6 +418,13 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; 
 
 	UE_LOG(LogTemp, Warning, TEXT("AO_Yaw: %f"), AO_Yaw); 
+
+	////test:
+	//GetMesh()->GetSocketTransform( , :World);
+	//const USkeletalMeshSocket* Socket= GetMesh()->GetSocketByName(FName("RightHandSocert"));
+	//Socket->GetSocketLocalTransform();
+
+	//GetMesh()->GetBoneTransform();
 }
 
 /* Seperate SetAimOffsetVars() from SetTurnInPlaceVars()

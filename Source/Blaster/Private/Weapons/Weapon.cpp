@@ -163,7 +163,12 @@ void AWeapon::OnRep_WeaponState()
 	//}
 }
 
-void AWeapon::PlayFireAnimation()
+void AWeapon::Fire(const FVector& HitTarget)
 {
+	//play Fire animtion:
 	if(WeaponMesh && AS_FireAnimation)  WeaponMesh->PlayAnimation(AS_FireAnimation , false);
 }
+
+
+
+

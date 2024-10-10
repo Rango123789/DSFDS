@@ -3,6 +3,10 @@
 
 #include "Weapons/Projectile.h"
 #include "Components/BoxComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AProjectile::AProjectile()
@@ -25,7 +29,10 @@ AProjectile::AProjectile()
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 	   //we need it to block Visibility (not talk about Camera) so that we can do some trace on it I guess?
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
-
+	
+	//Setup ProjectileMovementComp:
+	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>("Projectile Move Comp");
+	ProjectileMovementComponent->bRotationFollowsVelocity = true;
 }
 
 // Called when the game starts or when spawned
@@ -33,6 +40,18 @@ void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	if (Tracer)
+	{
+		TracerComponent =	
+		UGameplayStatics::SpawnEmitterAttached(
+			Tracer,
+			CollisionBox, //even if it is RootComp, but you can't pass in this=Actor type
+			FName(),
+			GetActorLocation(),
+			GetActorRotation(),
+			EAttachLocation::KeepRelativeOffset //I test this
+		);
+	}
 }
 
 // Called every frame

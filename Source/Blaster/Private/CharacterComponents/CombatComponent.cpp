@@ -40,18 +40,17 @@ void UCombatComponent::BeginPlay()
 	AimWalkSpeed = 300.f;
 }
 
-void UCombatComponent::Fire(bool InIsFiring)
+void UCombatComponent::Input_Fire(bool InIsFiring)
 {
-	ServerFire(InIsFiring);
+	ServerInput_Fire(InIsFiring);
 }
 
-
-void UCombatComponent::ServerFire_Implementation(bool InIsFiring)
+void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring)
 {
-	MulticastFire(InIsFiring);
+	MulticastInput_Fire(InIsFiring);
 }
 
-void UCombatComponent::MulticastFire_Implementation(bool InIsFiring)
+void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring)
 {
 	//note that because the machine to be called is different, so put this line here or in the HOSTING function 'could' make a difference generally lol:
 	if (Character == nullptr || EquippedWeapon == nullptr) return;
@@ -61,9 +60,8 @@ void UCombatComponent::MulticastFire_Implementation(bool InIsFiring)
 	if (bIsFiring)
 	{
 		Character->PlayFireMontage();
-		EquippedWeapon->PlayFireAnimation();
+		EquippedWeapon->Fire(HitTarget);
 	}
-	//else Character->StopFireMontage();
 }
 
 
@@ -89,6 +87,8 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 	//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
 	Character->bUseControllerRotationYaw = true; //at first it is false
+
+	
 }
 
 //this is to fix the owning client can't update these on itself (weird case, can't explain :D )
@@ -130,15 +130,16 @@ void UCombatComponent::ServerSetIsAiming_Implementation(bool InIsAiming) //REPLA
 
 void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 {
-	//out goal is to trace from Center of Screen -> GetBaseAimRotation()/ControlRotation/Camera's direction? well no need we have other better way!
+	if (GetWorld() == nullptr || GEngine == nullptr) return;
+	
 	FVector2D ViewportSize;
-	if(GEngine && GEngine->GameViewport)
+	if(GEngine->GameViewport)
 	{
 		GEngine->GameViewport->GetViewportSize(ViewportSize);
 	}
 	FVector2D ViewportCenterLocation = FVector2D(ViewportSize.X / 2.f, ViewportSize.Y / 2.f); //Stephen call it "CrosshairsLocation", this is relative to Screen 2D coordinates 
 
-    //WAY1: me, not sure it is exactly like way2
+    //WAY1: me, not sure it is exactly like way2 I test them both, either of them are working the same, in multiplayer test, each device has its own trace line and draw its own sphere, so one see the other no matter WAY1 or WAY2 (which is good)
 	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
 	//WAY2: stephen, he said player index 0 here will be always the controller controlling the controlled pawn in the local device, even if it is multiplayer game! so index is also relative huh? :D :D
 	APlayerController* PlayerController1 = UGameplayStatics::GetPlayerController(this, 0);
@@ -148,7 +149,7 @@ void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 
 	bool bIsSuccessful = 
 		UGameplayStatics::DeprojectScreenToWorld(
-			PlayerController1, 
+			PlayerController1, //test both
 			ViewportCenterLocation,
 			WorldLocation,
 			WorldDirection
@@ -165,9 +166,16 @@ void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 		ECollisionChannel::ECC_Visibility //almost all things block visibility by default
 	);
 
-	if (LineHitResult.bBlockingHit == false) LineHitResult.ImpactPoint = End;
-	
-	DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, 5.f, 12.f, FColor::Red, false);
+	if (LineHitResult.bBlockingHit == false)
+	{
+		LineHitResult.ImpactPoint = End;
+	}
+
+	HitTarget = LineHitResult.ImpactPoint;
+
+	//HitTarget = LineHitResult.ImpactPoint; //ImpactPoint now can be relied on in either case after the if!
+
+	DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, 15.f, 12.f, FColor::Red, false);
 }
 
 

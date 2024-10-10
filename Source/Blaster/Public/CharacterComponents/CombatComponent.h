@@ -32,13 +32,13 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerSetIsAiming(bool InIsAiming);
 
-	void Fire(bool InIsFiring);
+	void Input_Fire(bool InIsFiring);
 
 	UFUNCTION(Server, Reliable)
-	void ServerFire(bool InIsFiring);
+	void ServerInput_Fire(bool InIsFiring);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastFire(bool InIsFiring);
+	void MulticastInput_Fire(bool InIsFiring);
 
 	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
 	void DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
@@ -62,6 +62,7 @@ private:
 	UPROPERTY(EditAnywhere)
 	float AimWalkSpeed; //to change MaxWalkSpeed = AimWalkSpeed when we aim
 
+	FVector HitTarget;
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
 

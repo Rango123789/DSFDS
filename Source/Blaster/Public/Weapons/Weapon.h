@@ -39,7 +39,7 @@ public:
 
 //category3: regular functions: 
     //montages:
-    void PlayFireAnimation();
+    virtual void Fire(const FVector& HitTarget);
 
     //sound and effects:
 
@@ -85,6 +85,7 @@ protected: //base
     //arrays:
 
     //class type:
+    //TSubclassOf<class AProjectileWeapon> WeaponClass;
 
 //category2: UActorComponents
     UPROPERTY(VisibleAnywhere)
@@ -139,7 +140,7 @@ public:
 
     USkeletalMeshComponent* GetWeaponMesh(){ return WeaponMesh; }
 
-    USphereComponent* GetSphere() { return Sphere; }
+    class USphereComponent* GetSphere() { return Sphere; }
 
     void ShowPickupWidget(bool bShowWdiget);
 

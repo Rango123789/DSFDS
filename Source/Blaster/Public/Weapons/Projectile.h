@@ -62,13 +62,20 @@ virtual void BeginPlay() override;
     //class type:
 
 //category2: UActorComponents   
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(VisibleAnywhere)
     class UBoxComponent* CollisionBox;
+
+    UPROPERTY(VisibleAnywhere)
+    class UProjectileMovementComponent* ProjectileMovementComponent;
 
 //category3: Engine types      
     //montages:
 
     //sound and effects:
+    UPROPERTY(EditAnywhere)
+    UParticleSystem* Tracer; //to be picked as 'P_AssaultRiffle_Tracer' from BP_Projectile
+
+    UParticleSystemComponent* TracerComponent; //to store temp object return by SpawnEmitter
 
 //category4: basic and primitive types
 
