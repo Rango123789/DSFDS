@@ -42,14 +42,14 @@ void AProjectile::BeginPlay()
 	
 	if (Tracer)
 	{
-		TracerComponent =	
-		UGameplayStatics::SpawnEmitterAttached(
-			Tracer,
-			CollisionBox, //even if it is RootComp, but you can't pass in this=Actor type
-			FName(),
-			GetActorLocation(),
-			GetActorRotation(),
-			EAttachLocation::KeepRelativeOffset //I test this
+		TracerComponent =
+			UGameplayStatics::SpawnEmitterAttached(
+				Tracer,
+				CollisionBox,
+				FName(),
+				GetActorLocation(),
+				GetActorRotation(),
+				EAttachLocation::KeepWorldPosition
 		);
 	}
 }
