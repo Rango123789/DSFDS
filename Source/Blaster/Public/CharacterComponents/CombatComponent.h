@@ -62,9 +62,17 @@ private:
 	UPROPERTY(EditAnywhere)
 	float AimWalkSpeed; //to change MaxWalkSpeed = AimWalkSpeed when we aim
 
+	//UPROPERTY(Replicated)  didn't work
 	FVector HitTarget;
+
+	UPROPERTY(EditAnywhere)
+	float SphereRadius = 150.f;
+	UPROPERTY(EditAnywhere)
+	bool bDrawConsistentLine = false;
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
 
-
+	UFUNCTION(Server, Reliable)
+	void ServerDoLineTrace_UnderCrosshairs(FHitResult LineHitResult);
+	
 };

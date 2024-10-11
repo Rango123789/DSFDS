@@ -30,6 +30,8 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 	FHitResult HitResult;
 	DoLineTrace_UnderCrosshairs(HitResult);
+	FHitResult HitResult2;
+	ServerDoLineTrace_UnderCrosshairs(HitResult2);
 }
 void UCombatComponent::BeginPlay()
 {
@@ -155,7 +157,7 @@ void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 			WorldDirection
 	    );
 	
-	if (!bIsSuccessful) return;
+	if (!bIsSuccessful) return; //this is not the reason that why a device only see its own DebugSphere
 
 	FVector Start = WorldLocation;
 	FVector End = Start + WorldDirection * 80000; //Direction is current a vector unit with length=1 only, so yeah!
@@ -175,7 +177,12 @@ void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 
 	//HitTarget = LineHitResult.ImpactPoint; //ImpactPoint now can be relied on in either case after the if!
 
-	DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, 15.f, 12.f, FColor::Red, false);
+	DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, SphereRadius, 12.f, FColor::Red, bDrawConsistentLine);
+}
+
+void UCombatComponent::ServerDoLineTrace_UnderCrosshairs_Implementation(FHitResult LineHitResult)
+{
+	DoLineTrace_UnderCrosshairs(LineHitResult);
 }
 
 

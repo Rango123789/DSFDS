@@ -13,6 +13,9 @@ AProjectile::AProjectile()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	//add this line to allow it to be self-replicate after you add "HasAuthority()"
+	bReplicates = true;
 	
 	//setup CollisionBox/ProjectileBox
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>("Weapon Box");
