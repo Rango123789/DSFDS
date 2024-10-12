@@ -37,21 +37,24 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	//FHitResult HitResult;
+	////FHitResult HitResult;
 	//DoLineTrace_UnderCrosshairs(HitResult);
 }
 
 void UCombatComponent::Input_Fire(bool InIsFiring)
 {
-	ServerInput_Fire(InIsFiring);
+	FHitResult HitResult;
+	DoLineTrace_UnderCrosshairs(HitResult);
+
+	ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //rather than member HitPoint
 }
 
-void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring)
+void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector& Target)
 {
-	MulticastInput_Fire(InIsFiring);
+	MulticastInput_Fire(InIsFiring, Target);
 }
 
-void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring)
+void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const FVector& Target)
 {
 	//note that because the machine to be called is different, so put this line here or in the HOSTING function 'could' make a difference generally lol:
 	if (Character == nullptr || EquippedWeapon == nullptr) return;
@@ -60,13 +63,9 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring)
 
 	if (bIsFiring)
 	{
-
 		Character->PlayFireMontage();
 
-		FHitResult HitResult;
-		DoLineTrace_UnderCrosshairs(HitResult);
-
-		EquippedWeapon->Fire(HitResult.ImpactPoint); //instead of member HitTarget, now you can remove it!
+		EquippedWeapon->Fire(Target); //instead of member HitTarget, now you can remove it!
 
 	}
 }
