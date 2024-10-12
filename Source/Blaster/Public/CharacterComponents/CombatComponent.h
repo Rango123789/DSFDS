@@ -66,13 +66,12 @@ private:
 	FVector HitTarget;
 
 	UPROPERTY(EditAnywhere)
-	float SphereRadius = 150.f;
+	float SphereRadius = 50.f;
 	UPROPERTY(EditAnywhere)
 	bool bDrawConsistentLine = false;
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
 
-	UFUNCTION(Server, Reliable)
-	void ServerDoLineTrace_UnderCrosshairs(FHitResult LineHitResult);
+
 	
 };

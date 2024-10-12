@@ -24,15 +24,6 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(UCombatComponent, bIsAiming);
 }
 
-void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	FHitResult HitResult;
-	DoLineTrace_UnderCrosshairs(HitResult);
-	FHitResult HitResult2;
-	ServerDoLineTrace_UnderCrosshairs(HitResult2);
-}
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -40,6 +31,14 @@ void UCombatComponent::BeginPlay()
 	//assign its value here (or BeginPlay()), so surely all character instances has it
 	MaxWalkSpeed_Backup = Character->GetCharacterMovement()->MaxWalkSpeed;
 	AimWalkSpeed = 300.f;
+}
+
+void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	//FHitResult HitResult;
+	//DoLineTrace_UnderCrosshairs(HitResult);
 }
 
 void UCombatComponent::Input_Fire(bool InIsFiring)
@@ -61,8 +60,14 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring)
 
 	if (bIsFiring)
 	{
+
 		Character->PlayFireMontage();
-		EquippedWeapon->Fire(HitTarget);
+
+		FHitResult HitResult;
+		DoLineTrace_UnderCrosshairs(HitResult);
+
+		EquippedWeapon->Fire(HitResult.ImpactPoint); //instead of member HitTarget, now you can remove it!
+
 	}
 }
 
@@ -178,11 +183,6 @@ void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 	//HitTarget = LineHitResult.ImpactPoint; //ImpactPoint now can be relied on in either case after the if!
 
 	DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, SphereRadius, 12.f, FColor::Red, bDrawConsistentLine);
-}
-
-void UCombatComponent::ServerDoLineTrace_UnderCrosshairs_Implementation(FHitResult LineHitResult)
-{
-	DoLineTrace_UnderCrosshairs(LineHitResult);
 }
 
 
