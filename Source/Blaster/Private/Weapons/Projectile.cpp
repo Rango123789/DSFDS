@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Weapons/Projectile.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -38,14 +37,21 @@ AProjectile::AProjectile()
 	ProjectileMovementComponent->bRotationFollowsVelocity = true;
 }
 
+// Called every frame
+void AProjectile::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
 // Called when the game starts or when spawned
+
 void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	if (Tracer)
 	{
-		TracerComponent =
+		//TracerComponent =
 			UGameplayStatics::SpawnEmitterAttached(
 				Tracer,
 				CollisionBox,
@@ -55,12 +61,36 @@ void AProjectile::BeginPlay()
 				EAttachLocation::KeepWorldPosition
 		);
 	}
+
+	//Only the server projectile copy can generate hit event FIRST
+	if(HasAuthority())	CollisionBox->OnComponentHit.AddDynamic(this, &ThisClass::OnBoxHit);
+
 }
 
-// Called every frame
-void AProjectile::Tick(float DeltaTime)
+//currently only in-server projectile copy can trigger thi
+void AProjectile::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	Super::Tick(DeltaTime);
+	////sound and effect:
+	//UGameplayStatics::PlaySoundAtLocation(this,  HitSound , GetActorLocation() );     //Hit.ImpactPoint
+	//UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, GetActorTransform());//Hit.ImpactPoint
 
+	//this will destroy the in-server copy, at the same time AProjectile
+	Destroy();
 }
+
+//auto-call on all devices if the replicated actor is destroyed via AActor::Destroy() from the server
+void AProjectile::Destroyed()
+{
+	Super::Destroyed();
+
+	//we know that the server copy call these already so we should exclude it
+	//a better idea: remove this condition and remove the code in OnBoxHit too! hell yeah! :D :D
+	//if (!HasAuthority())
+	//{
+		UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());     //Hit.ImpactPoint
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, GetActorTransform());//Hit.ImpactPoint
+	//}
+}
+
+
 

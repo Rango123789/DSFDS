@@ -33,6 +33,10 @@ public:
 
     //BP-callale functions:
 //category4: callbacks 
+    UFUNCTION()
+    virtual void OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+    void virtual Destroyed() override;
 
 protected: //base	
 /***functions***/
@@ -76,6 +80,12 @@ virtual void BeginPlay() override;
     UParticleSystem* Tracer; //to be picked as 'P_AssaultRiffle_Tracer' from BP_Projectile
 
     UParticleSystemComponent* TracerComponent; //to store temp object return by SpawnEmitter
+
+    UPROPERTY(EditAnywhere)
+    USoundBase* HitSound;
+
+    UPROPERTY(EditAnywhere)
+    UParticleSystem* HitParticle;
 
 //category4: basic and primitive types
 

@@ -35,10 +35,10 @@ private:
 	void Input_Fire(bool InIsFiring);
 
 	UFUNCTION(Server, Reliable)
-	void ServerInput_Fire(bool InIsFiring, const FVector_Quantize& Target);
+	void ServerInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastInput_Fire(bool InIsFiring, const FVector& Target);
+	void MulticastInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
 
 	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
 	void DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);

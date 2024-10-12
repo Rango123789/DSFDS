@@ -49,12 +49,12 @@ void UCombatComponent::Input_Fire(bool InIsFiring)
 	ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //rather than member HitPoint
 }
 
-void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector& Target)
+void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
 {
 	MulticastInput_Fire(InIsFiring, Target);
 }
 
-void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const FVector& Target)
+void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
 {
 	//note that because the machine to be called is different, so put this line here or in the HOSTING function 'could' make a difference generally lol:
 	if (Character == nullptr || EquippedWeapon == nullptr) return;
