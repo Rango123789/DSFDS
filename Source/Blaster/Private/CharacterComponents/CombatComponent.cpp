@@ -4,6 +4,8 @@
 #include "CharacterComponents/CombatComponent.h"
 #include "Weapons/Weapon.h"
 #include "Characters/BlasterCharacter.h"
+#include "HUD/BlasterHUD.h"
+
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -37,9 +39,32 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	////FHitResult HitResult;
-	//DoLineTrace_UnderCrosshairs(HitResult);
+	SetHUDPackageForHUD(DeltaTime);
 }
+
+//Stephen call it SetHUDCrosshairs, this is to be put in Tick so we need to optimize it
+void UCombatComponent::SetHUDPackageForHUD(float DeltaTime)
+{
+//DEMO-ready:
+	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+
+	ABlasterHUD* BlasterHUD = Cast<ABlasterHUD>(PlayerController->GetHUD());
+
+//DEMO-setup
+	FHUDPackage HUDPackage;
+
+	HUDPackage.CrosshairsCenter = EquippedWeapon->CrosshairsCenter;
+	HUDPackage.CrosshairsRight = EquippedWeapon->CrosshairsRight;
+	HUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairsLeft;
+	HUDPackage.CrosshairsTop = EquippedWeapon->CrosshairsTop;
+	HUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairsBottom;
+
+	BlasterHUD->SetHUDPackage(HUDPackage);
+
+}
+
+
+
 
 void UCombatComponent::Input_Fire(bool InIsFiring)
 {
@@ -183,6 +208,7 @@ void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 
 	DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, SphereRadius, 12.f, FColor::Red, bDrawConsistentLine);
 }
+
 
 
 

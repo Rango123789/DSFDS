@@ -8,9 +8,13 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 {
 	Super::Fire(HitTarget);
 
-	if (!HasAuthority()) return;
+	//this block spawns ACasing for costmetic effeft
+	{
+
+	}
 
 	//this HOSTING function is called in all machine, but we only let the server spawn the Projectile, this block only run in the server
+	if (HasAuthority()) 
 	{
 
 		FTransform MuzzleFlashSocket_Transform_InWeapon = WeaponMesh->GetSocketTransform(FName("MuzzleFlash"));

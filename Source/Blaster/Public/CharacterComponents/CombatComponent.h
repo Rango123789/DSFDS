@@ -43,6 +43,9 @@ private:
 	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
 	void DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
 
+	//Stephen call it SetHUDCrosshairs
+	void SetHUDPackageForHUD(float DeltaTime);
+
 //***data member***
 	//this no need to be replicated, it is set for all version back in Char::PostInitializeComponents
 	class ABlasterCharacter* Character; //to let this comp aware of its hosting object

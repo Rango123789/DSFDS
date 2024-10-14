@@ -23,7 +23,21 @@ class BLASTER_API AWeapon : public AActor
 	GENERATED_BODY()
 	
 
-public:	              
+public:	          
+/***exception of data member***/
+    //textures for weapon crosshairs
+    UPROPERTY(EditAnywhere)
+    UTexture2D* CrosshairsCenter;
+    UPROPERTY(EditAnywhere)
+    UTexture2D* CrosshairsLeft;
+    UPROPERTY(EditAnywhere)
+    UTexture2D* CrosshairsRight;
+    UPROPERTY(EditAnywhere)
+    UTexture2D* CrosshairsTop;
+    UPROPERTY(EditAnywhere)
+    UTexture2D* CrosshairsBottom;
+
+
 /***functions***/
 //category1: auto-generated functions:	
     AWeapon();
@@ -85,7 +99,8 @@ protected: //base
     //arrays:
 
     //class type:
-    //TSubclassOf<class AProjectileWeapon> WeaponClass;
+    UPROPERTY(EditAnywhere)
+    TSubclassOf<class ACasing> CasingClass;
 
 //category2: UActorComponents
     UPROPERTY(VisibleAnywhere)

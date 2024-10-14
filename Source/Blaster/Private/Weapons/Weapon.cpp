@@ -1,12 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Weapons/Weapon.h"
+#include "Weapons/Casing.h" //to be spawned here 
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Characters/BlasterCharacter.h"
 #include "HUD/Overhead_UserWidget.h" //for testing
 #include "Net/UnrealNetwork.h"
 #include "Animation/AnimationAsset.h"
+#include "Engine/SkeletalMeshSocket.h"
 
 // Sets default values
 AWeapon::AWeapon()
@@ -167,6 +169,19 @@ void AWeapon::Fire(const FVector& HitTarget)
 {
 	//play Fire animtion:
 	if(WeaponMesh && AS_FireAnimation)  WeaponMesh->PlayAnimation(AS_FireAnimation , false);
+	
+	//spawn ACasing: if you dont pick CasingClass from BP, this block will be skipped! good for flexibility!
+	if (CasingClass)
+	{
+		const USkeletalMeshSocket* AmmoEjectSocket = WeaponMesh->GetSocketByName(FName("AmmoEject"));
+
+		if (AmmoEjectSocket == nullptr || GetWorld() == nullptr) return;
+
+		FTransform AmmoEjectSocket_Transform = AmmoEjectSocket->GetSocketTransform(WeaponMesh);
+
+		GetWorld()->SpawnActor<ACasing>(CasingClass, AmmoEjectSocket_Transform);
+
+	}
 }
 
 

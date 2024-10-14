@@ -63,18 +63,18 @@ void AProjectile::BeginPlay()
 	}
 
 	//Only the server projectile copy can generate hit event FIRST
-	if(HasAuthority())	CollisionBox->OnComponentHit.AddDynamic(this, &ThisClass::OnBoxHit);
+	if (HasAuthority() && CollisionBox)
+	{
+		//i just add this, stephen didn't add this :)
+		CollisionBox->SetNotifyRigidBodyCollision(true); //C++ name for Generate Hit Event from BP
 
+		CollisionBox->OnComponentHit.AddDynamic(this, &ThisClass::OnBoxHit);
+	}
 }
 
-//currently only in-server projectile copy can trigger thi
+//currently only in-server projectile copy can trigger this
 void AProjectile::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	////sound and effect:
-	//UGameplayStatics::PlaySoundAtLocation(this,  HitSound , GetActorLocation() );     //Hit.ImpactPoint
-	//UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, GetActorTransform());//Hit.ImpactPoint
-
-	//this will destroy the in-server copy, at the same time AProjectile
 	Destroy();
 }
 
@@ -83,13 +83,8 @@ void AProjectile::Destroyed()
 {
 	Super::Destroyed();
 
-	//we know that the server copy call these already so we should exclude it
-	//a better idea: remove this condition and remove the code in OnBoxHit too! hell yeah! :D :D
-	//if (!HasAuthority())
-	//{
-		UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());     //Hit.ImpactPoint
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, GetActorTransform());//Hit.ImpactPoint
-	//}
+	UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());     //Hit.ImpactPoint
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, GetActorTransform());//Hit.ImpactPoint
 }
 
 
