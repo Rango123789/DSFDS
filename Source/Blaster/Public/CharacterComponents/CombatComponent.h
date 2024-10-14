@@ -50,6 +50,10 @@ private:
 	//this no need to be replicated, it is set for all version back in Char::PostInitializeComponents
 	class ABlasterCharacter* Character; //to let this comp aware of its hosting object
 
+	class ABlasterHUD* BlasterHUD;
+
+	class ABlasterPlayerController* BlasterPlayerController;
+
 	//the Equipped Pose relying on this to know whether Char has a weapon or not, so that to choose "which group of anims: equipped or not"
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon) //just upgrade it to 'Using' for fixing a client can't change bOrient on itself :D :D
 	class AWeapon* EquippedWeapon;      //and more

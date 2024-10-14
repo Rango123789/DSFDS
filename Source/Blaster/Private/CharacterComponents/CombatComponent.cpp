@@ -5,6 +5,7 @@
 #include "Weapons/Weapon.h"
 #include "Characters/BlasterCharacter.h"
 #include "HUD/BlasterHUD.h"
+#include "PlayerController/BlasterPlayerController.h"
 
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
@@ -45,22 +46,42 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 //Stephen call it SetHUDCrosshairs, this is to be put in Tick so we need to optimize it
 void UCombatComponent::SetHUDPackageForHUD(float DeltaTime)
 {
-//DEMO-ready:
-	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+	//note that ACharacter::GetController() outside is the origin to check on here
+	//Stephen: Because we're using Character->GetController()) bellow that will be nullptr early in the game, so better of dont let it pass in this state avoiding run through redudant code in Tick() causing slow startup! 
 
-	ABlasterHUD* BlasterHUD = Cast<ABlasterHUD>(PlayerController->GetHUD());
+	if (Character == nullptr || Character->GetController() == nullptr ) return;
+
+//DEMO-ready: can also use if (__ ==nullptr) __ = Cast<();
+
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Character->GetController()) : BlasterPlayerController;
+	if (BlasterPlayerController)
+	{
+		BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(BlasterPlayerController->GetHUD()) : BlasterHUD;
+	}
 
 //DEMO-setup
+	if (BlasterHUD == nullptr) return;
+
 	FHUDPackage HUDPackage;
 
-	HUDPackage.CrosshairsCenter = EquippedWeapon->CrosshairsCenter;
-	HUDPackage.CrosshairsRight = EquippedWeapon->CrosshairsRight;
-	HUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairsLeft;
-	HUDPackage.CrosshairsTop = EquippedWeapon->CrosshairsTop;
-	HUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairsBottom;
+	if (EquippedWeapon) //theriocically this is enough
+	{
+		HUDPackage.CrosshairsCenter = EquippedWeapon->CrosshairsCenter;
+		HUDPackage.CrosshairsRight = EquippedWeapon->CrosshairsRight;
+		HUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairsLeft;
+		HUDPackage.CrosshairsTop = EquippedWeapon->CrosshairsTop;
+		HUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairsBottom;
+	}
+	else //but in case you lose your weapon even if you did have one (out of bullets+) 
+	{
+		HUDPackage.CrosshairsCenter = nullptr;
+		HUDPackage.CrosshairsRight = nullptr;
+		HUDPackage.CrosshairsLeft = nullptr;
+		HUDPackage.CrosshairsTop = nullptr;
+		HUDPackage.CrosshairsBottom = nullptr;
+	}
 
 	BlasterHUD->SetHUDPackage(HUDPackage);
-
 }
 
 
