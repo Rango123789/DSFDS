@@ -125,7 +125,11 @@ protected: //base
     //sound and effects:
 
 //category4: basic and primitive types
-
+    //FOV:
+    UPROPERTY(EditAnywhere)
+    float FOV = 30;
+    UPROPERTY(EditAnywhere)
+    float FOVInterpSpeed = 20;
 
 private: //FINAL child
 /***functions***/
@@ -160,4 +164,7 @@ public:
     void ShowPickupWidget(bool bShowWdiget);
 
     void SetWeaponState(EWeaponState InState);
+
+    float GetPOV() { return FOV; }
+    float GetPOVInterpSpeed() { return FOVInterpSpeed; }
 };

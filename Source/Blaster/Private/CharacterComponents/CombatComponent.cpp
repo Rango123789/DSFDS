@@ -7,6 +7,7 @@
 #include "HUD/BlasterHUD.h"
 #include "PlayerController/BlasterPlayerController.h"
 
+#include "Camera/CameraComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -34,6 +35,12 @@ void UCombatComponent::BeginPlay()
 	//assign its value here (or BeginPlay()), so surely all character instances has it
 	MaxWalkSpeed_Backup = Character->GetCharacterMovement()->MaxWalkSpeed;
 	AimWalkSpeed = 300.f;
+
+	if (Character)
+	{
+		DefaultPOV = Character->GetCamera()->FieldOfView;
+		CurrentPOV = DefaultPOV;
+	}
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -41,14 +48,29 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	SetHUDPackageForHUD(DeltaTime);
+	SetPOVForCamera(DeltaTime);
 }
+
+void UCombatComponent::SetPOVForCamera(float DeltaTime)
+{
+	if (EquippedWeapon == nullptr) return;
+	if (Character == nullptr || Character->GetCamera() == nullptr) return;
+
+	if (bIsAiming)
+	{
+		CurrentPOV = FMath::FInterpTo(CurrentPOV, EquippedWeapon->GetPOV(), DeltaTime, EquippedWeapon->GetPOVInterpSpeed());
+	}
+	else
+	{
+		CurrentPOV = FMath::FInterpTo(CurrentPOV, DefaultPOV, DeltaTime, EquippedWeapon->GetPOVInterpSpeed());
+	}
+
+	Character->GetCamera()->SetFieldOfView(CurrentPOV);
+} 
 
 //Stephen call it SetHUDCrosshairs, this is to be put in Tick so we need to optimize it
 void UCombatComponent::SetHUDPackageForHUD(float DeltaTime)
 {
-	//note that ACharacter::GetController() outside is the origin to check on here
-	//Stephen: Because we're using Character->GetController()) bellow that will be nullptr early in the game, so better of dont let it pass in this state avoiding run through redudant code in Tick() causing slow startup! 
-
 	if (Character == nullptr || Character->GetController() == nullptr ) return;
 
 //DEMO-ready: can also use if (__ ==nullptr) __ = Cast<();
@@ -71,6 +93,26 @@ void UCombatComponent::SetHUDPackageForHUD(float DeltaTime)
 		HUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairsLeft;
 		HUDPackage.CrosshairsTop = EquippedWeapon->CrosshairsTop;
 		HUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairsBottom;
+
+		if (Character->GetCharacterMovement()->IsFalling())
+		{
+			//we add extra factor [0->1]_Vxy + [0->2]_Jump, but we dont want it to snap, so we interpolate it slowely:
+			AdditionalJumpFactor = FMath::FInterpTo(AdditionalJumpFactor, 2.f, DeltaTime, 2.25f); //dont know why stephn choose speed = 2.25f
+		}
+		else
+		{
+			//you dont want it to snap to 0 right away
+			AdditionalJumpFactor = FMath::FInterpTo(AdditionalJumpFactor, 0, DeltaTime, 10.f); //stephen even choose 30.f LOL
+		}
+
+		if (bIsAiming)	SubtractiveAimFactor = FMath::FInterpTo(SubtractiveAimFactor, 0.65f, DeltaTime, 5.f);
+		else SubtractiveAimFactor = FMath::FInterpTo(SubtractiveAimFactor, 0 , DeltaTime, 5.f);
+
+		if (bIsFiring) AdditinalFireFactor = 0.5f;
+		else SubtractiveAimFactor = FMath::FInterpTo(SubtractiveAimFactor, 0, DeltaTime, 5.f);
+
+		//Velocity is interloated behind the scene so no need FMath::FInterpTo
+		HUDPackage.ExpandFactor = Character->GetVelocity().Size2D() / 600.f + AdditionalJumpFactor ; //I hardcode 600 for performance!
 	}
 	else //but in case you lose your weapon even if you did have one (out of bullets+) 
 	{

@@ -76,6 +76,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite) //we need to edit it in Turn animation back to "no turning" :D , additional to when not moving from Char
 	ETurningInPlace TurningInPlace = ETurningInPlace::RTIP_NoTurning;
 
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FRotator WantedRotation_ForRightHandBone;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsLocallyControlled;
+
 };
 
 /*Now you may be wondering why we're using this (bIsAccelaring) rather than the speed.

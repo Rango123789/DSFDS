@@ -124,7 +124,7 @@ protected:
 	FRotator BaseAimRotation_SinceStopMoving;
 
 	UPROPERTY(EditAnywhere)
-	float InterpSpeed_Turning = 3.5f;
+	float InterpSpeed_Turning = 10.5f;
 
 	UPROPERTY(EditAnywhere)
 	float X_stop = 1.f;
@@ -204,4 +204,6 @@ public:
 	void SetTurningInPlace(ETurningInPlace InValue) { TurningInPlace = InValue; }
 
 	ETurningInPlace GetTurningInPlace() { return TurningInPlace; }
+
+	UCameraComponent* GetCamera() { return Camera; }
 };

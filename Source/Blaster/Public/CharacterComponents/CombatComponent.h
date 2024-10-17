@@ -22,6 +22,9 @@ public:
 
 	UFUNCTION()
 	void OnRep_EquippedWeapon();
+
+	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
+	void DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
 protected:
 	virtual void BeginPlay() override;
 
@@ -40,8 +43,7 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
 
-	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
-	void DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
+	void SetPOVForCamera(float DeltaTime);
 
 	//Stephen call it SetHUDCrosshairs
 	void SetHUDPackageForHUD(float DeltaTime);
@@ -76,9 +78,30 @@ private:
 	float SphereRadius = 50.f;
 	UPROPERTY(EditAnywhere)
 	bool bDrawConsistentLine = false;
+
+	UPROPERTY(EditAnywhere)
+	float AdditionalJumpFactor{};
+	UPROPERTY(EditAnywhere)
+	float AdditinalFireFactor{};
+	UPROPERTY(EditAnywhere)
+	float SubtractiveAimFactor{};
+
+	//FOV
+	float DefaultPOV; //to be set to Character->Camera->POV, it is a backup
+	float CurrentPOV;
+
+
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
 
 
 	
 };
+
+
+
+
+
+
+
+

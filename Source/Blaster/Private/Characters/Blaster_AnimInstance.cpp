@@ -78,8 +78,8 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	{
 
 		//you must name the socket in weapon exactly like this "LeftHandSocket_InWeapon": 		
-		const FTransform RightHandSocket_Transform_InWeapon_WorldSpace 
-			= EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("LeftHandSocket_InWeapon"), ERelativeTransformSpace::RTS_World); //this socket is in WeaponMesh of the Weapon, not not the Character Mesh
+		const FTransform RightHandSocket_Transform_InWeapon_WorldSpace
+			= EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("LeftHandSocket_InWeapon"));
 
 		FVector OutLocation; //Location to be relative to "Right_Hand bone"
 		FRotator OutRotation; //Rotation to be relative to "Right_Hand bone"
@@ -95,29 +95,35 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 		LefttHandSocket_Transform_InWeapon.SetLocation(OutLocation);
 		LefttHandSocket_Transform_InWeapon.SetRotation(FQuat(OutRotation));
+		
+ if (BlasterCharacter->IsLocallyControlled()){  //Stephen does this as he can't get valid HitPoint for other non-controlling players
+    //DRAW [muzzle -> local forward ], because the socket direcition align with hosting actor, so you can even ROUGHLY use EquippedWeapon->GetLocation() and EquippedWeapon->GetLocation() + GetForwardVEctor() * 10000
+		const FTransform MuzzleFlashTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"));
+		FVector ForwardVector = UKismetMathLibrary::GetForwardVector(MuzzleFlashTransform.GetRotation().Rotator());
+		FVector Start = MuzzleFlashTransform.GetLocation();
+		FVector End = Start + ForwardVector * 80000.f ; 
 
+		DrawDebugLine(GetWorld(), Start, End, FColor::Red);
+
+	//DRAW [muzzle -> impactpoint/LIKE] , can re-use 'Start' above:
+		FHitResult HitResult;
+		if(BlasterCharacter->GetCombatComponent())	BlasterCharacter->GetCombatComponent()->DoLineTrace_UnderCrosshairs(HitResult);
+
+		DrawDebugLine(GetWorld(), Start, HitResult.ImpactPoint, FColor::Orange);
+
+	//READ what we need for ABP:
+		//SHOCKING news: the GetSocketTransform can use to get either socket or bone transform by entering their names!
+		const FTransform RightHandBone_Transform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("hand_r") );
+		//you can also use: (HitResult.ImpactPoint - RightHandBone_Transform.GetLocation() ).Rotation() 
+		WantedRotation_ForRightHandBone = UKismetMathLibrary::FindLookAtRotation(  
+			RightHandBone_Transform.GetLocation(),
+			RightHandBone_Transform.GetLocation() + RightHandBone_Transform.GetLocation() - HitResult.ImpactPoint
+		);
+		bIsLocallyControlled = true; //if enter this, then it must be true and this 'fact' will never be changed nor it need to change it back to false!
 	}
 }
 
-//USkeletalMeshComponent : public USkinnedMeshComponent 
-// USkinnedMeshComponent::GetSocketTransform()
-
-	//UE_LOG(LogTemp, Warning, TEXT("YawOffset: %f"), YawOffset);
-	//    //this ONLY store Yaw, this look Equivalent, but it doesn't fix LOL
-	//DeltaYaw = FMath::FInterpTo(DeltaYaw, Delta1.Yaw, DeltaSeconds, 5.f);
-	//YawOffset = DeltaYaw;
-	//       //Add this line will make it work by this way, not test yet but trust me!
-	//if (YawOffset > 180) YawOffset = YawOffset - 360;
-	//if (YawOffset < -180) YawOffset = YawOffset + 360;
-
-	//    //at first:
-	//YawOffset = Delta1.Yaw; //this is the first problem
-
-	//    //my try
-	//YawOffset = FMath::FInterpTo(YawOffset, Delta1.Yaw, DeltaSeconds, 5.f); 
-	//		//Add this line will make it work by this way, not test yet but trust me!
-	//if (YawOffset > 180) YawOffset = YawOffset - 360;
-	//if (YawOffset < -180) YawOffset = YawOffset + 360;
+}
 
 
 

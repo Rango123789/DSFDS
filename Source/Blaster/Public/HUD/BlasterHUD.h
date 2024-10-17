@@ -17,6 +17,7 @@ struct FHUDPackage
 	UTexture2D* CrosshairsRight;
 	UTexture2D* CrosshairsTop;
 	UTexture2D* CrosshairsBottom;
+	float ExpandFactor;
 };
 
 
@@ -26,11 +27,15 @@ class BLASTER_API ABlasterHUD : public AHUD
 	GENERATED_BODY()
 public:
 	void virtual DrawHUD() override;
-	void DrawCrosshair(UTexture2D* InTexture, FVector2D ViewportSize);
+	void DrawCrosshair(UTexture2D* InTexture, FVector2D ViewportSize, FVector2D ExpandOffset);
 protected:
 
 private:
 	FHUDPackage HUDPackage; //this will be assigned AWeapon::values via Character::Combat (as this is where you can access both EquippedWeapon and PlayerController()->GetHUD();
+
+	UPROPERTY(EditAnywhere)
+	float MaxExpand = 10.f;
+
 public:
 	void SetHUDPackage(const FHUDPackage& InHUDPackage){ HUDPackage = InHUDPackage; }
 
