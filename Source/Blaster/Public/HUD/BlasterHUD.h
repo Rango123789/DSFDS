@@ -18,6 +18,7 @@ struct FHUDPackage
 	UTexture2D* CrosshairsTop;
 	UTexture2D* CrosshairsBottom;
 	float ExpandFactor;
+	FLinearColor Color;
 };
 
 

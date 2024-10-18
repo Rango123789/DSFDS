@@ -5,11 +5,12 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Blaster/CharacterTypes.h"
+#include "Interfaces/InteractWithCrossHairsInterface.h"
 #include "BlasterCharacter.generated.h"
 
 
 UCLASS()
-class BLASTER_API ABlasterCharacter : public ACharacter
+class BLASTER_API ABlasterCharacter : public ACharacter, public IInteractWithCrossHairsInterface
 {
 	GENERATED_BODY()
 
@@ -147,7 +148,7 @@ private:
 	void Input_Fire_Released(const FInputActionValue& Value);
 
 //category4: regular functions 
-	
+	void HideCharacterIfCameraClose();
 
 
 /***data members****/
@@ -188,6 +189,8 @@ private:
 	//sound and effects:
 
 //category4: basic and primitive types
+	UPROPERTY(EditAnywhere)
+	float CameraThreshold = 20.f;
 
 public:	
 	/***Setters and Getters***/

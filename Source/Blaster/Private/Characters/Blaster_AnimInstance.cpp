@@ -96,7 +96,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		LefttHandSocket_Transform_InWeapon.SetLocation(OutLocation);
 		LefttHandSocket_Transform_InWeapon.SetRotation(FQuat(OutRotation));
 		
- if (BlasterCharacter->IsLocallyControlled()){  //Stephen does this as he can't get valid HitPoint for other non-controlling players
+ if (BlasterCharacter->IsLocallyControlled() && BlasterCharacter->GetCombatComponent()){  //Stephen does this as he can't get valid HitPoint for other non-controlling players
     //DRAW [muzzle -> local forward ], because the socket direcition align with hosting actor, so you can even ROUGHLY use EquippedWeapon->GetLocation() and EquippedWeapon->GetLocation() + GetForwardVEctor() * 10000
 		const FTransform MuzzleFlashTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"));
 		FVector ForwardVector = UKismetMathLibrary::GetForwardVector(MuzzleFlashTransform.GetRotation().Rotator());
@@ -107,7 +107,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	//DRAW [muzzle -> impactpoint/LIKE] , can re-use 'Start' above:
 		FHitResult HitResult;
-		if(BlasterCharacter->GetCombatComponent())	BlasterCharacter->GetCombatComponent()->DoLineTrace_UnderCrosshairs(HitResult);
+		FVector  EndTrace= BlasterCharacter->GetCombatComponent()->DoLineTrace_UnderCrosshairs(HitResult);
 
 		DrawDebugLine(GetWorld(), Start, HitResult.ImpactPoint, FColor::Orange);
 
@@ -117,9 +117,20 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		//you can also use: (HitResult.ImpactPoint - RightHandBone_Transform.GetLocation() ).Rotation() 
 		WantedRotation_ForRightHandBone = UKismetMathLibrary::FindLookAtRotation(  
 			RightHandBone_Transform.GetLocation(),
-			RightHandBone_Transform.GetLocation() + RightHandBone_Transform.GetLocation() - HitResult.ImpactPoint
+			RightHandBone_Transform.GetLocation() + RightHandBone_Transform.GetLocation() - EndTrace // instead of 'HitResult.ImpactPoint'
 		);
 		bIsLocallyControlled = true; //if enter this, then it must be true and this 'fact' will never be changed nor it need to change it back to false!
+
+		//I have to assign it value here as I did do DoLineTrace here instead of CombatComponent LOL
+		//Next time I will do it in CombatComponent instead I think LOL
+		if (HitResult.GetActor() && HitResult.GetActor()->Implements<UInteractWithCrossHairsInterface>() ) //also 'Cast<T>(UObject/Actor)'
+		{
+			BlasterCharacter->GetCombatComponent()->SetCrosshairsColor(FLinearColor::Red);
+		}
+		else
+		{
+			BlasterCharacter->GetCombatComponent()->SetCrosshairsColor(FLinearColor::White);
+		}
 	}
 }
 

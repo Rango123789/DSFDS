@@ -17,7 +17,7 @@
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	bReplicates = true; //it is true by default, no need
@@ -44,6 +44,8 @@ ABlasterCharacter::ABlasterCharacter()
 	//make sure you can
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -103,6 +105,7 @@ void ABlasterCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
     
 	SetupAimOffsetVariables(DeltaTime);
+	HideCharacterIfCameraClose();
 }
 
 //return true if EquippedWeapon is NOT null
@@ -319,6 +322,35 @@ void ABlasterCharacter::Input_Fire_Released(const FInputActionValue& Value)
 {
 	if (CombatComponent == nullptr) return;
 	CombatComponent->Input_Fire(false);
+}
+
+void ABlasterCharacter::HideCharacterIfCameraClose()
+{
+	//We must not hide in other machines, as the still need to see you LOL
+	if (IsLocallyControlled() == false) return;
+	if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr || 
+		CombatComponent->EquippedWeapon->GetWeaponMesh() == nullptr) return;
+
+	float Distance = (GetActorLocation() - Camera->GetComponentLocation()).Size();
+	
+	if (Distance < CameraThreshold)
+	{
+	//For Chararacter itself:
+		//SetActorHiddenInGame(true);    //Replicated, do de-effect IsLocallyControlled(), NOT wanted
+		GetMesh()->SetVisibility(false); // NOT Replicated, hence we need it here. 
+	//For EquippedWeapon:
+		//CombatComponent->EquippedWeapon->SetActorHiddenInGame(true); //Replicated, do de-effect IsLocallyControlled(), NOT wanted
+		//CombatComponent->EquippedWeapon->GetWeaponMesh()->SetVisibility(false); // NOT Replicated, hence we need it here. 
+		CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true;   // WAY2 for WeaponMesh, only work when you did set the charater is onwer of this, and this will affect the contorlling device ONLY
+	}
+	else
+	{
+		//SetActorHiddenInGame(false); // || GetMesh()->SetVisibility(true)
+		GetMesh()->SetVisibility(true);
+		//CombatComponent->EquippedWeapon->SetActorHiddenInGame(true);
+		//CombatComponent->EquippedWeapon->GetWeaponMesh()->SetVisibility(true);
+		CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false;
+	}
 }
 
 ////Stephen create this in UActorComponent instead.

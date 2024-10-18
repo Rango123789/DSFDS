@@ -24,7 +24,7 @@ public:
 	void OnRep_EquippedWeapon();
 
 	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
-	void DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
+	FVector DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
 protected:
 	virtual void BeginPlay() override;
 
@@ -79,6 +79,7 @@ private:
 	UPROPERTY(EditAnywhere)
 	bool bDrawConsistentLine = false;
 
+	//Expand crosshairs:
 	UPROPERTY(EditAnywhere)
 	float AdditionalJumpFactor{};
 	UPROPERTY(EditAnywhere)
@@ -86,15 +87,28 @@ private:
 	UPROPERTY(EditAnywhere)
 	float SubtractiveAimFactor{};
 
+	UPROPERTY(EditAnywhere)
+	float JumpFactorMax=2.25f;
+	UPROPERTY(EditAnywhere)
+	float FireFactorMax=0.65f;
+	UPROPERTY(EditAnywhere)
+	float AimFactorMax=0.5f;
+
 	//FOV
 	float DefaultPOV; //to be set to Character->Camera->POV, it is a backup
 	float CurrentPOV;
 
+	//Crosshair color:
+	FLinearColor CrosshairsColor;
+
+	UPROPERTY(EditAnywhere)
+	float ExtraStartOffset = 10.f; //including D_char/2 + D_gun/2 + Hand_Extent + extraOffset
 
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
 
-
+	FLinearColor GetCrosshairsColor(){ return CrosshairsColor; }
+	void SetCrosshairsColor(const FLinearColor& InColor) { CrosshairsColor = InColor; }
 	
 };
 

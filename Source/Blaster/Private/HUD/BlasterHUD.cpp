@@ -41,7 +41,8 @@ void ABlasterHUD::DrawCrosshair(UTexture2D* InTexture, FVector2D ViewportSize , 
 		DrawLocation.Y + ExpandOffset.Y,
 		InTexture->GetSizeX(),   
 		InTexture->GetSizeY(),
-		0.f, 0.f, 1.f, 1.f				 
+		0.f, 0.f, 1.f, 1.f,
+		HUDPackage.Color
 	);
 }
 

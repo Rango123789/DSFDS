@@ -47,8 +47,12 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	SetHUDPackageForHUD(DeltaTime);
-	SetPOVForCamera(DeltaTime);
+    //UPDATE: because other non-controlling device dont care about Crosshairs and POV of this camera so add IsLocallyContrlled() will save performance for other device
+	if (Character && Character->IsLocallyControlled()) //ADDED!
+	{
+		SetHUDPackageForHUD(DeltaTime);
+		SetPOVForCamera(DeltaTime);
+	}
 }
 
 void UCombatComponent::SetPOVForCamera(float DeltaTime)
@@ -94,25 +98,26 @@ void UCombatComponent::SetHUDPackageForHUD(float DeltaTime)
 		HUDPackage.CrosshairsTop = EquippedWeapon->CrosshairsTop;
 		HUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairsBottom;
 
-		if (Character->GetCharacterMovement()->IsFalling())
-		{
-			//we add extra factor [0->1]_Vxy + [0->2]_Jump, but we dont want it to snap, so we interpolate it slowely:
-			AdditionalJumpFactor = FMath::FInterpTo(AdditionalJumpFactor, 2.f, DeltaTime, 2.25f); //dont know why stephn choose speed = 2.25f
-		}
-		else
-		{
-			//you dont want it to snap to 0 right away
-			AdditionalJumpFactor = FMath::FInterpTo(AdditionalJumpFactor, 0, DeltaTime, 10.f); //stephen even choose 30.f LOL
-		}
+		//expanding and shinking 
+		if (Character->GetCharacterMovement()->IsFalling()) AdditionalJumpFactor = FMath::FInterpTo(AdditionalJumpFactor, JumpFactorMax, DeltaTime, 2.25f); 
+		else AdditionalJumpFactor = FMath::FInterpTo(AdditionalJumpFactor, 0, DeltaTime, 10.f); 
 
-		if (bIsAiming)	SubtractiveAimFactor = FMath::FInterpTo(SubtractiveAimFactor, 0.65f, DeltaTime, 5.f);
+		//I dont interp [0->max] because I like the sudden effect when I shoot/fire :D :D 
+		if (bIsFiring) AdditinalFireFactor = FireFactorMax;
+		else AdditinalFireFactor = FMath::FInterpTo(AdditinalFireFactor, 0, DeltaTime, 5.f);
+
+		// 0.65f or equal to the inital 0.5f below are the matter of preference
+		if (bIsAiming)	SubtractiveAimFactor = FMath::FInterpTo(SubtractiveAimFactor, AimFactorMax , DeltaTime, 5.f);
 		else SubtractiveAimFactor = FMath::FInterpTo(SubtractiveAimFactor, 0 , DeltaTime, 5.f);
 
-		if (bIsFiring) AdditinalFireFactor = 0.5f;
-		else SubtractiveAimFactor = FMath::FInterpTo(SubtractiveAimFactor, 0, DeltaTime, 5.f);
 
 		//Velocity is interloated behind the scene so no need FMath::FInterpTo
-		HUDPackage.ExpandFactor = Character->GetVelocity().Size2D() / 600.f + AdditionalJumpFactor ; //I hardcode 600 for performance!
+		HUDPackage.ExpandFactor = Character->GetVelocity().Size2D() / 600.f 
+			+ 0.5f  //give it an inital expan of 0.5f (rather than let 0) , so that you aim, it can shink.
+			+ AdditionalJumpFactor 
+			+ AdditinalFireFactor
+			- SubtractiveAimFactor; 
+		HUDPackage.Color = CrosshairsColor;
 	}
 	else //but in case you lose your weapon even if you did have one (out of bullets+) 
 	{
@@ -222,9 +227,9 @@ void UCombatComponent::ServerSetIsAiming_Implementation(bool InIsAiming) //REPLA
 	}
 }
 
-void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
+FVector UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 {
-	if (GetWorld() == nullptr || GEngine == nullptr) return;
+	if (GetWorld() == nullptr || GEngine == nullptr) return FVector{};
 	
 	FVector2D ViewportSize;
 	if(GEngine->GameViewport)
@@ -249,16 +254,29 @@ void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 			WorldDirection
 	    );
 	
-	if (!bIsSuccessful) return; //this is not the reason that why a device only see its own DebugSphere
+	if (!bIsSuccessful) return FVector{}; //this is not the reason that why a device only see its own DebugSphere
 
-	FVector Start = WorldLocation;
+	FVector Start = WorldLocation; //Start is Exactly Camera location, I didn't realize it LOL
+
+	//Stephen: (Character->GetActorLocation() - Start).Size() + StartTraceOffset
+	float StartOffset = (Character->GetActorLocation() - Start).Size2D() / abs(FMath::Cos(Character->GetAO_Pitch() * 3.14f / 180.f ) ) + ExtraStartOffset;
+
+	Start += WorldDirection * StartOffset;
+
 	FVector End = Start + WorldDirection * 80000; //Direction is current a vector unit with length=1 only, so yeah!
+
+	//DrawDebugSphere(GetWorld(), Start, SphereRadius, 12.f, FColor::Green, bDrawConsistentLine);
+
+	//GEngine->AddOnScreenDebugMessage(-1, 2, FColor::Blue, FString::Printf(TEXT("TraceOffset: %f , Pitch: %f , Cos: %f "), StartOffset, Character->GetAO_Pitch(), FMath::Cos(Character->GetAO_Pitch() * 3.14f / 180.f)));	
+	
 	GetWorld()->LineTraceSingleByChannel(
 		LineHitResult,
 		Start,
 		End,
 		ECollisionChannel::ECC_Visibility //almost all things block visibility by default
 	);
+
+
 
 	if (LineHitResult.bBlockingHit == false)
 	{
@@ -270,6 +288,10 @@ void UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 	//HitTarget = LineHitResult.ImpactPoint; //ImpactPoint now can be relied on in either case after the if!
 
 	DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, SphereRadius, 12.f, FColor::Red, bDrawConsistentLine);
+
+
+
+	return End;
 }
 
 
