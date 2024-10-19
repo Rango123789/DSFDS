@@ -77,7 +77,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	//do the if so that you dont have to check it inside, and also return soon for performance
 	//the last one ('bEuippedWeapon') could be redudant, better double-kill than left over? :D :D
-	if(EquippedWeapon && EquippedWeapon->GetWeaponMesh() && BlasterCharacter->GetMesh()  && bEquippedWeapon ) 
+	if (EquippedWeapon && EquippedWeapon->GetWeaponMesh() && BlasterCharacter->GetMesh() && bEquippedWeapon)
 	{
 
 		//you must name the socket in weapon exactly like this "LeftHandSocket_InWeapon": 		
@@ -98,50 +98,65 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 		LefttHandSocket_Transform_InWeapon.SetLocation(OutLocation);
 		LefttHandSocket_Transform_InWeapon.SetRotation(FQuat(OutRotation));
-		
- if (BlasterCharacter->IsLocallyControlled() && BlasterCharacter->GetCombatComponent()){  //Stephen does this as he can't get valid HitPoint for other non-controlling players
-    //DRAW [muzzle -> local forward ], because the socket direcition align with hosting actor, so you can even ROUGHLY use EquippedWeapon->GetLocation() and EquippedWeapon->GetLocation() + GetForwardVEctor() * 10000
-		const FTransform MuzzleFlashTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"));
-		FVector ForwardVector = UKismetMathLibrary::GetForwardVector(MuzzleFlashTransform.GetRotation().Rotator());
-		FVector Start = MuzzleFlashTransform.GetLocation();
-		FVector End = Start + ForwardVector * 80000.f ; 
 
-		DrawDebugLine(GetWorld(), Start, End, FColor::Red);
+		if (BlasterCharacter->IsLocallyControlled() && BlasterCharacter->GetCombatComponent()) {  //Stephen does this as he can't get valid HitPoint for other non-controlling players
+			//DRAW [muzzle -> local forward ], because the socket direcition align with hosting actor, so you can even ROUGHLY use EquippedWeapon->GetLocation() and EquippedWeapon->GetLocation() + GetForwardVEctor() * 10000
+			const FTransform MuzzleFlashTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"));
+			FVector ForwardVector = UKismetMathLibrary::GetForwardVector(MuzzleFlashTransform.GetRotation().Rotator());
+			FVector Start = MuzzleFlashTransform.GetLocation();
+			FVector End = Start + ForwardVector * 80000.f;
 
-	//DRAW [muzzle -> impactpoint/LIKE] , can re-use 'Start' above:
-		FHitResult HitResult;
-		FVector  EndTrace= BlasterCharacter->GetCombatComponent()->DoLineTrace_UnderCrosshairs(HitResult);
+			DrawDebugLine(GetWorld(), Start, End, FColor::Red);
 
-		DrawDebugLine(GetWorld(), Start, HitResult.ImpactPoint, FColor::Orange);
+			//DRAW [muzzle -> impactpoint/LIKE] , can re-use 'Start' above:
+			FHitResult HitResult;
+			FVector  EndTrace = BlasterCharacter->GetCombatComponent()->DoLineTrace_UnderCrosshairs(HitResult);
 
-	//READ what we need for ABP:
-		//SHOCKING news: the GetSocketTransform can use to get either socket or bone transform by entering their names!
-		const FTransform RightHandBone_Transform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("hand_r") );
-		//you can also use: (HitResult.ImpactPoint - RightHandBone_Transform.GetLocation() ).Rotation() 
-		WantedRotation_ForRightHandBone = UKismetMathLibrary::FindLookAtRotation(  
-			RightHandBone_Transform.GetLocation(),
-			RightHandBone_Transform.GetLocation() + RightHandBone_Transform.GetLocation() - EndTrace // instead of 'HitResult.ImpactPoint'
-		);
-		bIsLocallyControlled = true; //if enter this, then it must be true and this 'fact' will never be changed nor it need to change it back to false!
+			DrawDebugLine(GetWorld(), Start, HitResult.ImpactPoint, FColor::Orange);
 
-		//I have to assign it value here as I did do DoLineTrace here instead of CombatComponent LOL
-		//Next time I will do it in CombatComponent instead I think LOL
-		if (HitResult.GetActor() && HitResult.GetActor()->Implements<UInteractWithCrossHairsInterface>() ) //also 'Cast<T>(UObject/Actor)'
-		{
-			BlasterCharacter->GetCombatComponent()->SetCrosshairsColor(FLinearColor::Red);
+			//READ what we need for ABP:
+				//SHOCKING news: the GetSocketTransform can use to get either socket or bone transform by entering their names!
+			const FTransform RightHandBone_Transform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("hand_r"));
+			//you can also use: (HitResult.ImpactPoint - RightHandBone_Transform.GetLocation() ).Rotation() 
+			WantedRotation_ForRightHandBone = UKismetMathLibrary::FindLookAtRotation(
+				RightHandBone_Transform.GetLocation(),
+				RightHandBone_Transform.GetLocation() + RightHandBone_Transform.GetLocation() - EndTrace // instead of 'HitResult.ImpactPoint'
+			);
+			bIsLocallyControlled = true; //if enter this, then it must be true and this 'fact' will never be changed nor it need to change it back to false!
+
+			//I have to assign it value here as I did do DoLineTrace here instead of CombatComponent LOL
+			//Next time I will do it in CombatComponent instead I think LOL
+			if (HitResult.GetActor() && HitResult.GetActor()->Implements<UInteractWithCrossHairsInterface>()) //also 'Cast<T>(UObject/Actor)'
+			{
+				BlasterCharacter->GetCombatComponent()->SetCrosshairsColor(FLinearColor::Red);
+			}
+			else
+			{
+				BlasterCharacter->GetCombatComponent()->SetCrosshairsColor(FLinearColor::White);
+			}
 		}
-		else
-		{
-			BlasterCharacter->GetCombatComponent()->SetCrosshairsColor(FLinearColor::White);
-		}
+
 	}
 }
 
-}
 
 
 
+		////For my own perpose
+		////FRotator RootRotation = BlasterCharacter->GetMesh()->GetBoneQuaternion(FName("root")).Rotator();
+		//FRotator RootRotation = BlasterCharacter->GetMesh()->GetSocketTransform(FName("root")).GetRotation().Rotator();
 
+		//if (bReset == false)
+		//{
+		//	bReset = true;
+		//	WantedRootRotation = {RootRotation.Pitch, RootRotation.Yaw - AO_Yaw_LastFrame, RootRotation.Roll};
+		//}
+		//else
+		//{
+		//	bReset = false;
+		//	WantedRootRotation = { RootRotation.Pitch, RootRotation.Yaw + AO_Yaw_LastFrame, RootRotation.Roll };
+		//}
+		//AO_Yaw_LastFrame = AO_Yaw;
 
 
 

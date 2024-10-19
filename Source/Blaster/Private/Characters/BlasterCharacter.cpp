@@ -418,6 +418,7 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 		AO_Yaw = DeltaRotation.GetNormalized().Yaw;
 
     //BLOCK1,2 is for "Turning In Place" feature, Without them, AO_Yaw and AimOffset will still work (but remember to set bUseYaw = false back LOL.
+
 		//NEW BLOCK1: this is impossible to stop moving and then rotate beyond 90 right away, so it makes sense to check do this "local else if" first
 		if (TurningInPlace == ETurningInPlace::RTIP_NoTurning)
 		{
@@ -449,7 +450,6 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 		{
 			SetTurningInPlace(ETurningInPlace::RTIP_TurnLeft);
 		}
-
 	}
 	else //running or jumping - this is "GLOBAL else", hence when you move+ "all AimOffset->TurningInPlace" effect will be removed
 	{

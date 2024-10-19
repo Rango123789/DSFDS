@@ -83,7 +83,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bIsLocallyControlled;
 
+
 };
+
+
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	//FRotator WantedRootRotation;
+	//bool bReset = false;
+	//float AO_Yaw_LastFrame;
 
 /*Now you may be wondering why we're using this (bIsAccelaring) rather than the speed.
 And when we talk about accelerating from the anim instance point of view, we're not talking about the rate of change of velocity.
