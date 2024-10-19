@@ -7,6 +7,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "CharacterComponents/CombatComponent.h"
 #include "Weapons/Weapon.h"
+#include <Kismet/KismetSystemLibrary.h>
 
 void UBlaster_AnimInstance::NativeInitializeAnimation()
 {
@@ -15,6 +16,8 @@ void UBlaster_AnimInstance::NativeInitializeAnimation()
 	BlasterCharacter = Cast<ABlasterCharacter>(TryGetPawnOwner());
 
 	//if (BlasterCharacter) CharacterMovement = BlasterCharacter->GetCharacterMovement(); //fail
+	/*UKismetSystemLibrary::BoxTraceSingle(ETraceTypeQuery::);*/
+
 }
 
 void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)

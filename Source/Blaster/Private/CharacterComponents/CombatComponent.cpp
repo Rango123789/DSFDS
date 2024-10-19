@@ -276,8 +276,6 @@ FVector UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 		ECollisionChannel::ECC_Visibility //almost all things block visibility by default
 	);
 
-
-
 	if (LineHitResult.bBlockingHit == false)
 	{
 		LineHitResult.ImpactPoint = End;

@@ -13,6 +13,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/SkeletalMeshSocket.h"//test
+#include "Blaster/Blaster.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -44,8 +45,38 @@ ABlasterCharacter::ABlasterCharacter()
 	//make sure you can
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
+	GetMesh()->SetCollisionObjectType(ECC_SkeletalMesh);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Block);
+
+	//GetMesh()->SetNotifyRigidBodyCollision(true); //no need, only need to check where Hit Event need to occur
+}
+
+void ABlasterCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+
+	if (PlayerController && IMC_Blaster)
+	{
+		//create __ object and associate it with the LocalPlayer object, hence PlayerController, currently controlling this Character: 
+		UEnhancedInputLocalPlayerSubsystem* EISubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
+
+		//the priority=0 is just for fun, there is only one IMC we're gonna add to our Blaster Character: 
+		if(EISubsystem) EISubsystem->AddMappingContext(IMC_Blaster, 0);
+	}
+
+	//call the helper function to change text of the underlying widget of the widget component:
+	if (Overhead_WidgetComponent)
+	{
+		UOverhead_UserWidget* Overhead_UserWidget = Cast<UOverhead_UserWidget>(Overhead_WidgetComponent->GetUserWidgetObject());
+		if (Overhead_UserWidget) Overhead_UserWidget->ShowPlayerNetRole(this);
+	}
+
+	BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -74,31 +105,6 @@ void ABlasterCharacter::Jump()
 	else Super::Jump();
 }
 
-void ABlasterCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-
-	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
-	APlayerController* PlayerController = Cast<APlayerController>(GetController());
-
-	if (PlayerController && IMC_Blaster)
-	{
-		//create __ object and associate it with the LocalPlayer object, hence PlayerController, currently controlling this Character: 
-		UEnhancedInputLocalPlayerSubsystem* EISubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
-
-		//the priority=0 is just for fun, there is only one IMC we're gonna add to our Blaster Character: 
-		if(EISubsystem) EISubsystem->AddMappingContext(IMC_Blaster, 0);
-	}
-
-	//call the helper function to change text of the underlying widget of the widget component:
-	if (Overhead_WidgetComponent)
-	{
-		UOverhead_UserWidget* Overhead_UserWidget = Cast<UOverhead_UserWidget>(Overhead_WidgetComponent->GetUserWidgetObject());
-		if (Overhead_UserWidget) Overhead_UserWidget->ShowPlayerNetRole(this);
-	}
-
-	BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
-}
 
 void ABlasterCharacter::Tick(float DeltaTime)
 {
@@ -190,6 +196,11 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	}
 }
 
+void ABlasterCharacter::MulticastPlayHitReactMontage_Implementation()
+{
+	PlayHitReactMontage();
+}
+
 void ABlasterCharacter::PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName)
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -221,6 +232,16 @@ void ABlasterCharacter::StopFireMontage()
 
 	//AnimInstance->PlaySlotAnimationAsDynamicMontage();
 	//GetMesh()->PlayAnimation();
+}
+
+void ABlasterCharacter::PlayHitReactMontage()
+{
+	if(AM_FireMontage == nullptr) return;
+
+	FName SectionName("FromFront"); //for now
+
+	PlayMontage_SpecificSection(AM_HitReact, SectionName);
+
 }
 
 void ABlasterCharacter::Input_Move(const FInputActionValue& Value)
@@ -381,15 +402,14 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 {
 	//UPDATE: this setup is meant for when you have a weapon, and you can skip this if you didn't have any
 	//this does improve performance, so why not:
-	if (CombatComponent == nullptr)  return; //see comment below, or [ComboCheckUPDATE] to see why we should not do if (A || A->B)
-	if (CombatComponent->EquippedWeapon == nullptr) return;
+	if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr)  return;
     
 	//these lines are just for readibility:
 	float GroundSpeed = GetVelocity().Size2D();
 	bool IsInAir = GetCharacterMovement()->IsFalling();
 
 	//BLOCK0: GLOBAL else if about "moving/jumping" or not
-	if (GroundSpeed == 0.f && !IsInAir  ) //stand still, not jumping
+	if (GroundSpeed == 0.f && !IsInAir  ) //not moving, not jumping
 	{
 		bUseControllerRotationYaw = true; //from false in last lesson
 
@@ -398,21 +418,17 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 		AO_Yaw = DeltaRotation.GetNormalized().Yaw;
 
     //BLOCK1,2 is for "Turning In Place" feature, Without them, AO_Yaw and AimOffset will still work (but remember to set bUseYaw = false back LOL.
-		//NEW BLOCK1: this is impossible to stop moving and then rotate beyond 90 right a way, so it makes sense to check do this "local else if" first
+		//NEW BLOCK1: this is impossible to stop moving and then rotate beyond 90 right away, so it makes sense to check do this "local else if" first
 		if (TurningInPlace == ETurningInPlace::RTIP_NoTurning)
 		{
-			AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = AO_Yaw;
+			//NO NEED ? we need it during re-set AO_YAW process, because AO_Yaw is also assgined value in the outer block (which always happen before this block), hence at the end of the process we also need to re-set BaseAimRotation_SinceStopMoving = GetBaseAimRotation() too!
+			AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = AO_Yaw; 
 		}
 		else //either TurnLeft or TurnRight
 		{
-			AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = FMath::FInterpTo(
-				AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero,
-				0.f,
-				DeltaTime,
-				InterpSpeed_Turning       // 5 means 1/5=0.2 sec to get it done - just theory lol, better test and see
-			);
+			AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = FMath::FInterpTo( AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero, 0.f, DeltaTime, InterpSpeed_Turning); //NO NEED ? -> need during turn process
 
-			AO_Yaw = AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero;
+			AO_Yaw = AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero; //NO NEED ? -> need during turn process
 			
 			//it is up to up to decide when to stop interpolate, x = 15 -->stop short at 90-15 = 75 degree, accepting the skip 15 degree. 
 			//this local Block is absolutely important so that you can escape either TurnLeft or TurnRight naturally and automatically, otherwise no way to escape it naturally even when the AO_Yaw_SinceNoTurning reach ZERO in interpolation, unless you move again to escape it :D :D
@@ -450,13 +466,6 @@ void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
 	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; 
 
 	UE_LOG(LogTemp, Warning, TEXT("AO_Yaw: %f"), AO_Yaw); 
-
-	////test:
-	//GetMesh()->GetSocketTransform( , :World);
-	//const USkeletalMeshSocket* Socket= GetMesh()->GetSocketByName(FName("RightHandSocert"));
-	//Socket->GetSocketLocalTransform();
-
-	//GetMesh()->GetBoneTransform();
 }
 
 /* Seperate SetAimOffsetVars() from SetTurnInPlaceVars()
