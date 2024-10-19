@@ -39,14 +39,16 @@ public:
 	UFUNCTION(Server, Reliable) //this is important event, so we make it Reliable as well
 	void ServerEKeyPressed();
 
-	//UFUNCTION(Server, Reliable) 
-	//void ServerSetIsAiming(bool InIsAiming); //REPLACE
+	UFUNCTION(NetMulticast , Unreliable)
+	void MulticastPlayHitReactMontage();
 
 //category4: regular functions: 
 	//montages:
 	void PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName = "");
 	void PlayFireMontage();
 	void StopFireMontage();
+
+	void PlayHitReactMontage();
 	//sound and effects:
 
 	//bool functions:
@@ -108,6 +110,9 @@ protected:
 	//montages:
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* AM_FireMontage;
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* AM_HitReact;
 
 	//sound and effects:
 

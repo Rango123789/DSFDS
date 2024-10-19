@@ -6,6 +6,8 @@
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include <Characters/BlasterCharacter.h>
+#include "Blaster/Blaster.h"
 
 // Sets default values
 AProjectile::AProjectile()
@@ -31,6 +33,8 @@ AProjectile::AProjectile()
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 	   //we need it to block Visibility (not talk about Camera) so that we can do some trace on it I guess?
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	   //we need it to block GetMesh()=Pawn currently to create Hit Even with Chararacter
+	CollisionBox->SetCollisionResponseToChannel(ECC_SkeletalMesh, ECollisionResponse::ECR_Block); //replace block Pawn with blocking custom SkeletalMesh
 	
 	//Setup ProjectileMovementComp:
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>("Projectile Move Comp");
@@ -75,7 +79,15 @@ void AProjectile::BeginPlay()
 //currently only in-server projectile copy can trigger this
 void AProjectile::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
+	if (BlasterCharacter)
+	{
+		BlasterCharacter->MulticastPlayHitReactMontage();
+	}
+
+	//last lesson:
 	Destroy();
+
 }
 
 //auto-call on all devices if the replicated actor is destroyed via AActor::Destroy() from the server
