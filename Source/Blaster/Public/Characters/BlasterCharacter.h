@@ -42,6 +42,8 @@ public:
 	UFUNCTION(NetMulticast , Unreliable)
 	void MulticastPlayHitReactMontage();
 
+	virtual void OnRep_ReplicatedMovement() override;
+
 //category4: regular functions: 
 	//montages:
 	void PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName = "");
@@ -61,6 +63,12 @@ public:
 	//others:
 	//void SetIsAiming(bool InIsAiming);	//REPLACE
 	void SetupAimOffsetVariables(float DeltaTime);
+
+	void TurnInPlace_ForAutoProxyOnly(float DeltaTime);
+
+	void Turn_ForSimProxyOnly();
+
+	float AccumilatingTime;
 
 protected:
 	/***functions***/
@@ -135,6 +143,15 @@ protected:
 	UPROPERTY(EditAnywhere)
 	float X_stop = 1.f;
 
+	bool bShouldRotateRootBone{};
+
+	UPROPERTY(EditAnywhere)
+	float TurnThreshold = 0.5 ; // /60.f
+	float ProxyDeltaYaw{};
+
+	FRotator ProxyRotation;
+	FRotator ProxyRotation_LastFrame;
+
 private: 
 	/***functions***/
 //category1: auto-generated functions:
@@ -154,6 +171,7 @@ private:
 
 //category4: regular functions 
 	void HideCharacterIfCameraClose();
+
 
 
 /***data members****/
@@ -214,4 +232,6 @@ public:
 	ETurningInPlace GetTurningInPlace() { return TurningInPlace; }
 
 	UCameraComponent* GetCamera() { return Camera; }
+
+	bool GetShouldRotateRootBone() { return bShouldRotateRootBone; }
 };

@@ -105,14 +105,162 @@ void ABlasterCharacter::Jump()
 	else Super::Jump();
 }
 
-
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
     
-	SetupAimOffsetVariables(DeltaTime);
 	HideCharacterIfCameraClose();
+
+	//for now: 
+	//if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy) //Auto or Authority
+	if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled() ) //if it is locally controlled then it can't be simulated, the A && is redudant
+	{
+		SetupAimOffsetVariables(DeltaTime);
+	}
+	//else //Simulated proxies
+	//{
+	//	Turn_ForSimProxyOnly();
+	//}
+
+	else
+	{
+		//we should only need to accumilating time for SimulateProxy
+		AccumilatingTime += DeltaTime;
+		if (AccumilatingTime > .25f)
+		{
+			//if (GetLocalRole() == ENetRole::ROLE_SimulatedProxy)
+			//{
+			//	Turn_ForSimProxyOnly();
+			//	AccumilatingTime = 0.f;
+			//}
+			OnRep_ReplicatedMovement();
+		}
+	}
 }
+
+void ABlasterCharacter::OnRep_ReplicatedMovement()
+{
+	Super::OnRep_ReplicatedMovement();
+
+	if (GetLocalRole() == ENetRole::ROLE_SimulatedProxy)
+	{
+		Turn_ForSimProxyOnly();
+		//AccumilatingTime = 0.f;
+	}
+	AccumilatingTime = 0.f; //why stephen let it out here?
+}
+
+void ABlasterCharacter::Turn_ForSimProxyOnly()
+{
+	if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return;
+
+	bShouldRotateRootBone = false;
+
+	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; //copy from SetupAimOffsetVariables()
+
+//START TO IMPLEMENT the sim behaivour:
+	ProxyRotation_LastFrame = ProxyRotation;
+	ProxyRotation = GetActorRotation();
+
+	ProxyDeltaYaw = (ProxyRotation - ProxyRotation_LastFrame).GetNormalized().Yaw; // /DeltaTime
+
+	UE_LOG(LogTemp, Warning, TEXT("ProxyDeltaYaw: %f"), ProxyDeltaYaw);
+
+	//you can re-organize these like this LOL:
+		if (ProxyDeltaYaw > TurnThreshold)
+		{
+			TurningInPlace = ETurningInPlace::RTIP_TurnRight;
+			return;
+		}
+		else if (ProxyDeltaYaw < -TurnThreshold)
+		{
+			TurningInPlace = ETurningInPlace::RTIP_TurnLeft;
+			return;
+		}
+		else
+		{
+			TurningInPlace = ETurningInPlace::RTIP_NoTurning;
+		}
+}
+
+void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
+{
+	//UPDATE: this setup is meant for when you have a weapon, and you can skip this if you didn't have any
+	//this does improve performance, so why not:
+	if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr)  return;
+    
+	//these lines are just for readibility:
+	float GroundSpeed = GetVelocity().Size2D();
+	bool IsInAir = GetCharacterMovement()->IsFalling();
+
+	//BLOCK0: GLOBAL else if about "moving/jumping" or not
+	if (GroundSpeed == 0.f && !IsInAir  ) //not moving, not jumping
+	{
+		bShouldRotateRootBone = true; //NEW1
+
+		bUseControllerRotationYaw = true; //from false in last lesson
+
+		FRotator DeltaRotation = (GetBaseAimRotation() - BaseAimRotation_SinceStopMoving);
+
+		AO_Yaw = DeltaRotation.GetNormalized().Yaw;
+
+		TurnInPlace_ForAutoProxyOnly(DeltaTime);
+
+	}
+	else //running or jumping - this is "GLOBAL else", hence when you move+ "all AimOffset->TurningInPlace" effect will be removed
+	{
+		bShouldRotateRootBone = false; //NEW2
+
+		bUseControllerRotationYaw = true; //already true from last lesson ->now you can remove both lines
+
+		BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
+		
+		AO_Yaw = 0; 
+
+		SetTurningInPlace(ETurningInPlace::RTIP_NoTurning); //This is another way to stop the TurningInPlace process, if happening.
+	}
+
+	//add .GetNormalized() fix it!
+	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; 
+
+	//UE_LOG(LogTemp, Warning, TEXT("AO_Yaw: %f"), AO_Yaw); 
+}
+
+void ABlasterCharacter::TurnInPlace_ForAutoProxyOnly(float DeltaTime)
+{
+	//BLOCK1,2 is for "Turning In Place" feature, Without them, AO_Yaw and AimOffset will still work (but remember to set bUseYaw = false back LOL.
+	//NEW BLOCK1: 
+	if (TurningInPlace == ETurningInPlace::RTIP_NoTurning)
+	{
+		AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = AO_Yaw;
+	}
+	else //either TurnLeft or TurnRight
+	{
+		AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = FMath::FInterpTo(AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero, 0.f, DeltaTime, InterpSpeed_Turning); //NO NEED ? -> need during turn process
+
+		AO_Yaw = AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero; //NO NEED ? -> need during turn process
+
+		//it is up to up to decide when to stop interpolate, x = 15 -->stop short at 90-15 = 75 degree, accepting the skip 15 degree. 
+		//this local Block is absolutely important so that you can escape either TurnLeft or TurnRight naturally and automatically, otherwise no way to escape it naturally even when the AO_Yaw_SinceNoTurning reach ZERO in interpolation, unless you move again to escape it :D :D
+		if (abs(AO_Yaw) <= X_stop) //Stephen < 15.f, I update this!
+		{
+			TurningInPlace = ETurningInPlace::RTIP_NoTurning;
+
+			BaseAimRotation_SinceStopMoving = GetBaseAimRotation(); //we can't forget this
+		}
+	}
+
+	//NEW BLOCK2: this is for animation, and also trigger "else" of BLOCK1
+	if (AO_Yaw > 90.f)
+	{
+		SetTurningInPlace(ETurningInPlace::RTIP_TurnRight);
+	}
+	if (AO_Yaw < -90.f)
+	{
+		SetTurningInPlace(ETurningInPlace::RTIP_TurnLeft);
+	}
+}
+
 
 //return true if EquippedWeapon is NOT null
 bool ABlasterCharacter::IsWeaponEquipped()
@@ -200,6 +348,7 @@ void ABlasterCharacter::MulticastPlayHitReactMontage_Implementation()
 {
 	PlayHitReactMontage();
 }
+
 
 void ABlasterCharacter::PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName)
 {
@@ -397,76 +546,6 @@ void ABlasterCharacter::HideCharacterIfCameraClose()
 //		if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
 //	}
 //}
-
-void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
-{
-	//UPDATE: this setup is meant for when you have a weapon, and you can skip this if you didn't have any
-	//this does improve performance, so why not:
-	if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr)  return;
-    
-	//these lines are just for readibility:
-	float GroundSpeed = GetVelocity().Size2D();
-	bool IsInAir = GetCharacterMovement()->IsFalling();
-
-	//BLOCK0: GLOBAL else if about "moving/jumping" or not
-	if (GroundSpeed == 0.f && !IsInAir  ) //not moving, not jumping
-	{
-		bUseControllerRotationYaw = true; //from false in last lesson
-
-		FRotator DeltaRotation = (GetBaseAimRotation() - BaseAimRotation_SinceStopMoving);
-
-		AO_Yaw = DeltaRotation.GetNormalized().Yaw;
-
-    //BLOCK1,2 is for "Turning In Place" feature, Without them, AO_Yaw and AimOffset will still work (but remember to set bUseYaw = false back LOL.
-
-		//NEW BLOCK1: this is impossible to stop moving and then rotate beyond 90 right away, so it makes sense to check do this "local else if" first
-		if (TurningInPlace == ETurningInPlace::RTIP_NoTurning)
-		{
-			//NO NEED ? we need it during re-set AO_YAW process, because AO_Yaw is also assgined value in the outer block (which always happen before this block), hence at the end of the process we also need to re-set BaseAimRotation_SinceStopMoving = GetBaseAimRotation() too!
-			AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = AO_Yaw; 
-		}
-		else //either TurnLeft or TurnRight
-		{
-			AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero = FMath::FInterpTo( AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero, 0.f, DeltaTime, InterpSpeed_Turning); //NO NEED ? -> need during turn process
-
-			AO_Yaw = AO_Yaw_SinceNoTurning_ToBeInterpolatedBackToZero; //NO NEED ? -> need during turn process
-			
-			//it is up to up to decide when to stop interpolate, x = 15 -->stop short at 90-15 = 75 degree, accepting the skip 15 degree. 
-			//this local Block is absolutely important so that you can escape either TurnLeft or TurnRight naturally and automatically, otherwise no way to escape it naturally even when the AO_Yaw_SinceNoTurning reach ZERO in interpolation, unless you move again to escape it :D :D
-			if (abs(AO_Yaw) <= X_stop) //Stephen < 15.f, I update this!
-			{
-				TurningInPlace = ETurningInPlace::RTIP_NoTurning;
-
-				BaseAimRotation_SinceStopMoving = GetBaseAimRotation(); //we can't forget this
-			}
-		}
-
-		//NEW BLOCK2: this is for animation, and also trigger "else" of BLOCK1
-		if (AO_Yaw > 90.f)
-		{
-			SetTurningInPlace(ETurningInPlace::RTIP_TurnRight);
-		}
-		if (AO_Yaw < -90.f)
-		{
-			SetTurningInPlace(ETurningInPlace::RTIP_TurnLeft);
-		}
-	}
-	else //running or jumping - this is "GLOBAL else", hence when you move+ "all AimOffset->TurningInPlace" effect will be removed
-	{
-		bUseControllerRotationYaw = true; //already true from last lesson ->now you can remove both lines
-
-		BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
-		
-		AO_Yaw = 0; 
-
-		SetTurningInPlace(ETurningInPlace::RTIP_NoTurning); //This is another way to stop the TurningInPlace process, if happening.
-	}
-
-	//add .GetNormalized() fix it!
-	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; 
-
-	UE_LOG(LogTemp, Warning, TEXT("AO_Yaw: %f"), AO_Yaw); 
-}
 
 /* Seperate SetAimOffsetVars() from SetTurnInPlaceVars()
 -----------------------

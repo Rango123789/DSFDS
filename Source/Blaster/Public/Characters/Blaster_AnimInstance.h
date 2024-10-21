@@ -83,7 +83,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bIsLocallyControlled;
 
-
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bShouldRotateRootBone;
 };
 
 

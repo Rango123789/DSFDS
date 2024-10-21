@@ -135,8 +135,8 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 				BlasterCharacter->GetCombatComponent()->SetCrosshairsColor(FLinearColor::White);
 			}
 		}
-
 	}
+	bShouldRotateRootBone = BlasterCharacter->GetShouldRotateRootBone();
 }
 
 

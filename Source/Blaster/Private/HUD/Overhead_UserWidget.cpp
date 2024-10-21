@@ -8,6 +8,8 @@
 
 void UOverhead_UserWidget::ShowPlayerNetRole(AActor* InActor)
 {
+	if (InActor == nullptr) return;
+
 	FString LocalRole;
 	FString RemoteRole;
 
@@ -55,6 +57,7 @@ void UOverhead_UserWidget::ShowPlayerNetRole(AActor* InActor)
 
 void UOverhead_UserWidget::SetTextContent(FString TextToDisplay, UTextBlock* TextBlock)
 {
+	if (TextBlock == nullptr) return;
 	TextBlock->SetText(FText::FromString(TextToDisplay));
 }
 
