@@ -70,6 +70,9 @@ public:
 
 	float AccumilatingTime;
 
+	UPROPERTY(EditAnywhere)
+	float TimeThreshold;
+
 protected:
 	/***functions***/
 //category1: auto-generated functions:

@@ -113,40 +113,38 @@ void ABlasterCharacter::Tick(float DeltaTime)
 
 	//for now: 
 	//if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy) //Auto or Authority
-	if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled() ) //if it is locally controlled then it can't be simulated, the A && is redudant
+	//if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled() ) // A&& = redudant
+	if (IsLocallyControlled())
 	{
 		SetupAimOffsetVariables(DeltaTime);
 	}
-	//else //Simulated proxies
-	//{
-	//	Turn_ForSimProxyOnly();
-	//}
-
 	else
 	{
 		//we should only need to accumilating time for SimulateProxy
 		AccumilatingTime += DeltaTime;
-		if (AccumilatingTime > .25f)
+
+		//we MANUALLY call OnRep_ReplicatedMovement() after every TimeThreshold, you can reduce it to a small number, say 0.1s - the smaller it is, the smoother you have , but with less performance!
+		if (AccumilatingTime > TimeThreshold)
 		{
-			//if (GetLocalRole() == ENetRole::ROLE_SimulatedProxy)
-			//{
-			//	Turn_ForSimProxyOnly();
-			//	AccumilatingTime = 0.f;
-			//}
 			OnRep_ReplicatedMovement();
+		//you dd NOT do this instead, because there is 'super:: ' that need to be run too
+			//Turn_ForSimProxyOnly();
+			//AccumilatingTime = 0.f;
 		}
 	}
 }
 
+//this function auto-trigger itself when ReplicatedMovement is changed and  replicated
 void ABlasterCharacter::OnRep_ReplicatedMovement()
 {
 	Super::OnRep_ReplicatedMovement();
 
-	if (GetLocalRole() == ENetRole::ROLE_SimulatedProxy)
-	{
+//I don't add if condition because I want both simulated and authoritive copies having this new behaviour!
+	//if (GetLocalRole() == ENetRole::ROLE_SimulatedProxy)
+	//{
 		Turn_ForSimProxyOnly();
 		//AccumilatingTime = 0.f;
-	}
+	//}
 	AccumilatingTime = 0.f; //why stephen let it out here?
 }
 
@@ -158,6 +156,13 @@ void ABlasterCharacter::Turn_ForSimProxyOnly()
 
 	AO_Pitch = GetBaseAimRotation().GetNormalized().Pitch; //copy from SetupAimOffsetVariables()
 
+	//not moving && not jumping (not sure not jumping is overkill here lol, as it can be solved enternally alread, but it helps to reduce code!!!)
+	if (GetVelocity().Size() > 0.f)
+	{
+		TurningInPlace = ETurningInPlace::RTIP_NoTurning;
+		return; //important!
+	}
+
 //START TO IMPLEMENT the sim behaivour:
 	ProxyRotation_LastFrame = ProxyRotation;
 	ProxyRotation = GetActorRotation();
@@ -166,21 +171,24 @@ void ABlasterCharacter::Turn_ForSimProxyOnly()
 
 	UE_LOG(LogTemp, Warning, TEXT("ProxyDeltaYaw: %f"), ProxyDeltaYaw);
 
-	//you can re-organize these like this LOL:
-		if (ProxyDeltaYaw > TurnThreshold)
-		{
-			TurningInPlace = ETurningInPlace::RTIP_TurnRight;
-			return;
-		}
-		else if (ProxyDeltaYaw < -TurnThreshold)
-		{
-			TurningInPlace = ETurningInPlace::RTIP_TurnLeft;
-			return;
-		}
-		else
-		{
-			TurningInPlace = ETurningInPlace::RTIP_NoTurning;
-		}
+	//ABP only care the TurningInPlace and it will play mactching animation, I think we should add additional condition that when the turning In Place finish, it should auto go back to idle state?
+	//If you can keep the turning state as long as you keep rotating (keep playing turning animation)
+	//but when you stop rotating or rotating fast enough that -x < ProxyDeltaYaw < x
+	//TurningInPlace = NoTurning And it will stop playing Turning animation from ABP
+	if (ProxyDeltaYaw > TurnThreshold)
+	{
+		TurningInPlace = ETurningInPlace::RTIP_TurnRight;
+		return;
+	}
+	else if (ProxyDeltaYaw < -TurnThreshold)
+	{
+		TurningInPlace = ETurningInPlace::RTIP_TurnLeft;
+		return;
+	}
+	else
+	{
+		TurningInPlace = ETurningInPlace::RTIP_NoTurning;
+	}
 }
 
 void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
