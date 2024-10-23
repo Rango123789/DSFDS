@@ -6,8 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Blaster/CharacterTypes.h"
 #include "Interfaces/InteractWithCrossHairsInterface.h"
-#include "BlasterCharacter.generated.h"
-
+#include "BlasterCharacter.generated.h" 
 
 UCLASS()
 class BLASTER_API ABlasterCharacter : public ACharacter, public IInteractWithCrossHairsInterface
@@ -217,6 +216,9 @@ private:
 //category4: basic and primitive types
 	UPROPERTY(EditAnywhere)
 	float CameraThreshold = 20.f;
+
+
+
 
 public:	
 	/***Setters and Getters***/

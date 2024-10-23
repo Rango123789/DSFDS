@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "TimerManager.h" //NEWs
 #include "CombatComponent.generated.h"
 
 
@@ -50,8 +51,11 @@ private:
 
 	//Automatic fire:
 	void Start_FireTimer();
-	void FireTimer_Callback();
 
+
+	void FireTimer_Callback(); //bool InIsFiring, const FVector_NetQuantize& Target
+
+	FTimerDelegate TimerDelegate;
 
 //***data member***
 	//this no need to be replicated, it is set for all version back in Char::PostInitializeComponents
@@ -108,6 +112,7 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	float ExtraStartOffset = 10.f; //including D_char/2 + D_gun/2 + Hand_Extent + extraOffset
+
 
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!

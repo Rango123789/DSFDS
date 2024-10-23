@@ -6,7 +6,6 @@
 #include "Characters/BlasterCharacter.h"
 #include "HUD/BlasterHUD.h"
 #include "PlayerController/BlasterPlayerController.h"
-
 #include "Camera/CameraComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
@@ -14,12 +13,16 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetSystemLibrary.h" //for DoLineTrace
 #include "Kismet/GameplayStatics.h" //for DeprojectScreenToWorld
+#include "TimerManager.h" //NEWs
 
 UCombatComponent::UCombatComponent()
+	//: TimerDelegate( FTimerDelegate::CreateUObject(this, &ThisClass::FireTimer_Callback) )
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true; //if you tick later, then turn it on
+
+	//TimerDelegate.BindUFunction(this, FName("FireTimer_Callback")); 
 }
 
 void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -41,6 +44,8 @@ void UCombatComponent::BeginPlay()
 		DefaultPOV = Character->GetCamera()->FieldOfView;
 		CurrentPOV = DefaultPOV;
 	}
+
+	//TimerDelegate.BindUFunction()
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -137,6 +142,8 @@ void UCombatComponent::Input_Fire(bool InIsFiring)
 	DoLineTrace_UnderCrosshairs(HitResult);
 
 	ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //rather than member HitPoint
+
+	Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
 }
 
 void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
@@ -157,15 +164,16 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const
 
 		EquippedWeapon->Fire(Target); //instead of member HitTarget, now you can remove it!
 
-		Start_FireTimer();
+		//Start_FireTimer(); //WRONG place to call this .SetTimer here, it will be all over place in all machines, not to mention it could get a wrong .HitImpact as well!
+
 	}
 }
-
 
 void UCombatComponent::Start_FireTimer()
 {
 	FTimerHandle TimeHandle;
-	GetWorld()->GetTimerManager().SetTimer(TimeHandle , this, &ThisClass::FireTimer_Callback , 0.2f);
+	
+	GetWorld()->GetTimerManager().SetTimer(TimeHandle, this, &ThisClass::FireTimer_Callback, 0.35f);
 }
 
 void UCombatComponent::FireTimer_Callback()
@@ -173,23 +181,13 @@ void UCombatComponent::FireTimer_Callback()
 	if (!bIsFiring) return;
 	//if (Character == nullptr || Character->IsLocallyControlled() == false) return;
 
-	FHitResult HitResult;
-	DoLineTrace_UnderCrosshairs(HitResult);
-
-	//you can NOT call the multicast here, it may EXECUTE on all devices again if it is called from the server , indeed it is, as we just used golden rule to make sure all devices are executed!
-	//MulticastInput_Fire(bIsFiring, HitResult.ImpactPoint);
-
-	//this is the equivalent without side effect of RPCs:
-	if (Character == nullptr || EquippedWeapon == nullptr) return;
-
-	if (bIsFiring)
-	{
-		Character->PlayFireMontage();
-
-		EquippedWeapon->Fire(HitResult.ImpactPoint); //instead of member HitTarget, now you can remove it!
-
-		Start_FireTimer();
-	}
+	//option2:  this is still from owning device, not yet via RPC process yet! so it work!
+	//I have to call the hosting Input_Fire, rather than 'ServerInput_Fire( , )' because I didn't save the HitTarget
+	//but will it work? yes it will for a moment and will be corrected back soon, but it is good enough because we're using it right now when we're still in the owning device, hence stephen save it as member will still work!
+	// Even if you do Trace and saved it from Tick every frame or here it will work "momentary" (enough for here)
+	//but you must know that after the frame HitTarget will be corrected back to the server value immediately! - we must add this point to UNIVERSEL rule
+	//NOTE: I dont do this because I dont even trace it every frame in Combat::Tick, so I call it whenever Input_Fire is called and it is not much expesive as called everyframe so dont worry, my idea is not worst then stephen currently!
+	Input_Fire(bIsFiring);
 }
 
 
