@@ -5,6 +5,7 @@
 #include "OnlineSubsystem.h"
 #include "OnlineSessionSettings.h"
 
+//the default-initialized object in fact create in .h already, but initalizer list will take precedence and stop it from even happening!
 UMultiplayerSession_GameSubsystem::UMultiplayerSession_GameSubsystem() : 
 	OnCreateSessionCompleteDelegate( FOnCreateSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnCreateSessionComplete)),
 	OnFindSessionsCompleteDelegate ( FOnFindSessionsCompleteDelegate ::CreateUObject(this, &ThisClass::OnFindSessionsComplete)),

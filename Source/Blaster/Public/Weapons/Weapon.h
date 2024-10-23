@@ -131,6 +131,12 @@ protected: //base
     UPROPERTY(EditAnywhere)
     float FOVInterpSpeed = 20;
 
+    UPROPERTY(EditAnywhere)
+    bool bIsAutomatic = true;
+    UPROPERTY(EditAnywhere)
+    float FireDelay = 0.25;
+
+
 private: //FINAL child
 /***functions***/
 //category1: auto-generated functions:
@@ -167,4 +173,7 @@ public:
 
     float GetPOV() { return FOV; }
     float GetPOVInterpSpeed() { return FOVInterpSpeed; }
+
+    bool GetIsAutomatic() { return bIsAutomatic; }
+    float GetFireDelay() { return FireDelay; }
 };
