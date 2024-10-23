@@ -131,9 +131,6 @@ void UCombatComponent::SetHUDPackageForHUD(float DeltaTime)
 	BlasterHUD->SetHUDPackage(HUDPackage);
 }
 
-
-
-
 void UCombatComponent::Input_Fire(bool InIsFiring)
 {
 	FHitResult HitResult;
@@ -160,9 +157,40 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const
 
 		EquippedWeapon->Fire(Target); //instead of member HitTarget, now you can remove it!
 
+		Start_FireTimer();
 	}
 }
 
+
+void UCombatComponent::Start_FireTimer()
+{
+	FTimerHandle TimeHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimeHandle , this, &ThisClass::FireTimer_Callback , 0.2f);
+}
+
+void UCombatComponent::FireTimer_Callback()
+{
+	if (!bIsFiring) return;
+	//if (Character == nullptr || Character->IsLocallyControlled() == false) return;
+
+	FHitResult HitResult;
+	DoLineTrace_UnderCrosshairs(HitResult);
+
+	//you can NOT call the multicast here, it may EXECUTE on all devices again if it is called from the server , indeed it is, as we just used golden rule to make sure all devices are executed!
+	//MulticastInput_Fire(bIsFiring, HitResult.ImpactPoint);
+
+	//this is the equivalent without side effect of RPCs:
+	if (Character == nullptr || EquippedWeapon == nullptr) return;
+
+	if (bIsFiring)
+	{
+		Character->PlayFireMontage();
+
+		EquippedWeapon->Fire(HitResult.ImpactPoint); //instead of member HitTarget, now you can remove it!
+
+		Start_FireTimer();
+	}
+}
 
 
 

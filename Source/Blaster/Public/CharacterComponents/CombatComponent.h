@@ -48,6 +48,11 @@ private:
 	//Stephen call it SetHUDCrosshairs
 	void SetHUDPackageForHUD(float DeltaTime);
 
+	//Automatic fire:
+	void Start_FireTimer();
+	void FireTimer_Callback();
+
+
 //***data member***
 	//this no need to be replicated, it is set for all version back in Char::PostInitializeComponents
 	class ABlasterCharacter* Character; //to let this comp aware of its hosting object

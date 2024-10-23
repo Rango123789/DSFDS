@@ -132,6 +132,7 @@ void ABlasterCharacter::Tick(float DeltaTime)
 			//AccumilatingTime = 0.f;
 		}
 	}
+	UE_LOG(LogTemp, Warning, TEXT("ProxyDeltaYaw: %f"), DeltaTime);
 }
 
 //this function auto-trigger itself when ReplicatedMovement is changed and  replicated
@@ -169,7 +170,7 @@ void ABlasterCharacter::Turn_ForSimProxyOnly()
 
 	ProxyDeltaYaw = (ProxyRotation - ProxyRotation_LastFrame).GetNormalized().Yaw; // /DeltaTime
 
-	UE_LOG(LogTemp, Warning, TEXT("ProxyDeltaYaw: %f"), ProxyDeltaYaw);
+	//UE_LOG(LogTemp, Warning, TEXT("ProxyDeltaYaw: %f"), ProxyDeltaYaw);
 
 	//ABP only care the TurningInPlace and it will play mactching animation, I think we should add additional condition that when the turning In Place finish, it should auto go back to idle state?
 	//If you can keep the turning state as long as you keep rotating (keep playing turning animation)
