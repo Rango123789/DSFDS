@@ -56,8 +56,11 @@ private:
 
 	void FireTimer_Callback(); //bool InIsFiring, const FVector_NetQuantize& Target
 
-	FTimerDelegate TimerDelegate;
+	float FireDelay=0.25;
 
+	bool bIsAutomatic = true;
+
+	FTimerHandle TimeHandle;
 //***data member***
 	//this no need to be replicated, it is set for all version back in Char::PostInitializeComponents
 	class ABlasterCharacter* Character; //to let this comp aware of its hosting object
@@ -114,6 +117,7 @@ private:
 	UPROPERTY(EditAnywhere)
 	float ExtraStartOffset = 10.f; //including D_char/2 + D_gun/2 + Hand_Extent + extraOffset
 
+	bool bCanFire = true;
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
 
