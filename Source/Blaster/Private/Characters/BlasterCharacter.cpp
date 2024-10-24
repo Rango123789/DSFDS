@@ -14,6 +14,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/SkeletalMeshSocket.h"//test
 #include "Blaster/Blaster.h"
+#include "HUD/BlasterHUD.h"
+#include "HUD/CharacterOverlay_UserWidget.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -77,18 +79,33 @@ void ABlasterCharacter::BeginPlay()
 	}
 
 	BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
+
+	if (PlayerController)
+	{
+		BlasterHUD = Cast<ABlasterHUD>(PlayerController->GetHUD());
+		if (BlasterHUD)
+		{
+			CharacterOverlay_UserWidget = BlasterHUD->GetCharacterOverlay_UserWidget();
+		}
+	}
+
+	if (CharacterOverlay_UserWidget)
+	{
+		CharacterOverlay_UserWidget->SetHealthPercent(Health / MaxHealth);
+
+		FString Text = FString::FromInt(Health) + FString(" / ") + FString::FromInt(MaxHealth);
+		CharacterOverlay_UserWidget->SetHealthText(Text);
+	}
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	//OnRep_ can't be called on server so it will work for all clients, except the server
-	// hence need additional work for the server separately, independent from this replication LOL
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon , COND_OwnerOnly);
-	//DOREPLIFETIME_CONDITION(ABlasterCharacter, LastOverlappingWeapon, COND_OwnerOnly);
-
 	//DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
+
+	DOREPLIFETIME(ABlasterCharacter, Health);
 }
 
 void ABlasterCharacter::PostInitializeComponents()
@@ -300,6 +317,10 @@ void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 	{
 		LastWeapon->ShowPickupWidget(false);
 	}
+}
+
+void ABlasterCharacter::OnRep_Health()
+{
 }
 
 //this will be called in Weapon::Overlap which could only happen in-server copy

@@ -1,6 +1,21 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "HUD/BlasterHUD.h"
+#include "HUD/CharacterOverlay_UserWidget.h"
 
+void ABlasterHUD::BeginPlay()
+{
+	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+	APlayerController* PlayerController1 = GetOwningPlayerController();
+
+	if (CharacterOverlay_Class && PlayerController)
+	{
+		//Test 'GetWorld()' , 'GetGameInstance()' and 'GetWorld()->GetFirstPlayerController()' for first param = all works
+		CharacterOverlay_UserWidget = CreateWidget<UCharacterOverlay_UserWidget>(PlayerController, CharacterOverlay_Class);
+	}
+
+	CharacterOverlay_UserWidget->AddToViewport();
+
+}
 void ABlasterHUD::DrawHUD()
 {
 	Super::DrawHUD();
@@ -45,6 +60,8 @@ void ABlasterHUD::DrawCrosshair(UTexture2D* InTexture, FVector2D ViewportSize , 
 		HUDPackage.Color
 	);
 }
+
+
 
 
 /* U,V isn't what you thought it works LOL

@@ -100,6 +100,9 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
 	class AWeapon* OverlappingWeapon;
 
+	class ABlasterHUD* BlasterHUD;
+
+	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
 	//arrays:
 
 	//class type:
@@ -217,8 +220,15 @@ private:
 	UPROPERTY(EditAnywhere)
 	float CameraThreshold = 20.f;
 
+	//attributes:
+	UPROPERTY(EditAnywhere)
+	float MaxHealth = 100.f;
 
+	UPROPERTY(ReplicatedUsing = OnRep_Health, EditAnywhere) //EditAnywhere, for debugging purpose
+	float Health = 40.f;
 
+	UFUNCTION()
+	void OnRep_Health();
 
 public:	
 	/***Setters and Getters***/

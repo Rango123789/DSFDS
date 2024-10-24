@@ -30,14 +30,23 @@ public:
 	void virtual DrawHUD() override;
 	void DrawCrosshair(UTexture2D* InTexture, FVector2D ViewportSize, FVector2D ExpandOffset);
 protected:
+/***functions***/
+	virtual void BeginPlay() override;
 
-private:
+/***data members****/
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UCharacterOverlay_UserWidget> CharacterOverlay_Class;
+
+	UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+	
 	FHUDPackage HUDPackage; //this will be assigned AWeapon::values via Character::Combat (as this is where you can access both EquippedWeapon and PlayerController()->GetHUD();
 
 	UPROPERTY(EditAnywhere)
 	float MaxExpand = 10.f;
+private:
 
 public:
 	void SetHUDPackage(const FHUDPackage& InHUDPackage){ HUDPackage = InHUDPackage; }
 
+	UCharacterOverlay_UserWidget* GetCharacterOverlay_UserWidget() { return CharacterOverlay_UserWidget; }
 };

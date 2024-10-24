@@ -117,6 +117,9 @@ private:
 	bool bIsAutomatic = true;
 	float FireDelay = 0.25;
 
+	bool bCanFire = true;
+	FTimerHandle TimeHandle;
+
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
 
