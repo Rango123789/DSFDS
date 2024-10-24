@@ -3,6 +3,7 @@
 
 #include "Characters/BlasterCharacter.h"
 #include "CharacterComponents/CombatComponent.h"
+#include "PlayerController/BlasterPlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
@@ -14,8 +15,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/SkeletalMeshSocket.h"//test
 #include "Blaster/Blaster.h"
-#include "HUD/BlasterHUD.h"
-#include "HUD/CharacterOverlay_UserWidget.h"
+//#include "HUD/BlasterHUD.h"
+//#include "HUD/CharacterOverlay_UserWidget.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
@@ -59,9 +60,9 @@ void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+//stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
-	APlayerController* PlayerController = Cast<APlayerController>(GetController());
-
+	PlayerController = Cast<ABlasterPlayerController>(GetController());
 	if (PlayerController && IMC_Blaster)
 	{
 		//create __ object and associate it with the LocalPlayer object, hence PlayerController, currently controlling this Character: 
@@ -79,23 +80,8 @@ void ABlasterCharacter::BeginPlay()
 	}
 
 	BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
-
-	if (PlayerController)
-	{
-		BlasterHUD = Cast<ABlasterHUD>(PlayerController->GetHUD());
-		if (BlasterHUD)
-		{
-			CharacterOverlay_UserWidget = BlasterHUD->GetCharacterOverlay_UserWidget();
-		}
-	}
-
-	if (CharacterOverlay_UserWidget)
-	{
-		CharacterOverlay_UserWidget->SetHealthPercent(Health / MaxHealth);
-
-		FString Text = FString::FromInt(Health) + FString(" / ") + FString::FromInt(MaxHealth);
-		CharacterOverlay_UserWidget->SetHealthText(Text);
-	}
+//news:
+	if(PlayerController) PlayerController->SetHUDHealth(Health, MaxHealth);
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

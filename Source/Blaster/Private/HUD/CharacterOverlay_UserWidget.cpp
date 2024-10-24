@@ -7,10 +7,10 @@
 
 void UCharacterOverlay_UserWidget::SetHealthPercent(float InPercent)
 {
-	ProgressBar_Health->SetPercent(InPercent);
+	if(ProgressBar_Health) ProgressBar_Health->SetPercent(InPercent);
 }
 
 void UCharacterOverlay_UserWidget::SetHealthText(const FString& InString)
 {
-	TextBlock_Health->SetText( FText::FromString(InString) );
+	if(TextBlock_Health) TextBlock_Health->SetText( FText::FromString(InString) );
 }

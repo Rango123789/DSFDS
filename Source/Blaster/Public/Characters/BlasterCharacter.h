@@ -100,9 +100,12 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
 	class AWeapon* OverlappingWeapon;
 
-	class ABlasterHUD* BlasterHUD;
+	class ABlasterPlayerController* PlayerController; //NEWs
 
-	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+	//	//HUD and its Overlay widget
+	//class ABlasterHUD* BlasterHUD;
+	//class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+
 	//arrays:
 
 	//class type:
@@ -225,7 +228,7 @@ private:
 	float MaxHealth = 100.f;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Health, EditAnywhere) //EditAnywhere, for debugging purpose
-	float Health = 40.f;
+	float Health = 10.f;
 
 	UFUNCTION()
 	void OnRep_Health();

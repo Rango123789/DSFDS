@@ -13,5 +13,14 @@ UCLASS()
 class BLASTER_API ABlasterPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
+public:
+	void SetHUDHealth(float Health, float MaxHealth);
+protected:
+	virtual void BeginPlay() override;
+
+	//HUD and its Overlay widget (move from Character)
+	class ABlasterHUD* BlasterHUD;
+	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+public:
+
 };
