@@ -52,6 +52,7 @@ private:
 	//Automatic fire:
 	void Start_FireTimer();
 
+	FTimerDelegate TimerDelegate;
 
 	void FireTimer_Callback(); //bool InIsFiring, const FVector_NetQuantize& Target
 
@@ -112,13 +113,6 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	float ExtraStartOffset = 10.f; //including D_char/2 + D_gun/2 + Hand_Extent + extraOffset
-
-	//to be proporated from EquippedWeapon:
-	bool bIsAutomatic = true;
-	float FireDelay = 0.25;
-
-	bool bCanFire = true;
-	FTimerHandle TimeHandle;
 
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
