@@ -82,6 +82,11 @@ void ABlasterCharacter::BeginPlay()
 	BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
 //news:
 	if(PlayerController) PlayerController->SetHUDHealth(Health, MaxHealth);
+
+	if (HasAuthority() )
+	{
+		OnTakeAnyDamage.AddDynamic(this, &ThisClass::ReceiveDamage);
+	}
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -99,13 +104,6 @@ void ABlasterCharacter::PostInitializeComponents()
 	//supposedly all components should be initialized and not null before this Post, but still I want to check as good practice:
 	Super::PostInitializeComponents();
 	if (CombatComponent) CombatComponent->Character = this;
-}
-
-//use 'else' if you want press TWICE to jump, dont use 'else' if you want press ONCE to jump from Crouch state - no , either case lead to the same end: press TWICE to jump.
-void ABlasterCharacter::Jump()
-{
-	if (bIsCrouched) UnCrouch();
-	else Super::Jump();
 }
 
 void ABlasterCharacter::Tick(float DeltaTime)
@@ -151,6 +149,24 @@ void ABlasterCharacter::OnRep_ReplicatedMovement()
 	//}
 	AccumilatingTime = 0.f; //why stephen let it out here?
 }
+
+//currently only the server can trigger this
+void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	Health = FMath::Clamp(Health - Damage, 0, MaxHealth);
+
+	//to be replicated to clients via OnRep_Health as well
+	PlayHitReactMontage();
+	if(PlayerController) PlayerController->SetHUDHealth(Health, MaxHealth);
+}
+
+//this will be called on all clients 
+void ABlasterCharacter::OnRep_Health()
+{
+	PlayHitReactMontage();
+	if (PlayerController) PlayerController->SetHUDHealth(Health, MaxHealth);
+}
+
 
 void ABlasterCharacter::Turn_ForSimProxyOnly()
 {
@@ -305,10 +321,6 @@ void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 	}
 }
 
-void ABlasterCharacter::OnRep_Health()
-{
-}
-
 //this will be called in Weapon::Overlap which could only happen in-server copy
 //hence MANUAL work condition can count on it!
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
@@ -360,10 +372,10 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	}
 }
 
-void ABlasterCharacter::MulticastPlayHitReactMontage_Implementation()
-{
-	PlayHitReactMontage();
-}
+//void ABlasterCharacter::MulticastPlayHitReactMontage_Implementation()
+//{
+//	PlayHitReactMontage();
+//}
 
 
 void ABlasterCharacter::PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName)
@@ -483,6 +495,13 @@ void ABlasterCharacter::Input_Crouch(const FInputActionValue& Value)
 {
 	if (!bIsCrouched) Crouch();
 	else UnCrouch();
+}
+
+//use 'else' if you want press TWICE to jump, dont use 'else' if you want press ONCE to jump from Crouch state - no , either case lead to the same end: press TWICE to jump.
+void ABlasterCharacter::Jump()
+{
+	if (bIsCrouched) UnCrouch();
+	else Super::Jump();
 }
 
 

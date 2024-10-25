@@ -88,7 +88,7 @@ virtual void BeginPlay() override;
     UParticleSystem* HitParticle;
 
 //category4: basic and primitive types
-
+    float Damage = 0.1;
 
 private: //FINAL child
 /***functions***/

@@ -30,7 +30,6 @@ public:
 	void Jump() override;
 	 /**</X>*/
 
-
 //category3: callbacks and RPC
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
@@ -38,10 +37,14 @@ public:
 	UFUNCTION(Server, Reliable) //this is important event, so we make it Reliable as well
 	void ServerEKeyPressed();
 
-	UFUNCTION(NetMulticast , Unreliable)
-	void MulticastPlayHitReactMontage();
+	//UFUNCTION(NetMulticast , Unreliable)
+	//void MulticastPlayHitReactMontage(); //no need any more
 
 	virtual void OnRep_ReplicatedMovement() override;
+
+	//this time we create callback to be bound to OnTakeAnyDamage, rather than override AActor::TakeDamage
+	UFUNCTION() //because OnTakeAnyDamgage is DYNAMIC delegate
+	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
 //category4: regular functions: 
 	//montages:

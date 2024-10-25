@@ -39,6 +39,8 @@ AProjectile::AProjectile()
 	//Setup ProjectileMovementComp:
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>("Projectile Move Comp");
 	ProjectileMovementComponent->bRotationFollowsVelocity = true;
+	ProjectileMovementComponent->InitialSpeed = 6000;
+	ProjectileMovementComponent->MaxSpeed = 15000;
 }
 
 // Called every frame
@@ -79,11 +81,12 @@ void AProjectile::BeginPlay()
 //currently only in-server projectile copy can trigger this
 void AProjectile::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
-	if (BlasterCharacter)
-	{
-		BlasterCharacter->MulticastPlayHitReactMontage();
-	}
+	//this has been move to Character::OnRep_Health
+	//ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
+	//if (BlasterCharacter)
+	//{
+	//	BlasterCharacter->MulticastPlayHitReactMontage();
+	//}
 
 	//last lesson:
 	Destroy();
