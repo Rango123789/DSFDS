@@ -63,6 +63,7 @@ void ABlasterCharacter::BeginPlay()
 //stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
 	PlayerController = Cast<ABlasterPlayerController>(GetController());
+
 	if (PlayerController && IMC_Blaster)
 	{
 		//create __ object and associate it with the LocalPlayer object, hence PlayerController, currently controlling this Character: 
@@ -133,7 +134,7 @@ void ABlasterCharacter::Tick(float DeltaTime)
 			//AccumilatingTime = 0.f;
 		}
 	}
-	UE_LOG(LogTemp, Warning, TEXT("ProxyDeltaYaw: %f"), DeltaTime);
+	//UE_LOG(LogTemp, Warning, TEXT("ProxyDeltaYaw: %f"), DeltaTime);
 }
 
 //this function auto-trigger itself when ReplicatedMovement is changed and  replicated
@@ -154,17 +155,37 @@ void ABlasterCharacter::OnRep_ReplicatedMovement()
 void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
 	Health = FMath::Clamp(Health - Damage, 0, MaxHealth);
-
 	//to be replicated to clients via OnRep_Health as well
 	PlayHitReactMontage();
-	if(PlayerController) PlayerController->SetHUDHealth(Health, MaxHealth);
+	
+	//Read Appendix28, to know why this line of code is more than necessary!
+	PlayerController = PlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : PlayerController;
+	if (PlayerController)
+	{
+		PlayerController->SetHUDHealth(Health, MaxHealth);
+		UE_LOG(LogTemp, Warning, TEXT("server: this copy is NOT nullptr"));
+	}
+	if (PlayerController == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("server: this copy is nullptr"));
+	}
 }
 
 //this will be called on all clients 
 void ABlasterCharacter::OnRep_Health()
 {
 	PlayHitReactMontage();
+
+	PlayerController = PlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : PlayerController;
 	if (PlayerController) PlayerController->SetHUDHealth(Health, MaxHealth);
+	if (PlayerController == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("this copy is nullptr"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("this copy is NOT nullptr"));
+	}
 }
 
 
@@ -209,6 +230,10 @@ void ABlasterCharacter::Turn_ForSimProxyOnly()
 	{
 		TurningInPlace = ETurningInPlace::RTIP_NoTurning;
 	}
+}
+
+void ABlasterCharacter::Elim()
+{
 }
 
 void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)

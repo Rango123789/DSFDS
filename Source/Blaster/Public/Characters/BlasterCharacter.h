@@ -27,7 +27,7 @@ public:
 	 /**</Actor>*/
 
 	/**<X>*/
-	void Jump() override;
+	virtual void Jump() override;
 	 /**</X>*/
 
 //category3: callbacks and RPC
@@ -70,10 +70,7 @@ public:
 
 	void Turn_ForSimProxyOnly();
 
-	float AccumilatingTime;
-
-	UPROPERTY(EditAnywhere)
-	float TimeThreshold;
+	void Elim();
 
 protected:
 	/***functions***/
@@ -162,6 +159,11 @@ protected:
 
 	FRotator ProxyRotation;
 	FRotator ProxyRotation_LastFrame;
+
+	float AccumilatingTime;
+
+	UPROPERTY(EditAnywhere)
+	float TimeThreshold;
 
 private: 
 	/***functions***/
