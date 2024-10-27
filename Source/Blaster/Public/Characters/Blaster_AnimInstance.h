@@ -85,6 +85,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bShouldRotateRootBone;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsEliminated = false;
 };
 
 

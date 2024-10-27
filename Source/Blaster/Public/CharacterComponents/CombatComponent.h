@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "TimerManager.h" //NEWs
 #include "CombatComponent.generated.h"
 
 

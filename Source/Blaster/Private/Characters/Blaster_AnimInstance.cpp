@@ -48,6 +48,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	bIsAiming = BlasterCharacter->IsAming();
 	bIsFiring = BlasterCharacter->IsAFiring();
+	bIsEliminated = BlasterCharacter->GetIsEliminated();
 
 //Offset Yaw for strafing:
 	FRotator AimRotation = BlasterCharacter->GetBaseAimRotation();
@@ -137,6 +138,8 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		}
 	}
 	bShouldRotateRootBone = BlasterCharacter->GetShouldRotateRootBone();
+
+	//bIsEliminated = BlasterCharacter->GetIsEliminated();
 }
 
 

@@ -13,7 +13,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetSystemLibrary.h" //for DoLineTrace
 #include "Kismet/GameplayStatics.h" //for DeprojectScreenToWorld
-#include "TimerManager.h" //NEWs
+//#include "TimerManager.h" //NEWs
 
 UCombatComponent::UCombatComponent()
 	//: TimerDelegate( FTimerDelegate::CreateUObject(this, &ThisClass::FireTimer_Callback) )

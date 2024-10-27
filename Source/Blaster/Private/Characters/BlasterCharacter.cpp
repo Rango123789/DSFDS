@@ -4,6 +4,8 @@
 #include "Characters/BlasterCharacter.h"
 #include "CharacterComponents/CombatComponent.h"
 #include "PlayerController/BlasterPlayerController.h"
+#include "GameModes/BlasterGameMode.h"
+
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
@@ -62,12 +64,17 @@ void ABlasterCharacter::BeginPlay()
 
 //stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
-	PlayerController = Cast<ABlasterPlayerController>(GetController());
+	BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
+	if(BlasterPlayerController) BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
 
-	if (PlayerController && IMC_Blaster)
+	////Only the server device can get a valid reference to GameMode as it is only created in the server device, not sure it is a good idea to create a member of this where this is only meaningful to the server device
+	//BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
+
+	//Input
+	if (BlasterPlayerController && IMC_Blaster)
 	{
 		//create __ object and associate it with the LocalPlayer object, hence PlayerController, currently controlling this Character: 
-		UEnhancedInputLocalPlayerSubsystem* EISubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer());
+		UEnhancedInputLocalPlayerSubsystem* EISubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(BlasterPlayerController->GetLocalPlayer());
 
 		//the priority=0 is just for fun, there is only one IMC we're gonna add to our Blaster Character: 
 		if(EISubsystem) EISubsystem->AddMappingContext(IMC_Blaster, 0);
@@ -81,8 +88,6 @@ void ABlasterCharacter::BeginPlay()
 	}
 
 	BaseAimRotation_SinceStopMoving = GetBaseAimRotation();
-//news:
-	if(PlayerController) PlayerController->SetHUDHealth(Health, MaxHealth);
 
 	if (HasAuthority() )
 	{
@@ -155,39 +160,66 @@ void ABlasterCharacter::OnRep_ReplicatedMovement()
 void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
 	Health = FMath::Clamp(Health - Damage, 0, MaxHealth);
+
 	//to be replicated to clients via OnRep_Health as well
-	PlayHitReactMontage();
-	
-	//Read Appendix28, to know why this line of code is more than necessary!
-	PlayerController = PlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : PlayerController;
-	if (PlayerController)
+	if(Health > 0.f)  PlayHitReactMontage();
+	UpdateHUD_Health();
+
+	//only when Health ==0 we should summon the gamemode to do its very job
+	if (Health <= 0.f) //because you have Clamp above, so == is also fine!
 	{
-		PlayerController->SetHUDHealth(Health, MaxHealth);
-		UE_LOG(LogTemp, Warning, TEXT("server: this copy is NOT nullptr"));
-	}
-	if (PlayerController == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("server: this copy is nullptr"));
+		//Only the server device can get a valid reference to GameMode as it is only created in the server device
+		ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>( GetWorld()->GetAuthGameMode() );
+		if (BlasterGameMode)
+		{
+			ABlasterPlayerController* AttackerController = Cast<ABlasterPlayerController>(InstigatedBy);
+			BlasterGameMode->PlayerEliminated(this, BlasterPlayerController, AttackerController); //we dont check null other parameter here, we check it locally in the function itself (from GameMode) - this is my style
+		}
 	}
 }
 
 //this will be called on all clients 
 void ABlasterCharacter::OnRep_Health()
 {
-	PlayHitReactMontage();
-
-	PlayerController = PlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : PlayerController;
-	if (PlayerController) PlayerController->SetHUDHealth(Health, MaxHealth);
-	if (PlayerController == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("this copy is nullptr"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("this copy is NOT nullptr"));
-	}
+	if (Health > 0.f) PlayHitReactMontage();
+	UpdateHUD_Health();
 }
 
+void ABlasterCharacter::Elim()
+{
+	MulticastElim();
+	//can do other things other than just RPC, that only the server have it:
+
+	GetWorldTimerManager().SetTimer(TimerHandle_Elim, this , &ThisClass::TimerCallback_Elim,  DelayTime_Elim);
+}
+
+//this is just an option of GOLDEN0, you can even call 'PlayElimMontage()' directly in ReceiveDamage, and then paste into OnRep_Health() as well
+void ABlasterCharacter::MulticastElim_Implementation()
+{
+	bIsEliminated = true; //that help it switch ABP chain1 to chain2_elim first
+	PlayElimMontage();    //and so now can play on ElimSlot in that chain2_elim
+}
+
+void ABlasterCharacter::TimerCallback_Elim()
+{
+	//when this TimerCallback reached, we re-spawn the Character 
+	//so the idea is we create yet another ABlasterGameMode::RequestRespawn() hadling all the Reset, Destroy and respawn from there
+	//and then call it back here! 
+	//what the heck why it is so 'around' why dont we just call directly from ABlasterGameMode::PlayerEliminated() instead?
+	//also why you must call Char::Elim from GameMode instead of directly here in char::ReceiveDamage? 
+
+	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
+	ABlasterPlayerController* EliminatedController = Cast<ABlasterPlayerController>(GetWorld()->GetFirstPlayerController());
+	BlasterGameMode->RequestRespawn(this, EliminatedController);
+
+}
+
+void ABlasterCharacter::UpdateHUD_Health()
+{
+	//Read Appendix28, to know why this line of code is more than necessary!
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
+	if (BlasterPlayerController) BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
+}
 
 void ABlasterCharacter::Turn_ForSimProxyOnly()
 {
@@ -230,10 +262,6 @@ void ABlasterCharacter::Turn_ForSimProxyOnly()
 	{
 		TurningInPlace = ETurningInPlace::RTIP_NoTurning;
 	}
-}
-
-void ABlasterCharacter::Elim()
-{
 }
 
 void ABlasterCharacter::SetupAimOffsetVariables(float DeltaTime)
@@ -313,7 +341,6 @@ void ABlasterCharacter::TurnInPlace_ForAutoProxyOnly(float DeltaTime)
 		SetTurningInPlace(ETurningInPlace::RTIP_TurnLeft);
 	}
 }
-
 
 //return true if EquippedWeapon is NOT null
 bool ABlasterCharacter::IsWeaponEquipped()
@@ -397,12 +424,6 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	}
 }
 
-//void ABlasterCharacter::MulticastPlayHitReactMontage_Implementation()
-//{
-//	PlayHitReactMontage();
-//}
-
-
 void ABlasterCharacter::PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName)
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -424,18 +445,6 @@ void ABlasterCharacter::PlayFireMontage()
 	PlayMontage_SpecificSection(AM_FireMontage, SectionName);
 }
 
-void ABlasterCharacter::StopFireMontage()
-{
-	if (AM_FireMontage == nullptr) return;
-
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-
-	if (AnimInstance) AnimInstance->Montage_Stop(0.2f, AM_FireMontage);
-
-	//AnimInstance->PlaySlotAnimationAsDynamicMontage();
-	//GetMesh()->PlayAnimation();
-}
-
 void ABlasterCharacter::PlayHitReactMontage()
 {
 	if(AM_FireMontage == nullptr) return;
@@ -444,6 +453,11 @@ void ABlasterCharacter::PlayHitReactMontage()
 
 	PlayMontage_SpecificSection(AM_HitReact, SectionName);
 
+}
+
+void ABlasterCharacter::PlayElimMontage()
+{
+	PlayMontage_SpecificSection(AM_ElimMontage);
 }
 
 void ABlasterCharacter::Input_Move(const FInputActionValue& Value)
@@ -529,7 +543,6 @@ void ABlasterCharacter::Jump()
 	else Super::Jump();
 }
 
-
 void ABlasterCharacter::Input_Aim_Pressed(const FInputActionValue& Value)
 {
 	if (CombatComponent == nullptr) return;
@@ -583,6 +596,8 @@ void ABlasterCharacter::HideCharacterIfCameraClose()
 	}
 }
 
+
+
 ////Stephen create this in UActorComponent instead.
 //void ABlasterCharacter::SetIsAiming(bool InIsAiming) //REPLACE
 //{
@@ -596,7 +611,6 @@ void ABlasterCharacter::HideCharacterIfCameraClose()
 //	else
 //		ServerSetIsAiming(InIsAiming);
 //}
-
 
 //void ABlasterCharacter::ServerSetIsAiming_Implementation(bool InIsAiming) //REPLACE
 //{

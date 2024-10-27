@@ -37,22 +37,20 @@ public:
 	UFUNCTION(Server, Reliable) //this is important event, so we make it Reliable as well
 	void ServerEKeyPressed();
 
-	//UFUNCTION(NetMulticast , Unreliable)
-	//void MulticastPlayHitReactMontage(); //no need any more
-
 	virtual void OnRep_ReplicatedMovement() override;
 
 	//this time we create callback to be bound to OnTakeAnyDamage, rather than override AActor::TakeDamage
 	UFUNCTION() //because OnTakeAnyDamgage is DYNAMIC delegate
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
+	void UpdateHUD_Health();
+
 //category4: regular functions: 
 	//montages:
-	void PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName = "");
+	void PlayMontage_SpecificSection(UAnimMontage* InMontage, FName InName = "Default");
 	void PlayFireMontage();
-	void StopFireMontage();
-
 	void PlayHitReactMontage();
+	void PlayElimMontage();
 	//sound and effects:
 
 	//bool functions:
@@ -70,8 +68,12 @@ public:
 
 	void Turn_ForSimProxyOnly();
 
-	void Elim();
+	//this is just an option of GOLDEN0, you can even call it directly in ReceiveDamage, and then paste into OnRep_Health() as well
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastElim();
 
+	void Elim();
+	
 protected:
 	/***functions***/
 //category1: auto-generated functions:
@@ -96,15 +98,15 @@ protected:
 //Category1: Enums , arrays, pointers to external classes
 	//enum states:
 	ETurningInPlace TurningInPlace = ETurningInPlace::RTIP_NoTurning;
+
 	//pointer to external classes:
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
 	class AWeapon* OverlappingWeapon;
 
-	class ABlasterPlayerController* PlayerController; //NEWs
+	class ABlasterPlayerController* BlasterPlayerController; //NEWs
 
-	//	//HUD and its Overlay widget
-	//class ABlasterHUD* BlasterHUD;
-	//class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+	//not sure it is a good idea to create a member of this where this is only meaningful to the server device
+	//class ABlasterGameMode* BlasterGameMode;
 
 	//arrays:
 
@@ -130,7 +132,20 @@ protected:
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* AM_HitReact;
 
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* AM_ElimMontage;
+
 	//sound and effects:
+
+	//Timer:
+		//the character wont be in the world at first for you to EditInstance, also we would have different elim for different elim delay per character, it is not fair, so yeah that's why Stephen Play this tokent!
+	UPROPERTY(EditDefaultsOnly) 
+	float DelayTime_Elim = 3.f;
+
+	FTimerHandle TimerHandle_Elim;
+	UFUNCTION()
+	void TimerCallback_Elim();
+
 
 //category4: basic and primitive types
 	//UPROPERTY(EditAnywhere) //REPLACE
@@ -164,6 +179,8 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	float TimeThreshold;
+
+	bool bIsEliminated = false; //IsFiring and IsAimin is in CombatComponent, not here
 
 private: 
 	/***functions***/
@@ -257,4 +274,6 @@ public:
 	UCameraComponent* GetCamera() { return Camera; }
 
 	bool GetShouldRotateRootBone() { return bShouldRotateRootBone; }
+
+	bool GetIsEliminated() { return bIsEliminated; }
 };
