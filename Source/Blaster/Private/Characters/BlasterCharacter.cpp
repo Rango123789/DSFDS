@@ -166,23 +166,20 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	UpdateHUD_Health();
 
 	//only when Health ==0 we should summon the gamemode to do its very job
-	if (Health <= 0.f) //because you have Clamp above, so == is also fine!
+	if (Health <= 0.f) 
 	{
-		//Only the server device can get a valid reference to GameMode as it is only created in the server device
+		//Only the server device can get a valid reference to GameMode as it is only created in the server 
 		ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>( GetWorld()->GetAuthGameMode() );
 		if (BlasterGameMode)
 		{
 			ABlasterPlayerController* AttackerController = Cast<ABlasterPlayerController>(InstigatedBy);
-			BlasterGameMode->PlayerEliminated(this, BlasterPlayerController, AttackerController); //we dont check null other parameter here, we check it locally in the function itself (from GameMode) - this is my style
+			
+			//you miss this line: 
+			BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
+
+			BlasterGameMode->PlayerEliminated(this, BlasterPlayerController, AttackerController); 
 		}
 	}
-}
-
-//this will be called on all clients 
-void ABlasterCharacter::OnRep_Health()
-{
-	if (Health > 0.f) PlayHitReactMontage();
-	UpdateHUD_Health();
 }
 
 void ABlasterCharacter::Elim()
@@ -191,13 +188,6 @@ void ABlasterCharacter::Elim()
 	//can do other things other than just RPC, that only the server have it:
 
 	GetWorldTimerManager().SetTimer(TimerHandle_Elim, this , &ThisClass::TimerCallback_Elim,  DelayTime_Elim);
-}
-
-//this is just an option of GOLDEN0, you can even call 'PlayElimMontage()' directly in ReceiveDamage, and then paste into OnRep_Health() as well
-void ABlasterCharacter::MulticastElim_Implementation()
-{
-	bIsEliminated = true; //that help it switch ABP chain1 to chain2_elim first
-	PlayElimMontage();    //and so now can play on ElimSlot in that chain2_elim
 }
 
 void ABlasterCharacter::TimerCallback_Elim()
@@ -209,9 +199,25 @@ void ABlasterCharacter::TimerCallback_Elim()
 	//also why you must call Char::Elim from GameMode instead of directly here in char::ReceiveDamage? 
 
 	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
-	ABlasterPlayerController* EliminatedController = Cast<ABlasterPlayerController>(GetWorld()->GetFirstPlayerController());
-	BlasterGameMode->RequestRespawn(this, EliminatedController);
 
+	//you miss this line: 
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
+
+	if(BlasterGameMode)	BlasterGameMode->RequestRespawn(this, BlasterPlayerController);
+
+}
+
+void ABlasterCharacter::MulticastElim_Implementation()
+{
+	bIsEliminated = true; //that help it switch ABP chain1 to chain2_elim first
+	PlayElimMontage();    //and so now can play on ElimSlot in that chain2_elim
+}
+
+//this will be called on all clients 
+void ABlasterCharacter::OnRep_Health()
+{
+	if (Health > 0.f) PlayHitReactMontage();
+	UpdateHUD_Health();
 }
 
 void ABlasterCharacter::UpdateHUD_Health()
