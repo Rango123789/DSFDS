@@ -5,14 +5,15 @@
 #include "CharacterComponents/CombatComponent.h"
 #include "PlayerController/BlasterPlayerController.h"
 #include "GameModes/BlasterGameMode.h"
+#include "Weapons/Weapon.h"
 
+//#include "Curves/CurveFloat.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Components/WidgetComponent.h"
 #include "HUD/Overhead_UserWidget.h"
-#include "Weapons/Weapon.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/SkeletalMeshSocket.h"//test
@@ -56,6 +57,10 @@ ABlasterCharacter::ABlasterCharacter()
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Block);
 
 	//GetMesh()->SetNotifyRigidBodyCollision(true); //no need, only need to check where Hit Event need to occur
+
+	//setup TimelineComp:
+	TimelineComponent = CreateDefaultSubobject<UTimelineComponent>("TimelineComp");
+
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -169,6 +174,7 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	if (Health <= 0.f) 
 	{
 		//Only the server device can get a valid reference to GameMode as it is only created in the server 
+		   // OPTION1
 		ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>( GetWorld()->GetAuthGameMode() );
 		if (BlasterGameMode)
 		{
@@ -179,14 +185,17 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 
 			BlasterGameMode->PlayerEliminated(this, BlasterPlayerController, AttackerController); 
 		}
+		//  //OPTION2
+		//Elim();
 	}
 }
 
 void ABlasterCharacter::Elim()
 {
+	//CHAIN1: seen to all devices
 	MulticastElim();
-	//can do other things other than just RPC, that only the server have it:
 
+	//CHAIN2: other things happen ONLY in server (and potentially will be replicated)
 	GetWorldTimerManager().SetTimer(TimerHandle_Elim, this , &ThisClass::TimerCallback_Elim,  DelayTime_Elim);
 }
 
@@ -199,18 +208,52 @@ void ABlasterCharacter::TimerCallback_Elim()
 	//also why you must call Char::Elim from GameMode instead of directly here in char::ReceiveDamage? 
 
 	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
-
 	//you miss this line: 
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
 
 	if(BlasterGameMode)	BlasterGameMode->RequestRespawn(this, BlasterPlayerController);
-
 }
 
 void ABlasterCharacter::MulticastElim_Implementation()
 {
 	bIsEliminated = true; //that help it switch ABP chain1 to chain2_elim first
 	PlayElimMontage();    //and so now can play on ElimSlot in that chain2_elim
+
+	//OPTIONAL challenge: In case you want to change GetMesh() from non-optimized to optimized as Elim reach:
+	if(SkeletalMesh_Optimized) GetMesh()->SetSkeletalMeshAsset(SkeletalMesh_Optimized);
+	
+	//ready material before run Timeline:
+	if (MaterialInstance)
+	{
+		MaterialInstanceDynamic = UMaterialInstanceDynamic::Create(MaterialInstance, this);
+		GetMesh()->SetMaterial(0, MaterialInstanceDynamic);
+		//OPTIONAL if you give it correct starting values from MI_EpicCharacter_Dissolve already
+		//I check it 'MaterialInstance' dont have this 'SetScalar...' function!
+		MaterialInstanceDynamic->SetScalarParameterValue(TEXT("DissolveAdding"), -0.5f); 
+		MaterialInstanceDynamic->SetScalarParameterValue(TEXT("Glow"), 80.f); //implicit construction
+	}
+
+	StartTimeline_Dissolve();
+}
+
+void ABlasterCharacter::StartTimeline_Dissolve()
+{
+	if (TimelineComponent == nullptr) return;
+
+	//this is non-sparse DYNAMIC delegate, it has .BindDynamic instead (NOT .AddDynamic). 
+	// Do not worry, this line is NOT inside Timeline_Callback so it wont trigger many times at all
+	OnTimelineFloat_Delegate_Dissolve.BindDynamic(this, &ThisClass::OnTimelineFloat_Callback_Dissolve);
+
+	TimelineComponent->AddInterpFloat(CurveFloat_Dissolve, OnTimelineFloat_Delegate_Dissolve);
+	TimelineComponent->Play();
+
+}
+
+//all code in this function will be repeated constantly during Timeline:
+void ABlasterCharacter::OnTimelineFloat_Callback_Dissolve(float DissolveAdding)
+{
+	if (MaterialInstanceDynamic == nullptr) return;
+	MaterialInstanceDynamic->SetScalarParameterValue(TEXT("DissolveAdding"), DissolveAdding);
 }
 
 //this will be called on all clients 

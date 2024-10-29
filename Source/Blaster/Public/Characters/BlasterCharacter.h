@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Blaster/CharacterTypes.h"
 #include "Interfaces/InteractWithCrossHairsInterface.h"
+#include "Components/TimelineComponent.h" //have to put it here for FOnTimeline
 #include "BlasterCharacter.generated.h" 
 
 UCLASS()
@@ -123,6 +124,35 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	class UCombatComponent* CombatComponent;
+
+	//for Timeline: (I move them apart later)
+	UPROPERTY(VisibleAnywhere)
+	class UTimelineComponent* TimelineComponent; //this is UActorComp ->need CreateDefaultSubobject<T>
+	
+	UPROPERTY(EditAnywhere)
+	class UCurveFloat* CurveFloat_Dissolve;
+	//we need this
+		//UPROPERTY(EditAnywhere)
+		//FTimelineFloatTrack TimelineFloatTrack_Dissolve; //dont need this so far, in turn has sub member 'UCurveFloat*'
+	FOnTimelineFloat OnTimelineFloat_Delegate_Dissolve; //this is DYNAMIC delegate, with 'float' signature
+
+	void StartTimeline_Dissolve(); //OPTIONAL, but highly recommended, StartTimeline will prepare 2+ lines!	
+
+	UFUNCTION()
+	void OnTimelineFloat_Callback_Dissolve(float DissolveAdding);
+
+	//Ready Material for Timeline_callback (where external things work on top of DYNAMIC value of Timeline's curve)
+	UPROPERTY(EditAnywhere) 
+	UMaterialInstance* MaterialInstance; //to be picked from BP
+
+	UPROPERTY(VisibleAnywhere)
+	UMaterialInstanceDynamic* MaterialInstanceDynamic; // to work on top of 'MaterialInstance' and to be DIRECTLY assigned for GetMesh() through out Timeline
+
+	//OPTIONAL: In case you want to change GetMesh() from non-optimized to optimized as Elim reach
+	UPROPERTY(EditAnywhere)
+	USkeletalMesh* SkeletalMesh_Optimized;
+
+
 
 //category3: Engine types      
 	//montages:

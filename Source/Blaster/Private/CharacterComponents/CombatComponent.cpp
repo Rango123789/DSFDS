@@ -224,8 +224,6 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 	//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
 	Character->bUseControllerRotationYaw = true; //at first it is false
-
-	
 }
 
 //this is to fix the owning client can't update these on itself (weird case, can't explain :D )

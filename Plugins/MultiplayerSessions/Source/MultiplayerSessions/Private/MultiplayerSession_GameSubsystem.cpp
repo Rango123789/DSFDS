@@ -13,7 +13,6 @@ UMultiplayerSession_GameSubsystem::UMultiplayerSession_GameSubsystem() :
 	OnStartSessionCompleteDelegate ( FOnStartSessionCompleteDelegate ::CreateUObject(this, &ThisClass::OnStartSessionComplete)),
 	OnDestroySessionCompleteDelegate(FOnDestroySessionCompleteDelegate::CreateUObject(this, &ThisClass::OnDestroySessionComplete))
 {
-
 	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
 
 	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red

@@ -4,6 +4,8 @@
 #include "GameModes/BlasterGameMode.h"
 #include "Characters/BlasterCharacter.h"
 #include "PlayerController/BlasterPlayerController.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerStart.h"
 
 void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* ElimininatedCharacter, ABlasterPlayerController* EliminatedController, ABlasterPlayerController* AttackerController)
 {
@@ -20,5 +22,17 @@ void ABlasterGameMode::RequestRespawn(ABlasterCharacter* ElimininatedCharacter, 
 		ElimininatedCharacter->Destroy();
 	}
 
-	RestartPlayer(EliminatedController);
+	//RestartPlayer(EliminatedController); //easy option.
+
+	if (EliminatedController == nullptr) return;
+
+	TArray<AActor*> ActorArray;
+	UGameplayStatics::GetAllActorsOfClass(this, APlayerStart::StaticClass(), ActorArray);
+
+	if (ActorArray.Num() > 0)
+	{
+		int RandomNum = FMath::RandRange(0, ActorArray.Num() - 1);
+
+		RestartPlayerAtPlayerStart(EliminatedController, ActorArray[RandomNum] );
+	}
 }
