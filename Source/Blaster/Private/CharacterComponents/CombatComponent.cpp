@@ -205,6 +205,9 @@ void UCombatComponent::FireTimer_Callback()
 void UCombatComponent::Equip(AWeapon* InWeapon)
 {
 	if (InWeapon == nullptr || Character == nullptr) return;
+    
+	//I move this on top with the hope that it is replicated before OnRep_WeaponState
+	EquippedWeapon->SetOwner(Character);
 
 	EquippedWeapon = InWeapon;
 
@@ -214,12 +217,8 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 	FireDelay = EquippedWeapon->GetFireDelay();
 
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
+
 	if(RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
-
-	EquippedWeapon->SetOwner(Character);
-
-	//EquippedWeapon->GetSphere()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	//EquippedWeapon->ShowPickupWidget(false);
 	
 	//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
