@@ -171,6 +171,8 @@ public:
 
     void SetWeaponState(EWeaponState InState);
 
+    void SetWeaponState_Only(EWeaponState InState);
+
     float GetPOV() { return FOV; }
     float GetPOVInterpSpeed() { return FOVInterpSpeed; }
 

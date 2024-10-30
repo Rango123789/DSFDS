@@ -142,14 +142,12 @@ void AWeapon::SetWeaponState(EWeaponState InState)
 	 {
 	 case EWeaponState::EWS_Equipped : 
 		 ShowPickupWidget(false); 
-		 //Only server need to touch this
-		 if(Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		 //Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
+		 if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 		 WeaponMesh->SetSimulatePhysics(false); //TIRE1
 		 WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
 		 if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
-			
-
 		 return;
 	 case EWeaponState::EWS_Droppped :
 		 //detach this weapon from CHAR::GetMesh();, detachment is replicated itself so yeah! no need to do in OnRep_ -here is currently OnRep_ lol
@@ -163,6 +161,11 @@ void AWeapon::SetWeaponState(EWeaponState InState)
 		 WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
 		 if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
 	 }
+}
+
+void AWeapon::SetWeaponState_Only(EWeaponState InState)
+{
+	WeaponState = InState;
 }
 
 //Will trigger as WeaponState is changed (say by SetWeaponState() ), [Server->clients]

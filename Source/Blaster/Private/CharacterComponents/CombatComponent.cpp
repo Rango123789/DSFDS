@@ -228,11 +228,26 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 //this is to fix the owning client can't update these on itself (weird case, can't explain :D )
 void UCombatComponent::OnRep_EquippedWeapon()
 {
-	//this OnRep_ is called whenever it changes, so you dont want to DoAction when it is changed to NOT valid value but null :D :D
-	//it is easy to forget this LOL, but yeah :D 
-	if (EquippedWeapon == nullptr || Character == nullptr) return;
+	if (EquippedWeapon == nullptr || EquippedWeapon->GetWeaponMesh() || Character == nullptr) return;
 
 	//the condition is optional, but since I know only that owning client have problem, so I only need to let this code run on that client LOL, hell yeah!
+
+	//Note that I've been thinking about extra the code, setting WeaponState, Setting physics, but unfortunately WeaponState is not public member nor did I want to move it to public sesson to break my UNIVERSAL pattern :)
+	//Hence the only choice1: is to follow stephen, focus on case=Equipped only
+	//Choice2: create another exclusive setter SetWeaponStateOnly()
+
+	//choice1:
+	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped); //go and restrict SetWeaponState::case_Equipped that the local can't touch Sphere collision -->Go and add If(HasAuthority()), but you dont have to setup physics here.
+	
+	//choice2: 
+	EquippedWeapon->SetWeaponState_Only(EWeaponState::EWS_Equipped); //without needing to break the GLOBAL pattern, but you will have to setup physics here
+
+	EquippedWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
+	EquippedWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+	EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	//even if Attachment action is replicated we call it here to make sure it works
+	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
+	if (RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
 
 	if (Character->IsLocallyControlled())
 	{
