@@ -136,16 +136,32 @@ void AWeapon::ShowPickupWidget(bool bShowWdiget)
 //to be called in ::Equip(), hence to be called in Input_EKeyPressed(), either in the server or a client (but NOT both, but NOT more than one), if in a client, this client again send RPC to execute in the server gain :D :D
 void AWeapon::SetWeaponState(EWeaponState InState)
 {
-	 WeaponState = InState; //WeaponState is 2-way replicated, so we dont worry about it, no matter it is called on client or server copy
+	 WeaponState = InState; 
 	 
-	 //hitchhiking code: the reason why we need it here is for the care it is called on server-controlled-char copy
-	 //these code below is not currently replicated, hence mind to do it "in 2 places" 
 	 switch (WeaponState)
 	 {
 	 case EWeaponState::EWS_Equipped : 
 		 ShowPickupWidget(false); 
+		 //Only server need to touch this
 		 if(Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		 WeaponMesh->SetSimulatePhysics(false); //TIRE1
+		 WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+		 if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
+			
+
 		 return;
+	 case EWeaponState::EWS_Droppped :
+		 //detach this weapon from CHAR::GetMesh();, detachment is replicated itself so yeah! no need to do in OnRep_ -here is currently OnRep_ lol
+		 //DetachFromActor(FDetachmentTransformRules::KeepWorldTransform); // WeaponMesh->DetachFromComponent(); - stephen
+		 //SetOwner(nullptr);
+
+		 //Only server need to touch this
+		 if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		 //physics group:
+		 WeaponMesh->SetSimulatePhysics(true); //TIRE1
+		 WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
+		 if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
 	 }
 }
 
@@ -155,14 +171,37 @@ void AWeapon::SetWeaponState(EWeaponState InState)
 //this REDUDANT code will be called on all clients
 void AWeapon::OnRep_WeaponState()
 {
-	//hitchhiking code: after this (and above...) you can remove 2 statements from CombatCompoent::Equip() now.
-	//switch (WeaponState)
-	//{
-	//case EWeaponState::EWS_Equipped:
-	//	ShowPickupWidget(false);
-	//	//if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //surely redudant TIRE2 lol, COLLISION is only in the server so far
-	//	return;
-	//}
+	ABlasterCharacter* Character = Cast<ABlasterCharacter>(GetOwner());
+
+	switch (WeaponState)
+	{
+	case EWeaponState::EWS_Equipped:
+		//May NOT need as PrimativeComp->SetVisibility() can be replicated by UE5 itself even if comp::Replicates = false!
+		//ShowPickupWidget(false);
+		
+		//Surely redudant TIRE2 lol, COLLISION is only in the server so far
+		// //if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		WeaponMesh->SetSimulatePhysics(false); //TIRE1
+		WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+		if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
+
+		//we do this with the hop that Combat::Equip()~>SetOwner(Char) will be replicated on clients before we reach this OnRep_WeaponState, so there is no gaurantee but double-kill does 'INCREASE' the chance of success:
+
+		if (Character) AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, FName("RightHandSocket"));
+
+		return;
+	case EWeaponState::EWS_Droppped:
+		//NOR need we enable it back for Clients
+		// //if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		
+		//physics group:
+		WeaponMesh->SetSimulatePhysics(true); //TIRE1
+		WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
+		if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
+
+		return;
+	};
 }
 
 void AWeapon::Fire(const FVector& HitTarget)

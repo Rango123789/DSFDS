@@ -6,6 +6,7 @@
 #include "PlayerController/BlasterPlayerController.h"
 #include "GameModes/BlasterGameMode.h"
 #include "Weapons/Weapon.h"
+#include "Components/CapsuleComponent.h"
 
 //#include "Curves/CurveFloat.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -197,6 +198,18 @@ void ABlasterCharacter::Elim()
 
 	//CHAIN2: other things happen ONLY in server (and potentially will be replicated)
 	GetWorldTimerManager().SetTimer(TimerHandle_Elim, this , &ThisClass::TimerCallback_Elim,  DelayTime_Elim);
+
+	//you can simply create AWeapon::Dropped to contain these code, and then call a single code, you access through so many tires for the same local destination LOL :d :d
+	if (GetCombatComponent() && GetCombatComponent()->EquippedWeapon)
+	{
+		GetCombatComponent()->EquippedWeapon->SetWeaponState(EWeaponState::EWS_Droppped);
+
+		//these are self-replicated actions, so dont need to put it inside OnRep_
+		FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
+		GetCombatComponent()->EquippedWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform); 
+		//FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
+		GetCombatComponent()->EquippedWeapon->SetOwner(nullptr);
+	}
 }
 
 void ABlasterCharacter::TimerCallback_Elim()
@@ -219,21 +232,26 @@ void ABlasterCharacter::MulticastElim_Implementation()
 	bIsEliminated = true; //that help it switch ABP chain1 to chain2_elim first
 	PlayElimMontage();    //and so now can play on ElimSlot in that chain2_elim
 
-	//OPTIONAL challenge: In case you want to change GetMesh() from non-optimized to optimized as Elim reach:
+	//ready material before run Timeline:
 	if(SkeletalMesh_Optimized) GetMesh()->SetSkeletalMeshAsset(SkeletalMesh_Optimized);
 	
-	//ready material before run Timeline:
 	if (MaterialInstance)
 	{
 		MaterialInstanceDynamic = UMaterialInstanceDynamic::Create(MaterialInstance, this);
 		GetMesh()->SetMaterial(0, MaterialInstanceDynamic);
-		//OPTIONAL if you give it correct starting values from MI_EpicCharacter_Dissolve already
-		//I check it 'MaterialInstance' dont have this 'SetScalar...' function!
+
 		MaterialInstanceDynamic->SetScalarParameterValue(TEXT("DissolveAdding"), -0.5f); 
 		MaterialInstanceDynamic->SetScalarParameterValue(TEXT("Glow"), 80.f); //implicit construction
 	}
-
+	//start Dissolve process
 	StartTimeline_Dissolve();
+
+	//disable movement and collision for char::capsule and getmesh() in all devices:
+	if(GetCapsuleComponent()) GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if(GetMesh()) GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	GetCharacterMovement()->DisableMovement();
+	GetCharacterMovement()->StopMovementImmediately();
 }
 
 void ABlasterCharacter::StartTimeline_Dissolve()
