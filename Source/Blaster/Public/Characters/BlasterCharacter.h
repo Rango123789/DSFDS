@@ -88,8 +88,9 @@ protected:
 
 	 /**</X>*/
 
-//category3: regular functions 
-
+//category3: regular functions
+    // poll (observe) for any relevant classes and initalize our HUD:
+	void PollInit();
 //category4: callbacks
 
 //category5: replication
@@ -105,6 +106,8 @@ protected:
 	class AWeapon* OverlappingWeapon;
 
 	class ABlasterPlayerController* BlasterPlayerController; //NEWs
+
+	class APlayerState_Blaster* PlayerState_Blaster; //NEWs
 
 	//not sure it is a good idea to create a member of this where this is only meaningful to the server device
 	//class ABlasterGameMode* BlasterGameMode;
@@ -152,8 +155,6 @@ protected:
 	UPROPERTY(EditAnywhere)
 	USkeletalMesh* SkeletalMesh_Optimized;
 
-
-
 //category3: Engine types      
 	//montages:
 	UPROPERTY(EditAnywhere)
@@ -166,6 +167,16 @@ protected:
 	class UAnimMontage* AM_ElimMontage;
 
 	//sound and effects:
+	UPROPERTY(EditAnywhere) 
+	UParticleSystem* BotParticle; //(*)
+	
+	//We dont intent to create default subobject of this, we just store the object return by (*) in MulticastElim, for a weird reason: it can't destroy itself after finshing playing :D :D. 
+	//Not sure it has been change in UE5.2 but let's see.
+	//UPDATE: no need anymore it auto-destroy itself in UE5.2+ :D :D, create a member storing it only lengthne its timelife stupidly :D :D
+	//UParticleSystemComponent* ParticleSystemComponent; 
+
+	UPROPERTY(EditAnywhere)
+	USoundBase* BotSound;
 
 	//Timer:
 		//the character wont be in the world at first for you to EditInstance, also we would have different elim for different elim delay per character, it is not fair, so yeah that's why Stephen Play this tokent!
@@ -306,4 +317,7 @@ public:
 	bool GetShouldRotateRootBone() { return bShouldRotateRootBone; }
 
 	bool GetIsEliminated() { return bIsEliminated; }
+
+	float GetHealth() { return Health; }
+	float GetMaxHealth() { return MaxHealth; }
 };

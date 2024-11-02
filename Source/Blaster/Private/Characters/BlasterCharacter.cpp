@@ -19,6 +19,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/SkeletalMeshSocket.h"//test
 #include "Blaster/Blaster.h"
+#include <Kismet/GameplayStatics.h>
+#include <PlayerStates/PlayerState_Blaster.h>
 //#include "HUD/BlasterHUD.h"
 //#include "HUD/CharacterOverlay_UserWidget.h"
 
@@ -67,12 +69,17 @@ ABlasterCharacter::ABlasterCharacter()
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
 //stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
 	BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
-	if(BlasterPlayerController) BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
-
+	PlayerState_Blaster = GetPlayerState<APlayerState_Blaster>();
+	if (BlasterPlayerController) BlasterPlayerController->SetHUDHealth(Health, MaxHealth); 	//this is for GameStart
+	if (PlayerState_Blaster && BlasterPlayerController)
+	{ 
+		BlasterPlayerController->SetHUDScore(PlayerState_Blaster->GetScore()); 	//medicine1
+		BlasterPlayerController->SetHUDDefeat(PlayerState_Blaster->GetDefeat()); 	//medicine1
+	}
+	
 	////Only the server device can get a valid reference to GameMode as it is only created in the server device, not sure it is a good idea to create a member of this where this is only meaningful to the server device
 	//BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
 
@@ -101,12 +108,33 @@ void ABlasterCharacter::BeginPlay()
 	}
 }
 
+//Stephen way, for now I use my way already
+void ABlasterCharacter::PollInit()
+{
+	//we only do these if it is currently null
+	if (PlayerState_Blaster == nullptr)
+	{
+		BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
+
+		PlayerState_Blaster = GetPlayerState<APlayerState_Blaster>(); //could be optional
+
+		if (PlayerState_Blaster && BlasterPlayerController)
+		{
+			BlasterPlayerController->SetHUDScore(PlayerState_Blaster->GetScore()); 	//this is for GameStart
+			BlasterPlayerController->SetHUDDefeat(PlayerState_Blaster->GetDefeat());
+		}
+	}
+}
+
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon , COND_OwnerOnly);
 	//DOREPLIFETIME(ABlasterCharacter, OverlappingWeapon);
+	// 
+	//I dont remember stephen did this, but I add this line according the warning, as I see we set CombatComponent replicated in this char::char() above -->no it gives a crash, regardless the warning suggest lol, this is "UActorComponent", not regular vars
+	//DOREPLIFETIME_CONDITION(ABlasterCharacter, CombatComponent, COND_OwnerOnly);
 
 	DOREPLIFETIME(ABlasterCharacter, Health);
 }
@@ -122,6 +150,8 @@ void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
     
+	//PollInit(); //Currently I use medicine 1,2,3
+
 	HideCharacterIfCameraClose();
 
 	//for now: 
@@ -196,19 +226,23 @@ void ABlasterCharacter::Elim()
 	//CHAIN1: seen to all devices
 	MulticastElim();
 
-	//CHAIN2: other things happen ONLY in server (and potentially will be replicated)
+	//CHAIN2: other things happen ONLY in server (and expected to be self-replicated, otherwise must let it go with Multicast above)
+	      //respawn after 3s:
 	GetWorldTimerManager().SetTimer(TimerHandle_Elim, this , &ThisClass::TimerCallback_Elim,  DelayTime_Elim);
 
-	//you can simply create AWeapon::Dropped to contain these code, and then call a single code, you access through so many tires for the same local destination LOL :d :d
+           //you can simply create AWeapon::Dropped to contain these code, and then call a single code, you access through so many tires for the same local destination LOL :d :d
+	       //drop the weapon && so on:
 	if (GetCombatComponent() && GetCombatComponent()->EquippedWeapon)
 	{
-		GetCombatComponent()->EquippedWeapon->SetWeaponState(EWeaponState::EWS_Droppped);
+		GetCombatComponent()->EquippedWeapon->Drop();
 
-		//these are self-replicated actions, so dont need to put it inside OnRep_
-		FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
-		GetCombatComponent()->EquippedWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform); 
+		//GetCombatComponent()->EquippedWeapon->SetWeaponState(EWeaponState::EWS_Droppped);
+
+		////these are self-replicated actions, so dont need to put it inside OnRep_
 		//FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
-		GetCombatComponent()->EquippedWeapon->SetOwner(nullptr);
+		//GetCombatComponent()->EquippedWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform); 
+		////FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
+		//GetCombatComponent()->EquippedWeapon->SetOwner(nullptr);
 	}
 }
 
@@ -243,7 +277,7 @@ void ABlasterCharacter::MulticastElim_Implementation()
 		MaterialInstanceDynamic->SetScalarParameterValue(TEXT("DissolveAdding"), -0.5f); 
 		MaterialInstanceDynamic->SetScalarParameterValue(TEXT("Glow"), 80.f); //implicit construction
 	}
-	//start Dissolve process
+	//start Dissolve process: it will start immediately , unlike respawn with Timer in Chain2
 	StartTimeline_Dissolve();
 
 	//disable movement and collision for char::capsule and getmesh() in all devices:
@@ -252,6 +286,12 @@ void ABlasterCharacter::MulticastElim_Implementation()
 
 	GetCharacterMovement()->DisableMovement();
 	GetCharacterMovement()->StopMovementImmediately();
+	
+	//play UParticleSystem(a bot) and its sound:
+	FVector SpawnLocation = { GetActorLocation().X ,GetActorLocation().Y , GetActorLocation().Z + 200.f };
+
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BotParticle, SpawnLocation, GetActorRotation(), true); //I pass in bAutoDestroy=true to make sure LOL
+	UGameplayStatics::PlaySoundAtLocation(this, BotSound, SpawnLocation);
 }
 
 void ABlasterCharacter::StartTimeline_Dissolve()

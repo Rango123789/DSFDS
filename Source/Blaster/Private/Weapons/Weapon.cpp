@@ -2,6 +2,9 @@
 
 #include "Weapons/Weapon.h"
 #include "Weapons/Casing.h" //to be spawned here 
+#include "Characters/BlasterCharacter.h"
+#include "PlayerController/BlasterPlayerController.h"
+
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Characters/BlasterCharacter.h"
@@ -9,6 +12,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/SkeletalMeshSocket.h"
+
 
 // Sets default values
 AWeapon::AWeapon()
@@ -53,6 +57,7 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AWeapon, WeaponState);
+	DOREPLIFETIME(AWeapon, Ammo);
 }
 
 // Called when the game starts or when spawned
@@ -100,6 +105,18 @@ void AWeapon::Tick(float DeltaTime)
 
 }
 
+void AWeapon::Drop()
+{
+	SetWeaponState(EWeaponState::EWS_Droppped);
+
+	//these are self-replicated actions, so dont need to put it inside OnRep_
+	FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	//FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
+	SetOwner(nullptr);
+
+}
+
 void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	//USceneComponent::SetVisibility() - TIRE1 , the visibility of the TextBlock is still true by default and we dont care:
@@ -128,6 +145,19 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 	}
 }
 
+void AWeapon::UpdateHUD_Ammo()
+{
+	Ammo--;
+	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
+}
+
+void AWeapon::OnRep_Ammo()
+{
+	//unlike X from PS or Char, we pretty sure it is valid since picked, so no point to use re-check trick... so the first convention line is NOT needed
+
+	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
+}
+
 void AWeapon::ShowPickupWidget(bool bShowWdiget)
 {
 	if (Pickup_WidgetComponent)	Pickup_WidgetComponent->SetVisibility(bShowWdiget);
@@ -143,7 +173,8 @@ void AWeapon::SetWeaponState(EWeaponState InState)
 	 case EWeaponState::EWS_Equipped : 
 		 ShowPickupWidget(false); 
 		 //Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
-		 if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		 //if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
+		 if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
 
 		 WeaponMesh->SetSimulatePhysics(false); //TIRE1
 		 WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
@@ -198,10 +229,10 @@ void AWeapon::OnRep_WeaponState()
 		//NOR need we enable it back for Clients
 		// //if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		
-		//physics group:
-		WeaponMesh->SetSimulatePhysics(true); //TIRE1
-		WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
-		if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
+		////physics group:
+		//WeaponMesh->SetSimulatePhysics(true); //TIRE1
+		//WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
+		//if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
 
 		return;
 	};

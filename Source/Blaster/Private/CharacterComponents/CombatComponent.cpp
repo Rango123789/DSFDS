@@ -206,10 +206,10 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 {
 	if (InWeapon == nullptr || Character == nullptr) return;
     
+	EquippedWeapon = InWeapon;
+
 	//I move this on top with the hope that it is replicated before OnRep_WeaponState
 	EquippedWeapon->SetOwner(Character);
-
-	EquippedWeapon = InWeapon;
 
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped) ;
 
@@ -236,8 +236,8 @@ void UCombatComponent::OnRep_EquippedWeapon()
 	//Hence the only choice1: is to follow stephen, focus on case=Equipped only
 	//Choice2: create another exclusive setter SetWeaponStateOnly()
 
-	//choice1:
-	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped); //go and restrict SetWeaponState::case_Equipped that the local can't touch Sphere collision -->Go and add If(HasAuthority()), but you dont have to setup physics here.
+	////choice1:
+	//EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped); //go and restrict SetWeaponState::case_Equipped that the local can't touch Sphere collision -->Go and add If(HasAuthority()), but you dont have to setup physics here.
 	
 	//choice2: 
 	EquippedWeapon->SetWeaponState_Only(EWeaponState::EWS_Equipped); //without needing to break the GLOBAL pattern, but you will have to setup physics here
@@ -245,6 +245,7 @@ void UCombatComponent::OnRep_EquippedWeapon()
 	EquippedWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
 	EquippedWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
 	EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	//even if Attachment action is replicated we call it here to make sure it works
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
 	if (RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());

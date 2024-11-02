@@ -61,6 +61,8 @@ public:
 
     //BP-callale functions:
     
+    //others:
+    void Drop();
 
 //category4: callbacks 
     UFUNCTION()
@@ -135,6 +137,20 @@ protected: //base
     bool bIsAutomatic = true;
     UPROPERTY(EditAnywhere)
     float FireDelay = 0.25;
+
+    //Ammo - HUD relevant:
+    UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
+    int Ammo = 30 ;
+    
+    UFUNCTION()
+    virtual void OnRep_Ammo();
+
+    void UpdateHUD_Ammo();
+
+    int MagazineCapacity; //not use yet
+
+    class ABlasterCharacter* OwnerCharacter;//avoid same name as some local var of its method
+    class ABlasterPlayerController* BlasterPlayerController;
 
 
 private: //FINAL child
