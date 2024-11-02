@@ -105,8 +105,10 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon) // OnRep_[ReplicatedMember]() 
 	class AWeapon* OverlappingWeapon;
 
+	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController; //NEWs
 
+	UPROPERTY()
 	class APlayerState_Blaster* PlayerState_Blaster; //NEWs
 
 	//not sure it is a good idea to create a member of this where this is only meaningful to the server device
@@ -320,4 +322,6 @@ public:
 
 	float GetHealth() { return Health; }
 	float GetMaxHealth() { return MaxHealth; }
+
+	ABlasterPlayerController* GetBlasterPlayerController();
 };

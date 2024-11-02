@@ -62,10 +62,11 @@ private:
 	FTimerHandle TimeHandle;
 //***data member***
 	//this no need to be replicated, it is set for all version back in Char::PostInitializeComponents
+	UPROPERTY()
 	class ABlasterCharacter* Character; //to let this comp aware of its hosting object
-
+	UPROPERTY()
 	class ABlasterHUD* BlasterHUD;
-
+	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
 
 	//the Equipped Pose relying on this to know whether Char has a weapon or not, so that to choose "which group of anims: equipped or not"

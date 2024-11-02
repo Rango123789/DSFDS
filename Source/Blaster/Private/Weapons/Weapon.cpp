@@ -97,7 +97,6 @@ void AWeapon::BeginPlay()
 	}
 }
 
-
 // Called every frame
 void AWeapon::Tick(float DeltaTime)
 {
@@ -115,6 +114,11 @@ void AWeapon::Drop()
 	//FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
 	SetOwner(nullptr);
 
+	//set Char, PC to null too, avoiding stolen weapon affect its old owner's HUD and so on
+	//these are not self-replicated so we will call it again, in say , OnRep_Owner too!
+    //but this time you MUST check if (Owner == nullptr) before you do these, because it replicated when it is set to nullptr or to valid pointer (dont want this)
+	OwnerCharacter = nullptr; //not self-replicated
+	BlasterPlayerController = nullptr;
 }
 
 void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -148,12 +152,44 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 void AWeapon::UpdateHUD_Ammo()
 {
 	Ammo--;
-	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
+
+	CheckAndSetHUD_Ammo();
 }
 
 void AWeapon::OnRep_Ammo()
 {
-	//unlike X from PS or Char, we pretty sure it is valid since picked, so no point to use re-check trick... so the first convention line is NOT needed
+	CheckAndSetHUD_Ammo();
+}
+
+void AWeapon::OnRep_Owner()
+{
+	//after the change, if Owner is changed to null, then we set Char and PC to null as well
+	if (Owner == nullptr)
+	{
+		OwnerCharacter = nullptr;
+		BlasterPlayerController = nullptr;
+
+		return; //you dont need to do code outside if it change to nullptr! or you can use "else" after you factorize these shit below into 'CheckAndSetHUD_Ammo()'
+	}
+
+	CheckAndSetHUD_Ammo();
+
+	////OPTION2: remember to add UPROPERTY() will help 'invalid address' into null to avoid undefined behavour when its owner elimned:
+	//OwnerCharacter = OwnerCharacter == nullptr ? GetOwner<ABlasterCharacter>() : OwnerCharacter;
+	//if (OwnerCharacter == nullptr) return;
+
+	//BlasterPlayerController = BlasterPlayerController == nullptr ? OwnerCharacter->GetController<ABlasterPlayerController>() : BlasterPlayerController;
+
+	//if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
+}
+
+void AWeapon::CheckAndSetHUD_Ammo()
+{
+	//OPTION2: remember to add UPROPERTY() will help 'invalid address' into null to avoid undefined behavour when its owner elimned:
+	OwnerCharacter = OwnerCharacter == nullptr ? GetOwner<ABlasterCharacter>() : OwnerCharacter;
+	if (OwnerCharacter == nullptr) return;
+
+	BlasterPlayerController = BlasterPlayerController == nullptr ? OwnerCharacter->GetController<ABlasterPlayerController>() : BlasterPlayerController;
 
 	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
 }
@@ -255,6 +291,8 @@ void AWeapon::Fire(const FVector& HitTarget)
 		GetWorld()->SpawnActor<ACasing>(CasingClass, AmmoEjectSocket_Transform);
 
 	}
+
+	//Option2: stephen call UpdateHUD_Ammo() here, and say this is called from the server. yes it is, but it is inside a multicast and also called from the clients at the same time too :D :D
 }
 
 

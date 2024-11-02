@@ -25,8 +25,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
+	UPROPERTY()
 	class ABlasterCharacter* BlasterCharacter;
+	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Defeat);

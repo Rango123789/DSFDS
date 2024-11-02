@@ -49,7 +49,7 @@ void ABlasterGameMode::RequestRespawn(ABlasterCharacter* ElimininatedCharacter, 
 
 	if (ActorArray.Num() > 0)
 	{
-		int RandomNum = FMath::RandRange(0, ActorArray.Num() - 1);
+		int32 RandomNum = FMath::RandRange(0, ActorArray.Num() - 1);
 
 		RestartPlayerAtPlayerStart(EliminatedController, ActorArray[RandomNum] );
 	}

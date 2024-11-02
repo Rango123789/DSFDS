@@ -63,7 +63,8 @@ public:
     
     //others:
     void Drop();
-
+    void UpdateHUD_Ammo();
+    void CheckAndSetHUD_Ammo();
 //category4: callbacks 
     UFUNCTION()
     void OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -76,7 +77,8 @@ protected: //base
     virtual void BeginPlay() override;
 //category2: virtual functions:
     /**<Actor>*/
-
+    virtual void OnRep_Owner() override;
+    
     /**</Actor>*/
 
     /**<X>*/
@@ -140,16 +142,16 @@ protected: //base
 
     //Ammo - HUD relevant:
     UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
-    int Ammo = 30 ;
+    int32 Ammo = 30 ;
     
     UFUNCTION()
     virtual void OnRep_Ammo();
 
-    void UpdateHUD_Ammo();
+    int32 MagazineCapacity; //not use yet
 
-    int MagazineCapacity; //not use yet
-
+    UPROPERTY()
     class ABlasterCharacter* OwnerCharacter;//avoid same name as some local var of its method
+    UPROPERTY()
     class ABlasterPlayerController* BlasterPlayerController;
 
 
@@ -194,4 +196,5 @@ public:
 
     bool GetIsAutomatic() { return bIsAutomatic; }
     float GetFireDelay() { return FireDelay; }
+    int32 GetAmmo() { return Ammo; }
 };

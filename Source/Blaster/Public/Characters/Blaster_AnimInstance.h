@@ -68,6 +68,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	float AO_Pitch; //the Pitch of ControlRotation<-Camera
 
+	UPROPERTY()
 	class AWeapon* EquippedWeapon;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)

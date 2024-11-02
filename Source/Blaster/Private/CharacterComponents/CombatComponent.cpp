@@ -4,8 +4,9 @@
 #include "CharacterComponents/CombatComponent.h"
 #include "Weapons/Weapon.h"
 #include "Characters/BlasterCharacter.h"
-#include "HUD/BlasterHUD.h"
 #include "PlayerController/BlasterPlayerController.h"
+#include "HUD/BlasterHUD.h"
+
 #include "Camera/CameraComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
@@ -159,6 +160,9 @@ void UCombatComponent::Input_Fire(bool InIsFiring)
 void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
 {
 	MulticastInput_Fire(InIsFiring, Target);
+
+	//I decide to call it here, safe enough from SetOwner above LOL:
+	if (EquippedWeapon) EquippedWeapon->UpdateHUD_Ammo();
 }
 
 void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
@@ -199,13 +203,14 @@ void UCombatComponent::FireTimer_Callback()
 	Input_Fire(bIsFiring); 
 }
 
-
-
 //Instead of doing it from AWeapon::Equip() we do it here, hence it should do all the stuff we usually did here
 void UCombatComponent::Equip(AWeapon* InWeapon)
 {
 	if (InWeapon == nullptr || Character == nullptr) return;
     
+	//News: drop current weapon (if any) before you pick a new one
+	if (EquippedWeapon) EquippedWeapon->Drop();
+
 	EquippedWeapon = InWeapon;
 
 	//I move this on top with the hope that it is replicated before OnRep_WeaponState
@@ -213,12 +218,20 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped) ;
 
+	//these 2 lines are optional, so I will remove it anyway
 	bIsAutomatic = EquippedWeapon->GetIsAutomatic();
 	FireDelay = EquippedWeapon->GetFireDelay();
 
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
 
 	if(RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
+
+	//I decide to call it here, safe enough from SetOwner above LOL:
+	//if (Character->GetBlasterPlayerController()) //the re-check cast is done right in the Getter
+	//{
+	//	Character->GetBlasterPlayerController()->SetHUDAmmo(EquippedWeapon->GetAmmo());
+	//}
+	EquippedWeapon->CheckAndSetHUD_Ammo();
 	
 	//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true

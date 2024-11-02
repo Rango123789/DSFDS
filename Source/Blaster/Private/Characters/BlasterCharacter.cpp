@@ -235,14 +235,6 @@ void ABlasterCharacter::Elim()
 	if (GetCombatComponent() && GetCombatComponent()->EquippedWeapon)
 	{
 		GetCombatComponent()->EquippedWeapon->Drop();
-
-		//GetCombatComponent()->EquippedWeapon->SetWeaponState(EWeaponState::EWS_Droppped);
-
-		////these are self-replicated actions, so dont need to put it inside OnRep_
-		//FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
-		//GetCombatComponent()->EquippedWeapon->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform); 
-		////FDetachmentTransformRules Rules(EDetachmentRule::KeepWorld, true);
-		//GetCombatComponent()->EquippedWeapon->SetOwner(nullptr);
 	}
 }
 
@@ -263,6 +255,11 @@ void ABlasterCharacter::TimerCallback_Elim()
 
 void ABlasterCharacter::MulticastElim_Implementation()
 {
+	//update HUD_Ammo to zero: (can't re-use CheckAndSetHUD_Ammo here, it has no parameter)
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
+	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(0);
+
+	//For animation
 	bIsEliminated = true; //that help it switch ABP chain1 to chain2_elim first
 	PlayElimMontage();    //and so now can play on ElimSlot in that chain2_elim
 
@@ -703,7 +700,12 @@ void ABlasterCharacter::HideCharacterIfCameraClose()
 	}
 }
 
+ABlasterPlayerController* ABlasterCharacter::GetBlasterPlayerController()
+{
+	BlasterPlayerController = BlasterPlayerController == nullptr ? GetController<ABlasterPlayerController>() : BlasterPlayerController;
 
+	return BlasterPlayerController;
+}
 
 ////Stephen create this in UActorComponent instead.
 //void ABlasterCharacter::SetIsAiming(bool InIsAiming) //REPLACE

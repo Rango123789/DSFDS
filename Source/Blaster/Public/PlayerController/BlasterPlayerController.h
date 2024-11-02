@@ -25,7 +25,9 @@ protected:
 	virtual void BeginPlay() override;
 
 	//HUD and its Overlay widget (move from Character)
+	UPROPERTY()
 	class ABlasterHUD* BlasterHUD;
+	UPROPERTY()
 	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
 public:
 
