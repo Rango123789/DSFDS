@@ -30,12 +30,19 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
 	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
 	DOREPLIFETIME(UCombatComponent, bIsAiming);
-	DOREPLIFETIME(UCombatComponent, bIsFiring); //just added, BUT didn't affect anyway
+	//DOREPLIFETIME(UCombatComponent, bIsFiring); //just added, BUT didn't affect anyway
+	//DOREPLIFETIME(UCombatComponent, CarriedAmmo); //will still work but redudant for non-owning clients to receive it - they dont need it in this game
+	DOREPLIFETIME_CONDITION(UCombatComponent, CarriedAmmo, COND_OwnerOnly); //only owning client need to receive it
+	DOREPLIFETIME(UCombatComponent, CharacterState);
 }
 
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	//FString OwnerName;
+	//if(GetOwner()) GetOwner()->GetName(OwnerName);
+	//UE_LOG(LogTemp, Warning, TEXT("Owner of CombatComp: %s"), *OwnerName);
 
 	//assign its value here (or BeginPlay()), so surely all character instances has it
 	MaxWalkSpeed_Backup = Character->GetCharacterMovement()->MaxWalkSpeed;
@@ -45,9 +52,14 @@ void UCombatComponent::BeginPlay()
 	{
 		DefaultPOV = Character->GetCamera()->FieldOfView;
 		CurrentPOV = DefaultPOV;
-	}
 
-	//TimerDelegate.BindUFunction()
+		//I have no idea why he add this HasAuthority(), i thought it is like a table of reference so it is for IsLocallyControlled()/Owner at least? what the heck is going on LOL?
+		//Well because CarriedAmmo will be set in Equip which in GOLDEN1 that will always run from the server, and also CarriedAmmo is replicated to COND_Owner only, so the owner get the needed value lol = OKAY!
+		if (Character->HasAuthority())
+		{
+			InitializeCarriedAmmo();
+		}
+	}
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -59,6 +71,97 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	{
 		SetHUDPackageForHUD(DeltaTime);
 		SetPOVForCamera(DeltaTime);
+	}
+}
+
+void UCombatComponent::Input_Reload()
+{
+//impliment things, RPCs(if needed) from here:
+	//the GOLDEN1 is reduced to this, also no point to reload if you dont have any CarriedAmmo left:
+	//we only reload if it is Unoccupied and currently not already Readling (avoiding Spam) -- && CharacterState != ECS_Reloading  is redudant
+	if(CarriedAmmo > 0 && CharacterState == ECharacterState::ECS_Unoccupied ) ServerInput_Reload();
+}
+
+void UCombatComponent::ServerInput_Reload_Implementation()
+{
+	if (Character == nullptr) return;
+	//this help trigger OnRep_, if it changes WeaponState from Unoccupied
+	CharacterState = ECharacterState::ECS_Reloading; //self-replicated, and trigger its OnRep_X
+
+	//Call this in ReloadEnd() with HasAuthority() if you want it to update HUD that time = everyone like this :)
+	//UpdateHUD_CarriedAmmo(); //self-replicated, we have OnRep_CarriedAmmo work already
+
+//all code bellow will be copied and pasted to OnRep_, STEPHEN factorize all of them into ReloadHandle() so that when we add more stuff to ReloadHandle() we dont need to go and paste to OnRep_ again LOL, BUT I say we way LOL
+	//you must go and use AimNotify to reset it back to UnOccupied, otherwise you get stuck in state :D :D
+	Character->PlayReloadMontage(); //call it in  OnRep_CharacterState too for clients
+
+}
+
+//I haven't call this anywhere yet, as this i meant for when Reloading
+void UCombatComponent::UpdateHUD_CarriedAmmo()
+{
+	if (EquippedWeapon == nullptr) return;
+
+	//change CarriedAmmo's value here when Reload, say when Reload, so it will be different a bit LOL, load X_max - x to get max or load y if y < X_max - x:
+	int32 LoadAmount = FMath::Min(EquippedWeapon->GetMagCapacity() - EquippedWeapon->GetAmmo(), CarriedAmmo);
+
+	//Change Ammo here will trigger OnRep_Ammo ->SetHUDAmmo work automatically in clients!
+	EquippedWeapon->SetAmmo(EquippedWeapon->GetAmmo() + LoadAmount);
+
+	//Stephen swap order of them for sematic reason, but I prefer this, changing CarriedAmmo here ill trigger OnRep_CarriedAmmo  ->SetHUDCarriedAmmo work automatically in clients!
+	CarriedAmmo = CarriedAmmo - LoadAmount;
+	   //this line not affect this lesson but update the author_Char::Combat::CarriedAmmoMap
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+	{
+		CarriedAmmoMap[EquippedWeapon->GetWeaponType()] = CarriedAmmo;
+	}
+
+//you can move these 2 lines into Char::ReloadEnd() so that it wont update before that point, however the SetHUDAmmo trigger in Client already, so you have to move them all together :D :D. 
+//So the final idea is to Call this HOSTING function in ReloadEnd() instead of in ServerInput_Reload()
+//So because it is called in the server, so to compensate we add 'HasAuthority()' if call from there! 
+// So you must understand that once we add it for Do_Action, the clients wont pass it and wont excecute it, so you must rely on OnRep (if any)
+	
+	CheckAndSetHUD_CarriedAmmo();
+
+	//still need to help HUDAmmo in the server update to, I choose to do it here too, rather than outside:
+	EquippedWeapon->CheckAndSetHUD_Ammo();
+}
+
+//It first change when Equipped, this is auto-triggered
+void UCombatComponent::OnRep_CarriedAmmo()
+{
+	CheckAndSetHUD_CarriedAmmo();
+}
+
+void UCombatComponent::CheckAndSetHUD_CarriedAmmo()
+{
+	if (Character == nullptr) return;
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Character->GetController<ABlasterPlayerController>() : BlasterPlayerController;
+	if (BlasterPlayerController) BlasterPlayerController->SetHUDCarriedAmmo(CarriedAmmo);
+}
+
+void UCombatComponent::InitializeCarriedAmmo()
+{
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartCarriedAmmo_AR);
+
+
+}
+
+void UCombatComponent::OnRep_CharacterState()
+{
+	if (Character == nullptr) return;
+	switch (CharacterState)
+	{
+	case ECharacterState::ECS_Reloading:
+		Character->PlayReloadMontage();
+
+		break;
+	case ECharacterState::ECS_Unoccupied: 
+		if (bIsFiring)
+		{
+			Input_Fire(bIsFiring); 
+		}
+		break;
 	}
 }
 
@@ -141,24 +244,34 @@ void UCombatComponent::SetHUDPackageForHUD(float DeltaTime)
 void UCombatComponent::Input_Fire(bool InIsFiring)
 {
 	//News: to fix can't stop firing, as when you realease the key, bIsFiring = false before you trigger the .SetTimer below!
+
 	bIsFiring = InIsFiring;
 
 //can factorize these in to Combat::Fire() to be used instead of Input_Fire itself in timer_callback
-	if (bCanFire == false) return;
-	
+	//you may wan to factorize this block into CanFire(), but I say no, I let it be here
+	{
+		//this is a part of stopping Gun can't stop firing:
+		if (bCanFire == false) return;
+		//extra condition about ammo:
+		if (EquippedWeapon == nullptr || EquippedWeapon->GetAmmo() <= 0 || CharacterState !=ECharacterState::ECS_Unoccupied) return;
+	}
+
 	//set it back to false as a part of preventing we spam the fire button during WaitTime to reach Timer callback
 	bCanFire = false;
 
 	FHitResult HitResult;
 	DoLineTrace_UnderCrosshairs(HitResult);
 
-	ServerInput_Fire(bIsFiring, HitResult.ImpactPoint); //rather than member HitPoint
+	ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //rather than member HitPoint
 
 	Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
 }
 
 void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
 {
+	////move up to serverRPC
+	//bIsFiring = InIsFiring; //We can't remove it here as this is for replication perupose :)
+
 	MulticastInput_Fire(InIsFiring, Target);
 
 	//I decide to call it here, safe enough from SetOwner above LOL:
@@ -170,9 +283,11 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const
 	//note that because the machine to be called is different, so put this line here or in the HOSTING function 'could' make a difference generally lol:
 	if (Character == nullptr || EquippedWeapon == nullptr) return;
 
+	//move up to serverRPC
 	bIsFiring = InIsFiring; //We can't remove it here as this is for replication perupose :)
 
-	if (bIsFiring)
+	//Option1 to fix Fire intterupt Reload back when timer reach:
+	if (bIsFiring && CharacterState == ECharacterState::ECS_Unoccupied)
 	{
 		Character->PlayFireMontage();
 
@@ -192,15 +307,36 @@ void UCombatComponent::FireTimer_Callback()
 
 	if (!bIsFiring || !bIsAutomatic) return; //(*)
 
-	//only only set bCanfire = true for next chance if you did pass the WaitTime get upto the callback, so that we spam the Fire button, that could cause no-stop in firing
+	//Option2 to fix Fire intterupt Reload back when timer reach:
+	if(CharacterState == ECharacterState::ECS_Unoccupied) Input_Fire(bIsFiring);
 
-	//option2:  this is still from owning device, not yet via RPC process yet! so it work!
-	//I have to call the hosting Input_Fire, rather than 'ServerInput_Fire( , )' because I didn't save the HitTarget
-	//but will it work? yes it will for a moment and will be corrected back soon, but it is good enough because we're using it right now when we're still in the owning device, hence stephen save it as member will still work!
-	// Even if you do Trace and saved it from Tick every frame or here it will work "momentary" (enough for here)
-	//but you must know that after the frame HitTarget will be corrected back to the server value immediately! - we must add this point to UNIVERSEL rule
-	//NOTE: I dont do this because I dont even trace it every frame in Combat::Tick, so I call it whenever Input_Fire is called and it is not much expesive as called everyframe so dont worry, my idea is not worst then stephen currently!
-	Input_Fire(bIsFiring); 
+	//Input_Fire_WithoutAssingmentLine();
+}
+
+void UCombatComponent::Input_Fire_WithoutAssingmentLine()
+{
+	//if (bIsFiring == false) GetWorld()->GetTimerManager().ClearTimer(TimeHandle);
+
+	//can factorize these in to Combat::Fire() to be used instead of Input_Fire itself in timer_callback
+	//you may wan to factorize this block into CanFire(), but I say no, I let it be here
+	{
+		//news:
+		//if (InIsFiring == false) return;
+		//this is a part of stopping Gun can't stop firing:
+		if (bCanFire == false) return;
+		//extra condition about ammo:
+		if (EquippedWeapon == nullptr || EquippedWeapon->GetAmmo() <= 0 || CharacterState != ECharacterState::ECS_Unoccupied) return;
+	}
+
+	//set it back to false as a part of preventing we spam the fire button during WaitTime to reach Timer callback
+	bCanFire = false;
+
+	FHitResult HitResult;
+	DoLineTrace_UnderCrosshairs(HitResult);
+
+	ServerInput_Fire(bIsFiring, HitResult.ImpactPoint); //rather than member HitPoint
+
+	Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
 }
 
 //Instead of doing it from AWeapon::Equip() we do it here, hence it should do all the stuff we usually did here
@@ -226,13 +362,18 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 
 	if(RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
 
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()) )
+	{
+		//map[KEY] = value of that KEY, remeMber? 
+		CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
+		//CarriedAmmo = *(CarriedAmmoMap.Find(EquippedWeapon->GetWeaponType())) ;
+	}
+	CheckAndSetHUD_CarriedAmmo();
+
 	//I decide to call it here, safe enough from SetOwner above LOL:
-	//if (Character->GetBlasterPlayerController()) //the re-check cast is done right in the Getter
-	//{
-	//	Character->GetBlasterPlayerController()->SetHUDAmmo(EquippedWeapon->GetAmmo());
-	//}
 	EquippedWeapon->CheckAndSetHUD_Ammo();
 	
+
 	//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
 	Character->bUseControllerRotationYaw = true; //at first it is false

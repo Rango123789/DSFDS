@@ -20,6 +20,8 @@ public:
 
 	void SetHUDAmmo(int InAmmo);
 
+	void SetHUDCarriedAmmo(int InCarriedAmmo);
+
 	virtual void OnPossess(APawn* InPawn) override;
 protected:
 	virtual void BeginPlay() override;

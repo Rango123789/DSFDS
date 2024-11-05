@@ -52,6 +52,7 @@ public:
 	void PlayFireMontage();
 	void PlayHitReactMontage();
 	void PlayElimMontage();
+	void PlayReloadMontage();
 	//sound and effects:
 
 	//bool functions:
@@ -60,7 +61,13 @@ public:
 	bool IsAFiring();
 
 	//BP-callale functions:
-	
+	UFUNCTION(BlueprintCallable)
+	void ResetCharacterStateToUnoccupied();
+
+	UFUNCTION(BlueprintCallable)
+	void ReloadEnd1();
+
+
 	//others:
 	//void SetIsAiming(bool InIsAiming);	//REPLACE
 	void SetupAimOffsetVariables(float DeltaTime);
@@ -168,6 +175,9 @@ protected:
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* AM_ElimMontage;
 
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* AM_ReloadMontage;
+
 	//sound and effects:
 	UPROPERTY(EditAnywhere) 
 	UParticleSystem* BotParticle; //(*)
@@ -242,6 +252,8 @@ private:
 	void Input_Fire_Pressed(const FInputActionValue& Value);
 	void Input_Fire_Released(const FInputActionValue& Value);
 
+	void Input_Reload(const FInputActionValue& Value);
+
 //category4: regular functions 
 	void HideCharacterIfCameraClose();
 
@@ -278,7 +290,8 @@ private:
 	UPROPERTY(EditAnywhere)
 	class UInputAction* IA_Fire_Released;
 
-
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_Reload;
 
 	//montages:
 
@@ -324,4 +337,6 @@ public:
 	float GetMaxHealth() { return MaxHealth; }
 
 	ABlasterPlayerController* GetBlasterPlayerController();
+
+	ECharacterState GetCharacterState(); 
 };

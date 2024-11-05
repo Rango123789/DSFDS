@@ -33,6 +33,11 @@ void UCharacterOverlay_UserWidget::SetAmmoText(const int& InAmmo)
 	if (TextBlock_Ammo) TextBlock_Ammo->SetText(FText::FromString(InString));
 }
 
+void UCharacterOverlay_UserWidget::SetCarriedAmmoText(const int& InCarriedAmmo)
+{
+	FString InString = FString("| CarriedAmmo: ") + FString::FromInt(InCarriedAmmo);
+	if (TextBlock_CarriedAmmo) TextBlock_CarriedAmmo->SetText(FText::FromString(InString));
+}
 
 
 

@@ -19,6 +19,7 @@ public:
 	void SetScoreText(const int& InScore);
 	void SetDefeatText(const int& InDefeat);
 	void SetAmmoText(const int& InAmmo);
+	void SetCarriedAmmoText(const int& InCarriedAmmo);
 protected:
 
 	UPROPERTY(meta = (BindWidget))
@@ -34,6 +35,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_Ammo;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TextBlock_CarriedAmmo;
+
 
 private:
 

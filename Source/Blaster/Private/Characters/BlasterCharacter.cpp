@@ -69,6 +69,20 @@ ABlasterCharacter::ABlasterCharacter()
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (IsLocallyControlled())
+	{
+		FString OwnerName;
+		if (GetOwner()) GetOwner()->GetName(OwnerName);
+		UE_LOG(LogTemp, Warning, TEXT("Owner of this autonomous Char: %s"), *OwnerName);
+	}
+	else
+	{
+		FString OwnerName;
+		if (GetOwner()) GetOwner()->GetName(OwnerName);
+		UE_LOG(LogTemp, Warning, TEXT("Owner of this NON-autonomous Char: %s"), *OwnerName);
+	}
+
 //stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
 	BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
@@ -462,6 +476,37 @@ bool ABlasterCharacter::IsAFiring()
 	return (CombatComponent && CombatComponent->bIsFiring);
 }
 
+void ABlasterCharacter::ResetCharacterStateToUnoccupied()
+{
+	//because the inner code is self-replicated, so add HasAuthority is optional. if you wan the server first, then add HasAuthority, if you want all copies run over, then remove it (for cosmetic action) 
+	if (HasAuthority())
+	{
+		if (CombatComponent) CombatComponent->CharacterState = ECharacterState::ECS_Unoccupied;
+	}
+}
+
+void ABlasterCharacter::ReloadEnd1()
+{
+	if (CombatComponent == nullptr) return;
+	//this may cause "LEGENDARYcase", if so, simpl remove 'HasAuthority()' will overcome it LOL = no it's not!
+		//because the inner code is self-replicated, so add HasAuthority is optional. if you wan the server first, then add HasAuthority, if you want all copies run over, then remove it (for cosmetic action) 
+	if (HasAuthority())
+	{
+		CombatComponent->CharacterState = ECharacterState::ECS_Unoccupied;
+		//this make my clients can't stop firing, it is because of 'late replication', currently bIsFiring isn't setup very clean in GOLDEN2, it is like a shit LOL, nor should we replicateit LOL
+		//continue to fire if bFiring is still true (still holding the Fire key):
+		// FOR NOW, I comment it out:
+			//if (CombatComponent->bIsFiring)
+			//{
+			//	//you may be tempted to pass in "true", but it can still be changed right?
+			//	CombatComponent->Input_Fire(CombatComponent->bIsFiring); 
+			//}
+	}
+	//If you want..., you call this either here or in Combat::ServerInput_Reload, not both:
+	if(HasAuthority()) CombatComponent->UpdateHUD_CarriedAmmo();
+}
+
+
 //this can't only be called on client copies: adding param/using it or not doesn't matter
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
@@ -525,6 +570,8 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 		EnhancedPlayerInputComponent->BindAction(IA_Fire_Pressed, ETriggerEvent::Triggered, this, &ThisClass::Input_Fire_Pressed);
 		EnhancedPlayerInputComponent->BindAction(IA_Fire_Released, ETriggerEvent::Triggered, this, &ThisClass::Input_Fire_Released);
+
+		EnhancedPlayerInputComponent->BindAction(IA_Reload, ETriggerEvent::Triggered, this, &ThisClass::Input_Reload);
 	}
 }
 
@@ -563,6 +610,27 @@ void ABlasterCharacter::PlayElimMontage()
 {
 	PlayMontage_SpecificSection(AM_ElimMontage);
 }
+
+void ABlasterCharacter::PlayReloadMontage()
+{
+	if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr || AM_ReloadMontage == nullptr) return;
+
+	//from AM_ asset from BP, you must name its sections to match these below:
+	FName SectionName;
+
+	EWeaponType Type = CombatComponent->EquippedWeapon->GetWeaponType();
+
+	switch (Type)
+	{
+	case EWeaponType::EWT_AssaultRifle:
+		SectionName = FName("AttackRifle");
+		break;
+	//more case will be added as we have more weapon types
+	}
+
+	PlayMontage_SpecificSection(AM_ReloadMontage, SectionName);
+}
+
 
 void ABlasterCharacter::Input_Move(const FInputActionValue& Value)
 {
@@ -671,6 +739,11 @@ void ABlasterCharacter::Input_Fire_Released(const FInputActionValue& Value)
 	CombatComponent->Input_Fire(false);
 }
 
+void ABlasterCharacter::Input_Reload(const FInputActionValue& Value)
+{
+	if(CombatComponent) CombatComponent->Input_Reload();
+}
+
 void ABlasterCharacter::HideCharacterIfCameraClose()
 {
 	//We must not hide in other machines, as the still need to see you LOL
@@ -705,6 +778,11 @@ ABlasterPlayerController* ABlasterCharacter::GetBlasterPlayerController()
 	BlasterPlayerController = BlasterPlayerController == nullptr ? GetController<ABlasterPlayerController>() : BlasterPlayerController;
 
 	return BlasterPlayerController;
+}
+
+ECharacterState ABlasterCharacter::GetCharacterState() {
+	if (CombatComponent == nullptr)  return ECharacterState::ECS_MAX; //return whatever LOL
+	return CombatComponent->CharacterState;
 }
 
 ////Stephen create this in UActorComponent instead.

@@ -89,6 +89,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool bIsEliminated = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	ECharacterState CharacterState;
+
 };
 
 

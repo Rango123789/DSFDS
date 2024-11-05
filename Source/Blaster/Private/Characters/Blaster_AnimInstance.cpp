@@ -140,6 +140,8 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bShouldRotateRootBone = BlasterCharacter->GetShouldRotateRootBone();
 
 	//bIsEliminated = BlasterCharacter->GetIsEliminated();
+
+	CharacterState = BlasterCharacter->GetCharacterState();
 }
 
 

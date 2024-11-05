@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Blaster/WeaponTypes.h"
 #include "Weapon.generated.h"
 
 UENUM(BlueprintType)
@@ -98,6 +99,9 @@ protected: //base
     UFUNCTION()
     void OnRep_WeaponState();
 
+    UPROPERTY(EditAnywhere)
+    EWeaponType WeaponType = EWeaponType::EWT_AssaultRifle;
+
     //pointer to external classes:
 
     //arrays:
@@ -125,7 +129,6 @@ protected: //base
     UPROPERTY(EditAnywhere)
     class UAnimationAsset* AS_FireAnimation; //AS = Animation Sequence , AA = Animation Asset
 
-
     //sound and effects:
 
 //category4: basic and primitive types
@@ -147,7 +150,7 @@ protected: //base
     UFUNCTION()
     virtual void OnRep_Ammo();
 
-    int32 MagazineCapacity; //not use yet
+    int32 MagCapacity = 30; //not use yet
 
     UPROPERTY()
     class ABlasterCharacter* OwnerCharacter;//avoid same name as some local var of its method
@@ -196,5 +199,13 @@ public:
 
     bool GetIsAutomatic() { return bIsAutomatic; }
     float GetFireDelay() { return FireDelay; }
+    
     int32 GetAmmo() { return Ammo; }
+    void SetAmmo(int32 InAmmo) { Ammo = InAmmo; }
+    
+    int32 GetMagCapacity() { return MagCapacity; }
+    //void SetMagCapacity(int32 InMagCapacity) { MagCapacity = InMagCapacity; }
+
+    EWeaponType GetWeaponType() { return WeaponType; }
+
 };

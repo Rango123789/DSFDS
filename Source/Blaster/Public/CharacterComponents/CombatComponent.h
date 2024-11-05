@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include <Blaster/WeaponTypes.h>
+#include <Blaster/CharacterTypes.h>
 #include "CombatComponent.generated.h"
 
 
@@ -20,9 +22,6 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UFUNCTION()
-	void OnRep_EquippedWeapon();
-
 	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
 	FVector DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
 protected:
@@ -30,11 +29,13 @@ protected:
 
 private:
 //***function***
+	//aim
 	void SetIsAiming(bool InIsAiming);
 
 	UFUNCTION(Server, Reliable)
 	void ServerSetIsAiming(bool InIsAiming);
 
+	//fire
 	void Input_Fire(bool InIsFiring);
 
 	UFUNCTION(Server, Reliable)
@@ -42,6 +43,14 @@ private:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
+
+	//Reload
+	void Input_Reload();
+
+	//Stephen make it Reliable, but i think this is just for cosmetic UNLESS it involve technical calculation:) 
+	UFUNCTION(Server , Reliable) 
+	void ServerInput_Reload();
+
 
 	void SetPOVForCamera(float DeltaTime);
 
@@ -51,16 +60,35 @@ private:
 	//Automatic fire:
 	void Start_FireTimer();
 
-	FTimerDelegate TimerDelegate;
-
 	void FireTimer_Callback(); //bool InIsFiring, const FVector_NetQuantize& Target
 
-	float FireDelay=0.25;
+	void Input_Fire_WithoutAssingmentLine();
 
-	bool bIsAutomatic = true;
+		float FireDelay=0.25;
 
-	FTimerHandle TimeHandle;
+		bool bIsAutomatic = true;
+
+		FTimerHandle TimeHandle;
+
+		//FTimerDelegate TimerDelegate;
+
+	UFUNCTION()
+	void OnRep_CarriedAmmo();
+
+	void UpdateHUD_CarriedAmmo();
+
+	void CheckAndSetHUD_CarriedAmmo();
+
+	void InitializeCarriedAmmo();
+
+	UFUNCTION()
+	void OnRep_EquippedWeapon();
+
+
+
 //***data member***
+	
+	
 	//this no need to be replicated, it is set for all version back in Char::PostInitializeComponents
 	UPROPERTY()
 	class ABlasterCharacter* Character; //to let this comp aware of its hosting object
@@ -69,14 +97,23 @@ private:
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
 
+
+	//need to change it back to Unoccupied via Anim Notify from ABP, BPAccess require not private or need meta = no it is the intermediate one from AimInstance need to be like that lol
+	//thi need to be propogated to AnimInstance to be used in ABP
+	UPROPERTY(VisibleAnywhere, ReplicatedUsing = OnRep_CharacterState, meta = (AllowPrivateAccess = "true" ))
+	ECharacterState CharacterState = ECharacterState::ECS_Unoccupied;
+		UFUNCTION()
+		void OnRep_CharacterState();
+
 	//the Equipped Pose relying on this to know whether Char has a weapon or not, so that to choose "which group of anims: equipped or not"
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon) //just upgrade it to 'Using' for fixing a client can't change bOrient on itself :D :D
 	class AWeapon* EquippedWeapon;      //and more
+
 	
 	UPROPERTY(Replicated)
 	bool bIsAiming{};
 
-	UPROPERTY(Replicated)
+	//UPROPERTY(Replicated)
 	bool bIsFiring{};
 
 	UPROPERTY(EditAnywhere)
@@ -118,6 +155,18 @@ private:
 	float ExtraStartOffset = 10.f; //including D_char/2 + D_gun/2 + Hand_Extent + extraOffset
 
 	bool bCanFire = true;
+
+	//CarriedAmmo for the currently-equipped weapon, hence change weapon will change it too - HUD relevant: create with Char or PS is another option!
+	UPROPERTY(ReplicatedUsing = OnRep_CarriedAmmo)
+	int32 CarriedAmmo{}; //let each Char has 45 when GameStart even when they dont have any gun
+
+	//this is for the sake of local organization, not for replication as TMap can't, when we pick a weapon of a specific Weapon::WeaponType (which will be created from there soon) we add it to this map for local organization:
+	TMap<EWeaponType, int> CarriedAmmoMap;
+
+	UPROPERTY(EditAnywhere)
+	int32 StartCarriedAmmo_AR = 45;
+
+
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!
 

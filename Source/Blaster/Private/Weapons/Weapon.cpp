@@ -151,6 +151,8 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 
 void AWeapon::UpdateHUD_Ammo()
 {
+	if (Ammo <= 0) return;
+
 	Ammo--;
 
 	CheckAndSetHUD_Ammo();

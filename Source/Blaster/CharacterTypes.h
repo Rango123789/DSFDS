@@ -11,4 +11,13 @@ enum class ETurningInPlace : uint8
 };
 
 
+UENUM(BlueprintType)
+enum class ECharacterState : uint8
+{
+	ECS_Unoccupied  UMETA(DisplayName = "Unoccupied"),
+	ECS_Reloading UMETA(DisplayName = "Reloading"),
+
+	ECS_MAX       UMETA(DisplayName = "DefaultMAX")
+};
+
 

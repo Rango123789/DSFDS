@@ -95,6 +95,16 @@ void ABlasterPlayerController::SetHUDAmmo(int InAmmo)
 	CharacterOverlay_UserWidget->SetAmmoText(InAmmo);
 }
 
+void ABlasterPlayerController::SetHUDCarriedAmmo(int InCarriedAmmo)
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
 
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+	//Back to main business:
+	CharacterOverlay_UserWidget->SetCarriedAmmoText(InCarriedAmmo);
+}
 
 
