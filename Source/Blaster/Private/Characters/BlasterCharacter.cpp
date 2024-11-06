@@ -496,11 +496,12 @@ void ABlasterCharacter::ReloadEnd1()
 		//this make my clients can't stop firing, it is because of 'late replication', currently bIsFiring isn't setup very clean in GOLDEN2, it is like a shit LOL, nor should we replicateit LOL
 		//continue to fire if bFiring is still true (still holding the Fire key):
 		// FOR NOW, I comment it out:
-			//if (CombatComponent->bIsFiring)
-			//{
-			//	//you may be tempted to pass in "true", but it can still be changed right?
-			//	CombatComponent->Input_Fire(CombatComponent->bIsFiring); 
-			//}
+		// the code inside the is meant to be run in the server only, you can't let it run in the client nor should you also call this in OnRep!
+			if (CombatComponent->bIsFiring)
+			{
+				//you may be tempted to pass in "true", but it can still be changed right?
+				CombatComponent->Input_Fire(CombatComponent->bIsFiring); 
+			}
 	}
 	//If you want..., you call this either here or in Combat::ServerInput_Reload, not both:
 	if(HasAuthority()) CombatComponent->UpdateHUD_CarriedAmmo();

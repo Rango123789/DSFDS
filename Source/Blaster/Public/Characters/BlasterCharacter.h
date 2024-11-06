@@ -134,7 +134,7 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	class UWidgetComponent* Overhead_WidgetComponent;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly) 
 	class UCombatComponent* CombatComponent;
 
 	//for Timeline: (I move them apart later)

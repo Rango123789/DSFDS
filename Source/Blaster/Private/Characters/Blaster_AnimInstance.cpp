@@ -142,6 +142,10 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	//bIsEliminated = BlasterCharacter->GetIsEliminated();
 
 	CharacterState = BlasterCharacter->GetCharacterState();
+	//they gonna be different at some point during the rest of the course:
+	bShouldUseFABRIK = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+	bShouldUseAimOffsets = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+	bShouldRotateRightHand = CharacterState == ECharacterState::ECS_Reloading ? false : true;
 }
 
 
@@ -162,13 +166,3 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		//	WantedRootRotation = { RootRotation.Pitch, RootRotation.Yaw + AO_Yaw_LastFrame, RootRotation.Roll };
 		//}
 		//AO_Yaw_LastFrame = AO_Yaw;
-
-
-
-
-
-
-
-
-
-

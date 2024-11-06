@@ -56,8 +56,9 @@ public:
     //montages:
     virtual void Fire(const FVector& HitTarget);
 
-    //sound and effects:
 
+    //sound and effects:
+    void PlayEquipSound(AActor* InActor);
     //bool functions:
 
     //BP-callale functions:
@@ -130,7 +131,8 @@ protected: //base
     class UAnimationAsset* AS_FireAnimation; //AS = Animation Sequence , AA = Animation Asset
 
     //sound and effects:
-
+    UPROPERTY(EditAnywhere)
+    USoundBase* EquipSound;
 //category4: basic and primitive types
     //FOV:
     UPROPERTY(EditAnywhere)
@@ -208,4 +210,5 @@ public:
 
     EWeaponType GetWeaponType() { return WeaponType; }
 
+    USoundBase* GetEquipSound() { return EquipSound; }
 };

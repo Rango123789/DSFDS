@@ -24,6 +24,24 @@ public:
 
 	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
 	FVector DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult);
+
+	void UpdateHUD_CarriedAmmo();
+
+	void CheckAndSetHUD_CarriedAmmo();
+
+	UFUNCTION(BlueprintCallable)
+	void EndReload();
+
+	UFUNCTION(BlueprintCallable)
+	void EndReload_ContinueFiringIf();
+
+	//Reload
+	void Input_Reload();
+
+	//Stephen make it Reliable, but i think this is just for cosmetic UNLESS it involve technical calculation:) 
+	UFUNCTION(Server, Reliable)
+	void ServerInput_Reload();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -44,12 +62,7 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
 
-	//Reload
-	void Input_Reload();
 
-	//Stephen make it Reliable, but i think this is just for cosmetic UNLESS it involve technical calculation:) 
-	UFUNCTION(Server , Reliable) 
-	void ServerInput_Reload();
 
 
 	void SetPOVForCamera(float DeltaTime);
@@ -74,10 +87,6 @@ private:
 
 	UFUNCTION()
 	void OnRep_CarriedAmmo();
-
-	void UpdateHUD_CarriedAmmo();
-
-	void CheckAndSetHUD_CarriedAmmo();
 
 	void InitializeCarriedAmmo();
 
@@ -107,7 +116,7 @@ private:
 
 	//the Equipped Pose relying on this to know whether Char has a weapon or not, so that to choose "which group of anims: equipped or not"
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon) //just upgrade it to 'Using' for fixing a client can't change bOrient on itself :D :D
-	class AWeapon* EquippedWeapon;      //and more
+	class AWeapon* EquippedWeapon = nullptr;      //and more
 
 	
 	UPROPERTY(Replicated)
@@ -172,6 +181,8 @@ public:
 
 	FLinearColor GetCrosshairsColor(){ return CrosshairsColor; }
 	void SetCrosshairsColor(const FLinearColor& InColor) { CrosshairsColor = InColor; }
+
+	int32 GetCarriedAmmo() { return CarriedAmmo; }
 	
 };
 

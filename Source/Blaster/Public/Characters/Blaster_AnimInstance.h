@@ -93,6 +93,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	ECharacterState CharacterState;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bShouldUseFABRIK;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bShouldUseAimOffsets;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bShouldRotateRightHand;
 };
 
 

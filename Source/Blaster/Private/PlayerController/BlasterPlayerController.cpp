@@ -39,6 +39,21 @@ void ABlasterPlayerController::OnPossess(APawn* InPawn)
 	}
 }
 
+void ABlasterPlayerController::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	//can factorize them into SetHUDTimeLeft, let it receive "TimeLeft" instead!
+	TimeLeft -= DeltaTime;
+	int min = FMath::FloorToInt(TimeLeft / 60.f); //must be Floor
+	int sec = FMath::CeilToInt(TimeLeft - min * 60.f); //Round - ceil - floor upto you!
+
+	FString text = FString::FromInt(min) + FString(" : ") + FString::FromInt(sec);
+	
+	//text = FString::Printf(TEXT("%02d : %02d") , min , sec) - if you want 01 : 07 format!
+
+	SetHUDTimeLeft(TimeLeft);
+}
 
 void ABlasterPlayerController::SetHUDHealth(float Health, float MaxHealth)
 {
@@ -107,4 +122,25 @@ void ABlasterPlayerController::SetHUDCarriedAmmo(int InCarriedAmmo)
 	CharacterOverlay_UserWidget->SetCarriedAmmoText(InCarriedAmmo);
 }
 
+void ABlasterPlayerController::SetHUDTimeLeft(int32 InTimeLeft)
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+	//Back to main business:
+	
+		//READY:
+	InTimeLeft -= GetWorld()->GetDeltaSeconds();
+	int min = FMath::FloorToInt(InTimeLeft / 60.f); //must be Floor
+	int sec = FMath::CeilToInt(InTimeLeft - min * 60.f); //Round - ceil - floor upto you!
+
+	FString text = FString::FromInt(min) + FString(" : ") + FString::FromInt(sec);
+	//text = FString::Printf(TEXT("%02d : %02d") , min , sec) - if you want 01 : 07 format!
+	
+		//CALL:
+	CharacterOverlay_UserWidget->SetTimeLeftText(text);
+}
 

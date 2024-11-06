@@ -4,6 +4,7 @@
 #include "Weapons/Casing.h" //to be spawned here 
 #include "Characters/BlasterCharacter.h"
 #include "PlayerController/BlasterPlayerController.h"
+#include "CharacterComponents/CombatComponent.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
@@ -12,7 +13,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Animation/AnimationAsset.h"
 #include "Engine/SkeletalMeshSocket.h"
-
+#include <Kismet/GameplayStatics.h>
 
 // Sets default values
 AWeapon::AWeapon()
@@ -149,9 +150,18 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 	}
 }
 
+//this is called from the server, so does whatever inside it!
 void AWeapon::UpdateHUD_Ammo()
 {
+	if (OwnerCharacter == nullptr || OwnerCharacter->GetCombatComponent() == nullptr) return;
+
 	if (Ammo <= 0) return;
+//NOT the idea to call it here, it need to check Ammo >=0 before it fire outside :)
+	//if (Ammo <= 0 && OwnerCharacter->GetCombatComponent()->GetCarriedAmmo() <= 0) return;
+	//if (Ammo <= 0 && OwnerCharacter->GetCombatComponent()->GetCarriedAmmo() > 0)
+	//{
+	//	OwnerCharacter->GetCombatComponent()->Input_Reload();
+	//}
 
 	Ammo--;
 
@@ -262,15 +272,18 @@ void AWeapon::OnRep_WeaponState()
 
 		if (Character) AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, FName("RightHandSocket"));
 
+		////I fail to play in Combat::OnRep_EquippWeapon() so I have to play here:
+		//PlayEquipSound(Character);
+
 		return;
 	case EWeaponState::EWS_Droppped:
 		//NOR need we enable it back for Clients
 		// //if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		
-		////physics group:
-		//WeaponMesh->SetSimulatePhysics(true); //TIRE1
-		//WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
-		//if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
+		//physics group:
+		WeaponMesh->SetSimulatePhysics(true); //TIRE1
+		WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
+		if (WeaponMesh) WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
 
 		return;
 	};
@@ -295,6 +308,12 @@ void AWeapon::Fire(const FVector& HitTarget)
 	}
 
 	//Option2: stephen call UpdateHUD_Ammo() here, and say this is called from the server. yes it is, but it is inside a multicast and also called from the clients at the same time too :D :D
+}
+
+void AWeapon::PlayEquipSound(AActor* InActor)
+{
+	if (InActor == nullptr) return;
+	UGameplayStatics::PlaySoundAtLocation(this, EquipSound, InActor->GetActorLocation());
 }
 
 

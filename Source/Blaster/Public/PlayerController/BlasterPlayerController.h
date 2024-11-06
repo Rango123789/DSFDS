@@ -13,7 +13,9 @@ UCLASS()
 class BLASTER_API ABlasterPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-public:
+public:	
+	virtual void Tick(float DeltaTime) override;
+
 	void SetHUDHealth(float Health, float MaxHealth);
 	void SetHUDScore(int InScore);
 	void SetHUDDefeat(int InDefeat);
@@ -22,7 +24,11 @@ public:
 
 	void SetHUDCarriedAmmo(int InCarriedAmmo);
 
+	void SetHUDTimeLeft(int32 MatchTimeLeft);
+
 	virtual void OnPossess(APawn* InPawn) override;
+
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -31,6 +37,10 @@ protected:
 	class ABlasterHUD* BlasterHUD;
 	UPROPERTY()
 	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+
+	UPROPERTY(EditAnywhere)
+	float TimeLeft = 120.f; //Call it MatchTime is also OKAY
+
 public:
 
 };

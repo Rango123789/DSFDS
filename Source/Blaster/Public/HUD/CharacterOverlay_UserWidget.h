@@ -20,6 +20,7 @@ public:
 	void SetDefeatText(const int& InDefeat);
 	void SetAmmoText(const int& InAmmo);
 	void SetCarriedAmmoText(const int& InCarriedAmmo);
+	void SetTimeLeftText(const FString& InString);
 protected:
 
 	UPROPERTY(meta = (BindWidget))
@@ -39,7 +40,8 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_CarriedAmmo;
 
-
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TextBlock_TimeLeft;
 private:
 
 };
