@@ -13,6 +13,7 @@ void ABlasterPlayerController::BeginPlay()
 
 		BlasterHUD = Cast<ABlasterHUD>(GetHUD());
 		if(BlasterHUD) CharacterOverlay_UserWidget = BlasterHUD->GetCharacterOverlay_UserWidget();
+
 }
 
 //this is for respawning - if needed - only KEY vars from Char need this
@@ -39,20 +40,56 @@ void ABlasterPlayerController::OnPossess(APawn* InPawn)
 	}
 }
 
+void ABlasterPlayerController::ReceivedPlayer()
+{
+	Super::ReceivedPlayer();
+	//not sure we need to add 'IsLocalController()', well only owning client need to show their HUD right ?
+	if (IsLocalController())
+	{
+		Server_RequestServerTime(GetWorld()->GetTimeSeconds());
+	}
+}
+  
 void ABlasterPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//can factorize them into SetHUDTimeLeft, let it receive "TimeLeft" instead!
-	TimeLeft -= DeltaTime;
-	int min = FMath::FloorToInt(TimeLeft / 60.f); //must be Floor
-	int sec = FMath::CeilToInt(TimeLeft - min * 60.f); //Round - ceil - floor upto you!
+	UpdateHUDTime();
 
-	FString text = FString::FromInt(min) + FString(" : ") + FString::FromInt(sec);
-	
-	//text = FString::Printf(TEXT("%02d : %02d") , min , sec) - if you want 01 : 07 format!
+	//update Delta_ServerMinusClient every 5s. factorize this into 'CheckTimeSync()'
+	AccumilatingTime += DeltaTime;
+	if (IsLocalController() && AccumilatingTime > TimeSynchFrequency)
+	{
+		//this in turn call Client_ReportReqest. Finally update Delta_ServerMinusClient every 5s.
+		Server_RequestServerTime(GetWorld()->GetTimeSeconds());
+		AccumilatingTime = 0;
+	}
+}
 
-	SetHUDTimeLeft(TimeLeft);
+//I think separate them into 2 cases is 'OPTIONAL', I reckon Delta ~ 0 if the one call Server_RequestServerTime is the server itself! but it is perfect to separate them:
+float ABlasterPlayerController::GetServerTime_Synched()
+{
+	if (HasAuthority()) return GetWorld()->GetTimeSeconds();
+	else return GetWorld()->GetTimeSeconds() + Delta_ServerMinusServer;
+}
+
+//We need to call this function some time so that it upates Deltatime (but dont need so often, as Deltatime is BASE-independent and shouldn't change)
+//This only run in the server, GetWorld()->GetTimeSeconds() return TimeOfServer:
+void ABlasterPlayerController::Server_RequestServerTime_Implementation(float TimeOfClientWhenRequesting)
+{
+	float TimeOfServer_WhenReceived = GetWorld()->GetTimeSeconds();
+	Client_ReportRequestBackToRequestingClient(TimeOfClientWhenRequesting, TimeOfServer_WhenReceived);
+}
+
+//this only run in the owning client (if called from the server) , GetWorld()->GetTimeSeconds() return TimeOfOwningClient:
+//In case the Server itself is the one call Server_RequestServerTime the DeltaTime naturaly "~ZERO"
+//but anyway it doesn't matter as when GetServerTime_Synched we will take it into account for this case too
+void ABlasterPlayerController::Client_ReportRequestBackToRequestingClient_Implementation(float TimeOfClientWhenRequesting, float TimeOfServerWhenReceivedRequest)
+{
+	float RoundTripTime = GetWorld()->GetTimeSeconds() - TimeOfClientWhenRequesting;
+
+	//This Delta already consider RRT/2: 
+	Delta_ServerMinusServer =  (TimeOfServerWhenReceivedRequest + RoundTripTime / 2) - GetWorld()->GetTimeSeconds() ;
 }
 
 void ABlasterPlayerController::SetHUDHealth(float Health, float MaxHealth)
@@ -122,6 +159,7 @@ void ABlasterPlayerController::SetHUDCarriedAmmo(int InCarriedAmmo)
 	CharacterOverlay_UserWidget->SetCarriedAmmoText(InCarriedAmmo);
 }
 
+//we calculate timeleft from outside
 void ABlasterPlayerController::SetHUDTimeLeft(int32 InTimeLeft)
 {
 	//this 4 lines is my style:
@@ -133,7 +171,6 @@ void ABlasterPlayerController::SetHUDTimeLeft(int32 InTimeLeft)
 	//Back to main business:
 	
 		//READY:
-	InTimeLeft -= GetWorld()->GetDeltaSeconds();
 	int min = FMath::FloorToInt(InTimeLeft / 60.f); //must be Floor
 	int sec = FMath::CeilToInt(InTimeLeft - min * 60.f); //Round - ceil - floor upto you!
 
@@ -144,3 +181,19 @@ void ABlasterPlayerController::SetHUDTimeLeft(int32 InTimeLeft)
 	CharacterOverlay_UserWidget->SetTimeLeftText(text);
 }
 
+void ABlasterPlayerController::UpdateHUDTime()
+{
+	//You can factorize these code into 'SetHUDTime()' if you want
+	//TimeLeft will be converted to int by C++ rule, so THE Math::CeilToInt is totally OPTIONAL
+	//we doing these so that we ONLY call SetHUDTimeLeft(TimeLeft) per second - not per frame, isn't it amazing?
+	//GetTimeSeconds = Accumilating time from GameStart - HERE
+	//GetDeltaSeconds = DeltaTime - not HERE
+
+	//uint32 TimeLeft = FMath::CeilToInt(MatchTime - GetWorld()->GetTimeSeconds()); //NOT synched
+	uint32 TimeLeft = FMath::CeilToInt(MatchTime - GetServerTime_Synched());  //Synched
+	if (TimeLeft != TimeLeftInt_LastSecond)
+	{
+		SetHUDTimeLeft(TimeLeft);
+	}
+	TimeLeftInt_LastSecond = TimeLeft;
+}
