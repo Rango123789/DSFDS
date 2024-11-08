@@ -82,6 +82,7 @@ public:
 
 	void Elim();
 	
+	void SetupEnhancedInput_IMC();
 protected:
 	/***functions***/
 //category1: auto-generated functions:
@@ -339,4 +340,5 @@ public:
 	ABlasterPlayerController* GetBlasterPlayerController();
 
 	ECharacterState GetCharacterState(); 
+
 };

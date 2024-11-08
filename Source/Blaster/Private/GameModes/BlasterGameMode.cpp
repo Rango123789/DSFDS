@@ -11,12 +11,15 @@ ABlasterGameMode::ABlasterGameMode()
 {
 	//this will stop StartMatch() being auto-called, spawn each Player 'spectator = DEFAULT pawn' to fly around
 	//TimeSeconds start to count when GM or the FRIST GM is initialized, not sure which one but surely not when the game offically start
+	// 
 	bDelayedStart = true;
-
 }
 
 void ABlasterGameMode::BeginPlay()
 {
+	//forget to call this line will stop the server to posses its pawn, though the clients work normally:
+	Super::BeginPlay();
+
 	LevelStartingTime = GetWorld()->GetTimeSeconds();
 	CountDownTime = WarmUpTime; //NO NEED
 }
@@ -40,7 +43,13 @@ void ABlasterGameMode::Tick(float DeltaTime)
 		CountDownTime = WarmUpTime - (GetWorld()->GetTimeSeconds() - LevelStartingTime);
 
 		//after StartMatch, if succeed, next time you're no long in ::WaitingToStart and you dont have to worry this code will run again at all :D :D
-		if (CountDownTime <= 0.f) StartMatch(); 
+		if (CountDownTime <= 0.f)
+		{
+			//I add this to fix the bug - not fix neither
+			bDelayedStart = false; 
+
+			StartMatch();
+		}
 	}
 }
 

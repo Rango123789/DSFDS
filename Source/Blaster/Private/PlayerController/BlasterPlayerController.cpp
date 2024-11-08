@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "PlayerController/BlasterPlayerController.h"
 #include "HUD/BlasterHUD.h"
 #include "HUD/CharacterOverlay_UserWidget.h"
@@ -9,11 +8,18 @@
 
 void ABlasterPlayerController::BeginPlay()
 {
-	//move this to AplayerController:
+//move this to AplayerController:
+	Super::BeginPlay();
 
-		BlasterHUD = Cast<ABlasterHUD>(GetHUD());
-		if(BlasterHUD) CharacterOverlay_UserWidget = BlasterHUD->GetCharacterOverlay_UserWidget();
+	BlasterHUD = Cast<ABlasterHUD>(GetHUD());
+	if(BlasterHUD) CharacterOverlay_UserWidget = BlasterHUD->GetCharacterOverlay_UserWidget();
 
+//NOT work, this trigger even before OnPossess LOL
+	//BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	//if (BlasterHUD == nullptr) return;
+	//CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	//if (CharacterOverlay_UserWidget == nullptr) return;
+	//CharacterOverlay_UserWidget->AddToViewport();
 }
 
 //this is for respawning - if needed - only KEY vars from Char need this
@@ -38,6 +44,17 @@ void ABlasterPlayerController::OnPossess(APawn* InPawn)
 		SetHUDScore(PlayerState_Blaster->GetScore()); //medicine3
 		//SetHUDDefeat(PlayerState_Blaster->GetDefeat()); //medicine3
 	}
+
+//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+
+	CharacterOverlay_UserWidget->AddToViewport();
+
+//help the server char to setup Enhanced Input, as it doesn't have a natural first spawn with the system due to bDelayed = true for adding WarmUpTime:
+	if (BlasterCharacter) BlasterCharacter->SetupEnhancedInput_IMC();
 }
 
 void ABlasterPlayerController::ReceivedPlayer()

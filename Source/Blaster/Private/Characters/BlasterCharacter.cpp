@@ -21,6 +21,8 @@
 #include "Blaster/Blaster.h"
 #include <Kismet/GameplayStatics.h>
 #include <PlayerStates/PlayerState_Blaster.h>
+#include <HUD/BlasterHUD.h>
+#include "HUD/CharacterOverlay_UserWidget.h"
 //#include "HUD/BlasterHUD.h"
 //#include "HUD/CharacterOverlay_UserWidget.h"
 
@@ -69,27 +71,24 @@ ABlasterCharacter::ABlasterCharacter()
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (IsLocallyControlled())
-	{
-		FString OwnerName;
-		if (GetOwner()) GetOwner()->GetName(OwnerName);
-		UE_LOG(LogTemp, Warning, TEXT("Owner of this autonomous Char: %s"), *OwnerName);
-	}
-	else
-	{
-		FString OwnerName;
-		if (GetOwner()) GetOwner()->GetName(OwnerName);
-		UE_LOG(LogTemp, Warning, TEXT("Owner of this NON-autonomous Char: %s"), *OwnerName);
-	}
-
 //stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
 	BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
 	PlayerState_Blaster = GetPlayerState<APlayerState_Blaster>();
-	if (BlasterPlayerController) BlasterPlayerController->SetHUDHealth(Health, MaxHealth); 	//this is for GameStart
+	if (BlasterPlayerController)
+	{
+		ABlasterHUD* BlasterHUD = BlasterPlayerController->GetHUD<ABlasterHUD>();
+		if (BlasterHUD && BlasterHUD->GetCharacterOverlay_UserWidget())
+		{
+			BlasterHUD->GetCharacterOverlay_UserWidget()->AddToViewport();
+		}
+
+		BlasterPlayerController->SetHUDHealth(Health, MaxHealth); 	//this is for GameStart
+	}
+
 	if (PlayerState_Blaster && BlasterPlayerController)
 	{ 
+
 		BlasterPlayerController->SetHUDScore(PlayerState_Blaster->GetScore()); 	//medicine1
 		BlasterPlayerController->SetHUDDefeat(PlayerState_Blaster->GetDefeat()); 	//medicine1
 	}
@@ -97,14 +96,14 @@ void ABlasterCharacter::BeginPlay()
 	////Only the server device can get a valid reference to GameMode as it is only created in the server device, not sure it is a good idea to create a member of this where this is only meaningful to the server device
 	//BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
 
-	//Input
+	//If you the server pawn isn't spawned with the system naturally for first time, then you must set it up in PC::OnPosses (JUST like the way you fix HUD widget GameStart + Respawn)
 	if (BlasterPlayerController && IMC_Blaster)
 	{
 		//create __ object and associate it with the LocalPlayer object, hence PlayerController, currently controlling this Character: 
 		UEnhancedInputLocalPlayerSubsystem* EISubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(BlasterPlayerController->GetLocalPlayer());
 
 		//the priority=0 is just for fun, there is only one IMC we're gonna add to our Blaster Character: 
-		if(EISubsystem) EISubsystem->AddMappingContext(IMC_Blaster, 0);
+		if (EISubsystem) EISubsystem->AddMappingContext(IMC_Blaster, 0);
 	}
 
 	//call the helper function to change text of the underlying widget of the widget component:
@@ -119,6 +118,23 @@ void ABlasterCharacter::BeginPlay()
 	if (HasAuthority() )
 	{
 		OnTakeAnyDamage.AddDynamic(this, &ThisClass::ReceiveDamage);
+	}
+}
+
+//this is meant to be called from BP::OnPosses, avoiding cluding all input-relevant types from there
+//again you can directly do this from there, but must include relevant types
+void ABlasterCharacter::SetupEnhancedInput_IMC()
+{
+	//add this extra line:
+	BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
+
+	if (BlasterPlayerController && IMC_Blaster)
+	{
+		//create __ object and associate it with the LocalPlayer object, hence PlayerController, currently controlling this Character: 
+		UEnhancedInputLocalPlayerSubsystem* EISubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(BlasterPlayerController->GetLocalPlayer());
+
+		//the priority=0 is just for fun, there is only one IMC we're gonna add to our Blaster Character: 
+		if (EISubsystem) EISubsystem->AddMappingContext(IMC_Blaster, 0);
 	}
 }
 

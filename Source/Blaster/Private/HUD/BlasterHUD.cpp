@@ -4,17 +4,19 @@
 
 void ABlasterHUD::BeginPlay()
 {
+	Super::BeginPlay();
 	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
 	APlayerController* PlayerController1 = GetOwningPlayerController();
 
+	////WAY1 remove this, WAY2 keep this
 	if (CharacterOverlay_Class && PlayerController)
 	{
 		//Test 'GetWorld()' , 'GetGameInstance()' and 'GetWorld()->GetFirstPlayerController()' for first param = all works
 		CharacterOverlay_UserWidget = CreateWidget<UCharacterOverlay_UserWidget>(PlayerController, CharacterOverlay_Class);
 	}
 
-	CharacterOverlay_UserWidget->AddToViewport();
-
+	////both WAY1+WAY2 need to remove this (to be called in either PC::OnPosses | GM)
+	//CharacterOverlay_UserWidget->AddToViewport();
 }
 void ABlasterHUD::DrawHUD()
 {
