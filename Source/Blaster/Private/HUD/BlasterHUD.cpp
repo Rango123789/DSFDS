@@ -20,17 +20,18 @@ void ABlasterHUD::BeginPlay()
 	////WAY1 remove this, WAY2 keep this
 	if (CharacterOverlay_Class && PlayerController)
 	{
-		//Test 'GetWorld()' , 'GetGameInstance()' and 'GetWorld()->GetFirstPlayerController()' for first param = all works
 		CharacterOverlay_UserWidget = CreateWidget<UCharacterOverlay_UserWidget>(PlayerController, CharacterOverlay_Class);
-		//Idcide to create it 
+	}
+
+	//if(CharacterOverlay_UserWidget) CharacterOverlay_UserWidget->AddToViewport();
+	 
+	if (PlayerController && Announcement_Class)
+	{
 		UserWidget_Announcement = CreateWidget<UUserWidget_Announcement>(PlayerController, Announcement_Class);
 	}
-////both WAY1+WAY2 need to remove this (to be called in either PC::OnPosses | GM)
-	//if(CharacterOverlay_Class) CharacterOverlay_UserWidget->AddToViewport();
-	 
-//UW_Announcement can be added around the them HUD exist, why coudn't we just add it at this point? but rather in PC::BeginPlay() or PC::OnMatchStateSet_propogate()::WaitingToStart? 	
-//UPDATE we have to call it here ::WaitingToStart is too soon for clients, PC::BeginPlay() IN ue5.2 NOT work for any device LOL:
+
 	if (UserWidget_Announcement) UserWidget_Announcement->AddToViewport();
+
 }
 void ABlasterHUD::DrawHUD()
 {

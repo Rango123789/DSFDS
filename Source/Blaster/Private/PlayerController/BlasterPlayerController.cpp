@@ -22,8 +22,8 @@ void ABlasterPlayerController::BeginPlay()
 //move this to AplayerController:
 	Super::BeginPlay();
 
-	ServerCheckMatchState(); //GOLDEN4 to propogated DATA from GM to clients
 
+	//OPTIONAL, but recommend to try to initalize them
 	BlasterHUD = Cast<ABlasterHUD>(GetHUD());
 	if (BlasterHUD)
 	{
@@ -31,31 +31,16 @@ void ABlasterPlayerController::BeginPlay()
 		UserWidget_Announcement = BlasterHUD->GetUserWidget_Announcement();
 	}
 
-//this work in UE5.0, but not work in UE5.2, hence Stephen doing here not gonna work in UE5.2+
-//this is what I expected as you see CharacterOverlay_UserWidget->AddToViewport(); also FAIL right below LOL
-//So we will do plan B, do it right in BlasterHUD, as PC+HUD::BeginPlay() almost trigger the same, but with different order, that HUD later than PC, hence HUD work, not to mention it is the ORIGIN!
-	//BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
-	//if (BlasterHUD == nullptr) return;
+	//get DATA from GameMode for clients_PC + server_PC accidentally:
+	ServerCheckMatchState(); //GOLDEN4 to propogated DATA from GM to clients
 
-	//UserWidget_Announcement = UserWidget_Announcement == nullptr ? BlasterHUD->GetUW_Announcement() : UserWidget_Announcement;
-	//if (UserWidget_Announcement == nullptr) return;
-
-	//UserWidget_Announcement->AddToViewport();
-
-//NOT work in all devices, this trigger even before OnPossess LOL
-	//BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
-	//if (BlasterHUD == nullptr) return;
-	//CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
-	//if (CharacterOverlay_UserWidget == nullptr) return;
-
-	//CharacterOverlay_UserWidget->AddToViewport();
 }
   
 void ABlasterPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UpdateHUDTime();
+	UpdateHUDTime(); //locally set to trigger per second only
 
 	//update Delta_ServerMinusClient every 5s. factorize this into 'CheckTimeSync()'
 	AccumilatingTime += DeltaTime;
@@ -112,6 +97,9 @@ void ABlasterPlayerController::ServerCheckMatchState_Implementation()
 		MatchState = BlasterGameMode->GetMatchState(); 
 	}
 	ClientCheckMatchState(LevelStartingTime, WarmUpTime, MatchTime, MatchState);
+
+	// Only Do this if you didn't do it in BlasterHUD, which I did, so I dont need, calling it here is no different than calling in PC::BeginPlay as this will be in turn called in BeginPlay, and UE5.2 didn't work in PC::BeginPlay, so it wont work for me :) PC constructor is done before BlasterHUD. hence PC::BeginPlay is done before PC::HUD I guess
+		// if(MatchState=WaitingToStart && BlasterHUD) CreateWidget + AddToViewport WBP_Announcement 
 }
 //this is executed on owning client, who sent the ServerRPC above in this case, and help clients get values from GameMode:
 void ABlasterPlayerController::ClientCheckMatchState_Implementation(float InLevelStartingTime, float InWarmUpTime, float InMatchTime, FName InMatchName)
@@ -120,6 +108,12 @@ void ABlasterPlayerController::ClientCheckMatchState_Implementation(float InLeve
 	WarmUpTime = InWarmUpTime;
 	MatchTime = InMatchTime;
 	MatchState = InMatchName;
+
+	//In worst case, the client joint 'after' the point MG::OnMatchStateSet()~>InProgress trigger, that it wont have those code update to clients at all, where the server PC will surely be updated, and possibly the only one, hence we dont add this line in Server___ above  
+	OnMatchStateSet(MatchState); //PC:: _propogate()
+
+	// Only Do this if you didn't do it in BlasterHUD, which I did, so I dont need, calling it here is no different than calling in PC::BeginPlay as this will be in turn called in BeginPlay, and UE5.2 didn't work in PC::BeginPlay, so it wont work for me :) PC constructor is done before BlasterHUD. hence PC::BeginPlay is done before PC::HUD I guess
+	// if(MatchState=WaitingToStart && BlasterHUD) CreateWidget + AddToViewport WBP_Announcement 
 }
 
 
@@ -153,6 +147,7 @@ void ABlasterPlayerController::OnPossess(APawn* InPawn)
 
 	//OPTION2: So this has to work, need only to access char::Health and MaxHealth for PC::SetHUDHealth( , ) right here
 	ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(InPawn);
+
 	if (BlasterCharacter)
 	{
 		SetHUDHealth(BlasterCharacter->GetHealth(), BlasterCharacter->GetMaxHealth());
@@ -234,10 +229,11 @@ void ABlasterPlayerController::SetHUDHealth(float Health, float MaxHealth)
 	//UE_LOG(LogTemp, Warning, TEXT("CharacterOverlay_UserWidget valid"));
 
 //Back to main business:
-	CharacterOverlay_UserWidget->SetHealthPercent(Health / MaxHealth);
+	float HealthPercent = FMath::Clamp(Health / MaxHealth, 0.f, 1.f);
+	if (CharacterOverlay_UserWidget) CharacterOverlay_UserWidget->SetHealthPercent(HealthPercent);
 
 	FString Text = FString::FromInt(Health) + FString(" / ") + FString::FromInt(MaxHealth);
-	CharacterOverlay_UserWidget->SetHealthText(Text);
+	if (CharacterOverlay_UserWidget) CharacterOverlay_UserWidget->SetHealthText(Text);
 }
 
 //the pattern is the same as SetHUDHealth above
@@ -292,14 +288,13 @@ void ABlasterPlayerController::SetHUDCarriedAmmo(int InCarriedAmmo)
 //we calculate timeleft from outside
 void ABlasterPlayerController::SetHUDMatchTimeLeft(int32 InTimeLeft)
 {
-	//this 4 lines is my style:
+//this 4 lines is my style:
 	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
 	if (BlasterHUD == nullptr) return;
 
 	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
 	if (CharacterOverlay_UserWidget == nullptr) return;
 	//Back to main business:
-	
 		//READY:
 	int min = FMath::FloorToInt(InTimeLeft / 60.f); //must be Floor
 	int sec = FMath::CeilToInt(InTimeLeft - min * 60.f); //Round - ceil - floor upto you!
@@ -308,22 +303,61 @@ void ABlasterPlayerController::SetHUDMatchTimeLeft(int32 InTimeLeft)
 	//text = FString::Printf(TEXT("%02d : %02d") , min , sec) - if you want 01 : 07 format!
 	
 		//CALL:
-	CharacterOverlay_UserWidget->SetTimeLeftText(text);
+	if(CharacterOverlay_UserWidget) CharacterOverlay_UserWidget->SetMatchTimeLeftText(text);
 }
 
+void ABlasterPlayerController::SetHUDWarmUpTimeLeft(int32 InTimeLeft)
+{
+//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	UserWidget_Announcement = UserWidget_Announcement == nullptr ? BlasterHUD->GetUserWidget_Announcement() : UserWidget_Announcement;
+	if (UserWidget_Announcement == nullptr) return;
+//Back to main business:
+		//READY:
+	int min = FMath::FloorToInt(InTimeLeft / 60.f); //must be Floor
+	int sec = FMath::CeilToInt(InTimeLeft - min * 60.f); //Round - ceil - floor upto you!
+
+	FString text = FString::FromInt(min) + FString(" : ") + FString::FromInt(sec);
+	//text = FString::Printf(TEXT("%02d : %02d") , min , sec) - if you want 01 : 07 format!
+	
+		//CALL:
+	if (UserWidget_Announcement) UserWidget_Announcement->SetWarmUpTimeLeftText(text);
+}
+
+//the turn ON/OFF of WBP_Announce and WBP_Overlay already done externally, partly in PC::OnMatchStateSet(), so you dont have to worry about it here:
 void ABlasterPlayerController::UpdateHUDTime()
 {
-	//You can factorize these code into 'SetHUDTime()' if you want
-	//TimeLeft will be converted to int by C++ rule, so THE Math::CeilToInt is totally OPTIONAL
-	//we doing these so that we ONLY call SetHUDTimeLeft(TimeLeft) per second - not per frame, isn't it amazing?
-	//GetTimeSeconds = Accumilating time from GameStart - HERE
-	//GetDeltaSeconds = DeltaTime - not HERE
+//You can factorize these code into 'SetHUDTime()' if you want
+//TimeLeft will be converted to int by C++ rule, so THE Math::CeilToInt is totally OPTIONAL
+//we doing these so that we ONLY call SetHUDTimeLeft(TimeLeft) per second - not per frame, isn't it amazing?
+//note that you can create 2 separate TimeLeft + 2 separate TimeLeftInt_LastSecond if you can merge them, however stephen has a very nice way to do them together so I follow.
 
-	//uint32 TimeLeft = FMath::CeilToInt(MatchTime - GetWorld()->GetTimeSeconds()); //NOT synched
-	uint32 TimeLeft = FMath::CeilToInt(MatchTime - GetServerTime_Synched());  //Synched
-	if (TimeLeft != TimeLeftInt_LastSecond)
+//PART1: counting TimeLeft depends on which state we're in
+	float TimeLeft;
+	if (MatchState == MatchState::WaitingToStart)
 	{
-		SetHUDMatchTimeLeft(TimeLeft);
+		//TimeLeft is meant for WarmUpTimeLeft:
+		TimeLeft = WarmUpTime - (GetServerTime_Synched() - LevelStartingTime);
 	}
-	TimeLeftInt_LastSecond = TimeLeft;
+	else if (MatchState == MatchState::InProgress)
+	{
+		//Timeleft is meant for MatchTimeLeft:
+		TimeLeft = MatchTime - (GetServerTime_Synched() - LevelStartingTime - WarmUpTime); //synched
+	       //TimeLeft = FMath::CeilToInt(MatchTime - GetWorld()->GetTimeSeconds() - LevelStartingTime); //NOT synched
+	}
+
+	//FMath::CeilToInt() = OPTIONAL, so that you see the MAX number longer a bit, if you dont do this line so change the type o TimeLeft above to uint32 instead for auto-conversion: 
+	uint32 SecondsLeft = FMath::CeilToInt(TimeLeft);
+
+//PART2: 'per-second' technique
+	if (SecondsLeft != TimeLeftInt_LastSecond)
+	{
+		if (MatchState == MatchState::WaitingToStart) SetHUDWarmUpTimeLeft(SecondsLeft);
+
+		else if (MatchState == MatchState::InProgress) SetHUDMatchTimeLeft(SecondsLeft);
+	}
+	TimeLeftInt_LastSecond = SecondsLeft;
+
 }

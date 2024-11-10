@@ -15,14 +15,14 @@ class BLASTER_API UUserWidget_Announcement : public UUserWidget
 	GENERATED_BODY()
 public:
 	void SetAnnounceText(const FString& InString);
-	void SetWarmUpTimeText(const FString& InString);
+	void SetWarmUpTimeLeftText(const FString& InString);
 	void SetInfoText(const FString& InString);
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_Announcement;
 
 	UPROPERTY(meta = (BindWidget))
-	class UTextBlock* TextBlock_WarmUpTime;
+	class UTextBlock* TextBlock_WarmUpTimeLeft;
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_Info;

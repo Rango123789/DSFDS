@@ -30,6 +30,8 @@ public:
 
 	void SetHUDMatchTimeLeft(int32 MatchTimeLeft);
 
+	void SetHUDWarmUpTimeLeft(int32 InTimeLeft);
+
 	virtual void OnPossess(APawn* InPawn) override;
 
 	virtual void ReceivedPlayer() override; //Synched with server clock as soon as possible
@@ -46,12 +48,12 @@ protected:
 
 	//HUD and its Overlay widget (move from Character)
 	UPROPERTY()
-	class ABlasterHUD* BlasterHUD;
+	class ABlasterHUD* BlasterHUD = nullptr;
 	UPROPERTY()
-	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget = nullptr;
 
 	UPROPERTY()
-	class UUserWidget_Announcement* UserWidget_Announcement;
+	class UUserWidget_Announcement* UserWidget_Announcement = nullptr;
 
 	//new, to be propogated from GM:
 	float LevelStartingTime = 0.f;

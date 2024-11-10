@@ -39,9 +39,9 @@ void UCharacterOverlay_UserWidget::SetCarriedAmmoText(const int& InCarriedAmmo)
 	if (TextBlock_CarriedAmmo) TextBlock_CarriedAmmo->SetText(FText::FromString(InString));
 }
 
-void UCharacterOverlay_UserWidget::SetTimeLeftText(const FString& InString)
+void UCharacterOverlay_UserWidget::SetMatchTimeLeftText(const FString& InString)
 {
-	if (TextBlock_TimeLeft) TextBlock_TimeLeft->SetText(FText::FromString(InString));
+	if (TextBlock_MatchTimeLeft) TextBlock_MatchTimeLeft->SetText(FText::FromString(InString));
 }
 
 

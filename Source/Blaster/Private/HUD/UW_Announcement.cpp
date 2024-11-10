@@ -9,9 +9,9 @@ void UUserWidget_Announcement::SetAnnounceText(const FString& InString)
 	if (TextBlock_Announcement) TextBlock_Announcement->SetText(FText::FromString(InString));
 }
 
-void UUserWidget_Announcement::SetWarmUpTimeText(const FString& InString)
+void UUserWidget_Announcement::SetWarmUpTimeLeftText(const FString& InString)
 {
-	if (TextBlock_WarmUpTime) TextBlock_WarmUpTime->SetText(FText::FromString(InString));
+	if (TextBlock_WarmUpTimeLeft) TextBlock_WarmUpTimeLeft->SetText(FText::FromString(InString));
 }
 
 void UUserWidget_Announcement::SetInfoText(const FString& InString)

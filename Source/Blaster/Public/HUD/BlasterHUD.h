@@ -38,11 +38,13 @@ protected:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class UCharacterOverlay_UserWidget> CharacterOverlay_Class;
 
+	UPROPERTY()
 	UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class UUserWidget_Announcement> Announcement_Class;
 
+	UPROPERTY()
 	UUserWidget_Announcement* UserWidget_Announcement;
 
 	
