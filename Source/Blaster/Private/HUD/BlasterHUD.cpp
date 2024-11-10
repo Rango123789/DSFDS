@@ -1,22 +1,36 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "HUD/BlasterHUD.h"
 #include "HUD/CharacterOverlay_UserWidget.h"
+#include "HUD/UW_Announcement.h"
+
+ABlasterHUD::ABlasterHUD()
+{
+	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("HUD,  Constructor Time: %f "), GetWorld()->GetTimeSeconds())
+}
 
 void ABlasterHUD::BeginPlay()
 {
+	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("HUD,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
+
 	Super::BeginPlay();
 	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
 	APlayerController* PlayerController1 = GetOwningPlayerController();
 
+//factorize them into one function if you use Stephen WAY1
 	////WAY1 remove this, WAY2 keep this
 	if (CharacterOverlay_Class && PlayerController)
 	{
 		//Test 'GetWorld()' , 'GetGameInstance()' and 'GetWorld()->GetFirstPlayerController()' for first param = all works
 		CharacterOverlay_UserWidget = CreateWidget<UCharacterOverlay_UserWidget>(PlayerController, CharacterOverlay_Class);
+		//Idcide to create it 
+		UserWidget_Announcement = CreateWidget<UUserWidget_Announcement>(PlayerController, Announcement_Class);
 	}
-
-	////both WAY1+WAY2 need to remove this (to be called in either PC::OnPosses | GM)
-	//CharacterOverlay_UserWidget->AddToViewport();
+////both WAY1+WAY2 need to remove this (to be called in either PC::OnPosses | GM)
+	//if(CharacterOverlay_Class) CharacterOverlay_UserWidget->AddToViewport();
+	 
+//UW_Announcement can be added around the them HUD exist, why coudn't we just add it at this point? but rather in PC::BeginPlay() or PC::OnMatchStateSet_propogate()::WaitingToStart? 	
+//UPDATE we have to call it here ::WaitingToStart is too soon for clients, PC::BeginPlay() IN ue5.2 NOT work for any device LOL:
+	if (UserWidget_Announcement) UserWidget_Announcement->AddToViewport();
 }
 void ABlasterHUD::DrawHUD()
 {

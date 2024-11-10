@@ -29,6 +29,8 @@
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
 {
+	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("Character,  Constructor Time: %f "), GetWorld()->GetTimeSeconds())
+
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -70,6 +72,8 @@ ABlasterCharacter::ABlasterCharacter()
 
 void ABlasterCharacter::BeginPlay()
 {
+	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("Character,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
+
 	Super::BeginPlay();
 //stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
@@ -77,13 +81,14 @@ void ABlasterCharacter::BeginPlay()
 	PlayerState_Blaster = GetPlayerState<APlayerState_Blaster>();
 	if (BlasterPlayerController)
 	{
-		ABlasterHUD* BlasterHUD = BlasterPlayerController->GetHUD<ABlasterHUD>();
-		if (BlasterHUD && BlasterHUD->GetCharacterOverlay_UserWidget())
-		{
-			BlasterHUD->GetCharacterOverlay_UserWidget()->AddToViewport();
-		}
 
 		BlasterPlayerController->SetHUDHealth(Health, MaxHealth); 	//this is for GameStart
+		//OPTION1 to delay HUD to be shown during WarmUpTime:
+			//ABlasterHUD* BlasterHUD = BlasterPlayerController->GetHUD<ABlasterHUD>();
+			//if (BlasterHUD && BlasterHUD->GetCharacterOverlay_UserWidget())
+			//{
+			//	BlasterHUD->GetCharacterOverlay_UserWidget()->AddToViewport();
+			//}
 	}
 
 	if (PlayerState_Blaster && BlasterPlayerController)

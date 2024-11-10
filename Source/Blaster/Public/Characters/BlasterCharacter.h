@@ -17,7 +17,7 @@ class BLASTER_API ABlasterCharacter : public ACharacter, public IInteractWithCro
 public:
 /***functions***/
 //category1: auto-generated functions:
-	ABlasterCharacter();
+	ABlasterCharacter(); 
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 

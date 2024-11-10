@@ -14,7 +14,9 @@ class BLASTER_API ABlasterPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 public:	
+	ABlasterPlayerController(); //for testing
 	virtual void Tick(float DeltaTime) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void UpdateHUDTime();
 
@@ -26,14 +28,9 @@ public:
 
 	void SetHUDCarriedAmmo(int InCarriedAmmo);
 
-	void SetHUDTimeLeft(int32 MatchTimeLeft);
+	void SetHUDMatchTimeLeft(int32 MatchTimeLeft);
 
 	virtual void OnPossess(APawn* InPawn) override;
-
-	UFUNCTION(Server, Reliable)
-	void Server_RequestServerTime(float TimeOfClientWhenRequesting);
-	UFUNCTION(Client, Reliable)
-	void Client_ReportRequestBackToRequestingClient(float TimeOfClientWhenRequesting, float TimeOfServerWhenReceivedRequest);
 
 	virtual void ReceivedPlayer() override; //Synched with server clock as soon as possible
 	float GetServerTime_Synched(); //Synched with server world clock
@@ -42,6 +39,7 @@ public:
 	float AccumilatingTime = 0; //when reach 5s, call 
 	UPROPERTY(EditAnywhere)
 	float TimeSynchFrequency = 5.f;
+
 
 protected:
 	virtual void BeginPlay() override;
@@ -52,10 +50,42 @@ protected:
 	UPROPERTY()
 	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
 
+	UPROPERTY()
+	class UUserWidget_Announcement* UserWidget_Announcement;
+
+	//new, to be propogated from GM:
+	float LevelStartingTime = 0.f;
+
+	//new, to be propogated from GM:
+	float WarmUpTime = 0.f;
+
+	//old, I set it back to 0, so that it will be propogated from GM naturally
 	UPROPERTY(EditAnywhere)
-	float MatchTime = 120.f; //Call it TimeLeft is also OKAY
+	float MatchTime = 0.f; //120.f
 
 	uint32 TimeLeftInt_LastSecond = 0;
+
+	//old, to be propogated from Gm
+	UPROPERTY(ReplicatedUsing = OnRep_MatchState)
+	FName MatchState;
+
+	UFUNCTION()
+	void OnRep_MatchState();
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheckMatchState();
+
+	//Stephen call this ClientJoinMidGame() LOL
+	UFUNCTION(Client, Reliable)
+	void ClientCheckMatchState(float InLevelStartingTime, float InWarmUpTime, float InMatchTime, FName InMatchName);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestServerTime(float TimeOfClientWhenRequesting);
+	UFUNCTION(Client, Reliable)
+	void Client_ReportRequestBackToRequestingClient(float TimeOfClientWhenRequesting, float TimeOfServerWhenReceivedRequest);
+
 public:
+	void OnMatchStateSet(const FName& InMatchState); //more than set, so I do it in .cpp
+	void HandleMatchHasStarted();
 
 };

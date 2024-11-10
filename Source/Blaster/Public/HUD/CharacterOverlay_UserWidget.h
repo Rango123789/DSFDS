@@ -44,4 +44,6 @@ protected:
 	class UTextBlock* TextBlock_TimeLeft;
 private:
 
+
+
 };

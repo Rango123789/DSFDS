@@ -3,23 +3,144 @@
 #include "PlayerController/BlasterPlayerController.h"
 #include "HUD/BlasterHUD.h"
 #include "HUD/CharacterOverlay_UserWidget.h"
+#include "HUD/UW_Announcement.h"
 #include "Characters/BlasterCharacter.h"
 #include <PlayerStates/PlayerState_Blaster.h>
+#include "GameModes/BlasterGameMode.h"
+#include <Net/UnrealNetwork.h>
+#include "Kismet/GameplayStatics.h"
+
+ABlasterPlayerController::ABlasterPlayerController()
+{
+	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("PC,  Constructor Time: %f "), GetWorld()->GetTimeSeconds())
+}
 
 void ABlasterPlayerController::BeginPlay()
 {
+	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("PC,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
+
 //move this to AplayerController:
 	Super::BeginPlay();
 
-	BlasterHUD = Cast<ABlasterHUD>(GetHUD());
-	if(BlasterHUD) CharacterOverlay_UserWidget = BlasterHUD->GetCharacterOverlay_UserWidget();
+	ServerCheckMatchState(); //GOLDEN4 to propogated DATA from GM to clients
 
-//NOT work, this trigger even before OnPossess LOL
+	BlasterHUD = Cast<ABlasterHUD>(GetHUD());
+	if (BlasterHUD)
+	{
+		CharacterOverlay_UserWidget = BlasterHUD->GetCharacterOverlay_UserWidget();
+		UserWidget_Announcement = BlasterHUD->GetUserWidget_Announcement();
+	}
+
+//this work in UE5.0, but not work in UE5.2, hence Stephen doing here not gonna work in UE5.2+
+//this is what I expected as you see CharacterOverlay_UserWidget->AddToViewport(); also FAIL right below LOL
+//So we will do plan B, do it right in BlasterHUD, as PC+HUD::BeginPlay() almost trigger the same, but with different order, that HUD later than PC, hence HUD work, not to mention it is the ORIGIN!
+	//BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	//if (BlasterHUD == nullptr) return;
+
+	//UserWidget_Announcement = UserWidget_Announcement == nullptr ? BlasterHUD->GetUW_Announcement() : UserWidget_Announcement;
+	//if (UserWidget_Announcement == nullptr) return;
+
+	//UserWidget_Announcement->AddToViewport();
+
+//NOT work in all devices, this trigger even before OnPossess LOL
 	//BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
 	//if (BlasterHUD == nullptr) return;
 	//CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
 	//if (CharacterOverlay_UserWidget == nullptr) return;
+
 	//CharacterOverlay_UserWidget->AddToViewport();
+}
+  
+void ABlasterPlayerController::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	UpdateHUDTime();
+
+	//update Delta_ServerMinusClient every 5s. factorize this into 'CheckTimeSync()'
+	AccumilatingTime += DeltaTime;
+	if (IsLocalController() && AccumilatingTime > TimeSynchFrequency)
+	{
+		//this in turn call Client_ReportReqest. Finally update Delta_ServerMinusClient every 5s.
+		Server_RequestServerTime(GetWorld()->GetTimeSeconds());
+		AccumilatingTime = 0;
+	}
+
+}
+
+//I decide to give the same name, why not!
+void ABlasterPlayerController::OnMatchStateSet(const FName& InMatchState)
+{
+	MatchState = InMatchState;
+
+	if (MatchState == MatchState::WaitingToStart)
+	{
+		if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("PC::MatchStage_propogate::WaitingToStart,  Time: %f "), GetWorld()->GetTimeSeconds())
+	//this 4 lines is my style:
+		//BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+		//if (BlasterHUD == nullptr) return;
+
+		//UserWidget_Announcement = UserWidget_Announcement == nullptr ? BlasterHUD->GetUW_Announcement() : UserWidget_Announcement;
+		//if (UserWidget_Announcement == nullptr) return;
+	//	not early for server but early for clients:
+		//UserWidget_Announcement->AddToViewport();
+	}
+
+	if (MatchState == MatchState::InProgress)
+	{
+		HandleMatchHasStarted();
+	}
+}
+
+void ABlasterPlayerController::OnRep_MatchState()
+{
+	//it is not an enum so we can't use switch lol
+	if(MatchState == MatchState::InProgress)
+	{
+		HandleMatchHasStarted();
+	}
+}
+//this is executed on server, which is the only place GetGameMode() return valid
+void ABlasterPlayerController::ServerCheckMatchState_Implementation()
+{
+	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(UGameplayStatics::GetGameMode(this));//GetWorld()->GetAuthoGameMode() are the same
+	if (BlasterGameMode)
+	{
+		LevelStartingTime = BlasterGameMode->GetLevelStartingTime();
+		WarmUpTime = BlasterGameMode->GetWarmUpTime();
+		MatchTime = BlasterGameMode->GetMatchTime();
+		MatchState = BlasterGameMode->GetMatchState(); 
+	}
+	ClientCheckMatchState(LevelStartingTime, WarmUpTime, MatchTime, MatchState);
+}
+//this is executed on owning client, who sent the ServerRPC above in this case, and help clients get values from GameMode:
+void ABlasterPlayerController::ClientCheckMatchState_Implementation(float InLevelStartingTime, float InWarmUpTime, float InMatchTime, FName InMatchName)
+{
+	LevelStartingTime = InLevelStartingTime;
+	WarmUpTime = InWarmUpTime;
+	MatchTime = InMatchTime;
+	MatchState = InMatchName;
+}
+
+
+//Name this function the same name as GameMode::HandleMatchHasStarted()<~InProgress <~GM::OnMatchStateSet()
+void ABlasterPlayerController::HandleMatchHasStarted()
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	//by my way, upto this point they should be all valid, so check the point is enough, no need recheck
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+	//Stephen gotta do it in PC::PollInit, but I do it here:
+	CharacterOverlay_UserWidget->AddToViewport();
+
+	//gotta HIDE, not destroy for re-use after match, the UW_Announcement first, but anyway, it only render at the end of the frame, so I put it here:
+	UserWidget_Announcement = UserWidget_Announcement == nullptr ? BlasterHUD->GetUserWidget_Announcement() : UserWidget_Announcement;
+	if (UserWidget_Announcement == nullptr) return;
+
+	UserWidget_Announcement->SetVisibility(ESlateVisibility::Hidden);
 }
 
 //this is for respawning - if needed - only KEY vars from Char need this
@@ -45,16 +166,17 @@ void ABlasterPlayerController::OnPossess(APawn* InPawn)
 		//SetHUDDefeat(PlayerState_Blaster->GetDefeat()); //medicine3
 	}
 
-//this 4 lines is my style:
-	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
-	if (BlasterHUD == nullptr) return;
-	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
-	if (CharacterOverlay_UserWidget == nullptr) return;
-
-	CharacterOverlay_UserWidget->AddToViewport();
 
 //help the server char to setup Enhanced Input, as it doesn't have a natural first spawn with the system due to bDelayed = true for adding WarmUpTime:
 	if (BlasterCharacter) BlasterCharacter->SetupEnhancedInput_IMC();
+
+//OPTION1 to delay HUD to be shown during WarmUpTime:
+		//BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+		//if (BlasterHUD == nullptr) return;
+		//CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+		//if (CharacterOverlay_UserWidget == nullptr) return;
+
+		//CharacterOverlay_UserWidget->AddToViewport();
 }
 
 void ABlasterPlayerController::ReceivedPlayer()
@@ -66,21 +188,12 @@ void ABlasterPlayerController::ReceivedPlayer()
 		Server_RequestServerTime(GetWorld()->GetTimeSeconds());
 	}
 }
-  
-void ABlasterPlayerController::Tick(float DeltaTime)
+
+void ABlasterPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::Tick(DeltaTime);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	UpdateHUDTime();
-
-	//update Delta_ServerMinusClient every 5s. factorize this into 'CheckTimeSync()'
-	AccumilatingTime += DeltaTime;
-	if (IsLocalController() && AccumilatingTime > TimeSynchFrequency)
-	{
-		//this in turn call Client_ReportReqest. Finally update Delta_ServerMinusClient every 5s.
-		Server_RequestServerTime(GetWorld()->GetTimeSeconds());
-		AccumilatingTime = 0;
-	}
+	DOREPLIFETIME(ABlasterPlayerController, MatchState);
 }
 
 //I think separate them into 2 cases is 'OPTIONAL', I reckon Delta ~ 0 if the one call Server_RequestServerTime is the server itself! but it is perfect to separate them:
@@ -177,7 +290,7 @@ void ABlasterPlayerController::SetHUDCarriedAmmo(int InCarriedAmmo)
 }
 
 //we calculate timeleft from outside
-void ABlasterPlayerController::SetHUDTimeLeft(int32 InTimeLeft)
+void ABlasterPlayerController::SetHUDMatchTimeLeft(int32 InTimeLeft)
 {
 	//this 4 lines is my style:
 	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
@@ -210,7 +323,7 @@ void ABlasterPlayerController::UpdateHUDTime()
 	uint32 TimeLeft = FMath::CeilToInt(MatchTime - GetServerTime_Synched());  //Synched
 	if (TimeLeft != TimeLeftInt_LastSecond)
 	{
-		SetHUDTimeLeft(TimeLeft);
+		SetHUDMatchTimeLeft(TimeLeft);
 	}
 	TimeLeftInt_LastSecond = TimeLeft;
 }

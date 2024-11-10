@@ -27,10 +27,11 @@ class BLASTER_API ABlasterHUD : public AHUD
 {
 	GENERATED_BODY()
 public:
+	ABlasterHUD(); //for testing
 	void virtual DrawHUD() override;
 	void DrawCrosshair(UTexture2D* InTexture, FVector2D ViewportSize, FVector2D ExpandOffset);
 protected:
-/***functions***/
+	/***functions***/
 	virtual void BeginPlay() override;
 
 /***data members****/
@@ -38,6 +39,12 @@ protected:
 	TSubclassOf<class UCharacterOverlay_UserWidget> CharacterOverlay_Class;
 
 	UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UUserWidget_Announcement> Announcement_Class;
+
+	UUserWidget_Announcement* UserWidget_Announcement;
+
 	
 	FHUDPackage HUDPackage; //this will be assigned AWeapon::values via Character::Combat (as this is where you can access both EquippedWeapon and PlayerController()->GetHUD();
 
@@ -49,4 +56,5 @@ public:
 	void SetHUDPackage(const FHUDPackage& InHUDPackage){ HUDPackage = InHUDPackage; }
 
 	UCharacterOverlay_UserWidget* GetCharacterOverlay_UserWidget() { return CharacterOverlay_UserWidget; }
+	UUserWidget_Announcement* GetUserWidget_Announcement() { return UserWidget_Announcement; }
 };

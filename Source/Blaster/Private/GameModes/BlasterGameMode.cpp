@@ -9,6 +9,7 @@
 
 ABlasterGameMode::ABlasterGameMode()
 {
+	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("GameMode,  Constructor Time: %f "), GetWorld()->GetTimeSeconds())
 	//this will stop StartMatch() being auto-called, spawn each Player 'spectator = DEFAULT pawn' to fly around
 	//TimeSeconds start to count when GM or the FRIST GM is initialized, not sure which one but surely not when the game offically start
 	// 
@@ -17,6 +18,8 @@ ABlasterGameMode::ABlasterGameMode()
 
 void ABlasterGameMode::BeginPlay()
 {
+	if(GetWorld()) UE_LOG(LogTemp, Warning, TEXT("GameMode,  BeginPlay Time: %f ") , GetWorld()->GetTimeSeconds())
+
 	//forget to call this line will stop the server to posses its pawn, though the clients work normally:
 	Super::BeginPlay();
 
@@ -50,6 +53,32 @@ void ABlasterGameMode::Tick(float DeltaTime)
 
 			StartMatch();
 		}
+	}
+}
+
+//will trigger whenever GM::MatchState change
+void ABlasterGameMode::OnMatchStateSet()
+{
+	Super::OnMatchStateSet();
+
+	if (MatchState == MatchState::WaitingToStart)
+	{
+		if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("GM::MatchStage::WaitingToStart,  Time: %f "), GetWorld()->GetTimeSeconds())
+	}
+
+	//our goal is just to propogate GM::MatchState to PC::MatchState, and then handle thing from there:
+		//access the whole PC array || its Iterator_[new] stored in gamemode and call PC::SetMatchState(), the rest will be handled from there.
+	FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator();
+	for (It; It; ++It) //this pattern is weird compared to:  for (int i = 1; i <= 10; ++i){...}
+	{
+		//this didn't work:
+			//APlayerController* Controller = *It;
+		//but this work1:
+		APlayerController* Controller = Cast<APlayerController>(*It);
+		//but this work2:
+		ABlasterPlayerController* PlayerController = Cast<ABlasterPlayerController>(*It);
+
+		PlayerController->OnMatchStateSet(MatchState); //this helper funciton do more than just set
 	}
 }
 

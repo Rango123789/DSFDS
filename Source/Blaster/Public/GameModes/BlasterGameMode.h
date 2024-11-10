@@ -23,6 +23,13 @@ public:
 protected:
 	void virtual BeginPlay() override;
 
+	virtual void OnMatchStateSet() override;
+
+	//New1, it should ORIGINATE from GM instead LOL:
+	UPROPERTY(EditAnywhere)
+	float MatchTime = 120.f;
+
+	//New2, we should also create PC::WarmUpTime to be propogate to from here
 	UPROPERTY(EditAnywhere)
 	float WarmUpTime = 10.f;
 
@@ -30,9 +37,13 @@ protected:
 
 	//StarterMap -> LobbyMap ->     GameMap
 	//    0                      BlasterLevelStartingTime
-	float LevelStartingTime{};
+	float LevelStartingTime =0.f; //to be set in BeginPlay()
 
 
 public:
+	float GetLevelStartingTime() { return LevelStartingTime; }
+	float GetWarmUpTime() { return WarmUpTime; }
+	float GetMatchTime() { return MatchTime; }
 
+	FName GetMatchState() { return MatchState; }
 };
