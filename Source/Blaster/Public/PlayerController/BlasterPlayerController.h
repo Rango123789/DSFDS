@@ -16,7 +16,10 @@ class BLASTER_API ABlasterPlayerController : public APlayerController
 public:	
 	ABlasterPlayerController(); //for testing
 	virtual void Tick(float DeltaTime) override;
+	void UpdateServerClient_Delta_Periodically(float DeltaTime);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void PollInit();
 
 	void UpdateHUDTime();
 
@@ -31,6 +34,8 @@ public:
 	void SetHUDMatchTimeLeft(int32 MatchTimeLeft);
 
 	void SetHUDWarmUpTimeLeft(int32 InTimeLeft);
+
+	void SetHUDAnnounceAndInfo();
 
 	virtual void OnPossess(APawn* InPawn) override;
 
@@ -55,6 +60,9 @@ protected:
 	UPROPERTY()
 	class UUserWidget_Announcement* UserWidget_Announcement = nullptr;
 
+	UPROPERTY()
+	class ABlasterGameMode* BlasterGameMode;
+
 	//new, to be propogated from GM:
 	float LevelStartingTime = 0.f;
 
@@ -62,8 +70,10 @@ protected:
 	float WarmUpTime = 0.f;
 
 	//old, I set it back to 0, so that it will be propogated from GM naturally
-	UPROPERTY(EditAnywhere)
 	float MatchTime = 0.f; //120.f
+
+	//new, to be propogated from GM:
+	float ColdDownTime = 0.f;
 
 	uint32 TimeLeftInt_LastSecond = 0;
 
@@ -79,7 +89,7 @@ protected:
 
 	//Stephen call this ClientJoinMidGame() LOL
 	UFUNCTION(Client, Reliable)
-	void ClientCheckMatchState(float InLevelStartingTime, float InWarmUpTime, float InMatchTime, FName InMatchName);
+	void ClientCheckMatchState(float InLevelStartingTime, float InWarmUpTime, float InMatchTime , float InCoolDownTime, FName InMatchName);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestServerTime(float TimeOfClientWhenRequesting);
@@ -88,6 +98,8 @@ protected:
 
 public:
 	void OnMatchStateSet(const FName& InMatchState); //more than set, so I do it in .cpp
-	void HandleMatchHasStarted();
+	void HandleMatchHasStarted(); 
+	void HandleCoolDown();
+	FName GetMatchState() { return MatchState; }
 
 };

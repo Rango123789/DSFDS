@@ -30,6 +30,7 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 		//stephen: SpawnParams.Owner = GetOwner() too, what the heck? is that sensible? :D :D
 		SpawnParams.Owner = this; //the Owner of the to-be-spawn projectile is the ProectileWeapon - make sense!
 
+		//GetOwnwer() of this weapon is the Character holding it.
 		SpawnParams.Instigator = Cast<APawn>(GetOwner()); //this is downcast, but is needed as GetOwner() return AActor*
 
 		GetWorld()->SpawnActor<AProjectile>(

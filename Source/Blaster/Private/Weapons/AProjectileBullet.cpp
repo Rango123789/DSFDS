@@ -9,13 +9,15 @@ void AAProjectileBullet::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* Oth
 {
 	//now we assume other actor is another BlasterCharacter, not BlasterChacter shooting the weapon :D 
 	ABlasterCharacter* Damaged_BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
-	if (Damaged_BlasterCharacter == nullptr) return;
-    
+	if (Damaged_BlasterCharacter == nullptr || GetInstigator() ) return;
+	AController* InstagatorController = GetInstigator()->GetController();
+	if (InstagatorController == nullptr) return;
+
 	//Review, we did set "AWeapon = Owner of this Projectile" and "ACharacer holding Weapon = Instigator Pawn of this Projectile" since we spawn this Projectile, so now we need only access and use it :D :D
 	UGameplayStatics::ApplyDamage(
 		Damaged_BlasterCharacter,
 		Damage,
-		GetInstigator()->GetController(), //Instigator of this Projectile was set to the Character holding the Weapon that this Projectile spawn from
+		GetInstigator()->GetController(), //Instigator of this Projectile, of APawn type, was set to the Character holding the Weapon that this Projectile spawn from
 		this,
 		UDamageType::StaticClass()
 	);

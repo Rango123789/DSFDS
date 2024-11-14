@@ -144,8 +144,12 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	CharacterState = BlasterCharacter->GetCharacterState();
 	//they gonna be different at some point during the rest of the course:
 	bShouldUseFABRIK = CharacterState == ECharacterState::ECS_Reloading ? false : true;
-	bShouldUseAimOffsets = CharacterState == ECharacterState::ECS_Reloading ? false : true;
-	bShouldRotateRightHand = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+	//bShouldUseAimOffsets = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+	//bShouldRotateRightHand = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+	
+	//this may or may not needed, as we stop counting AO_Yaw from Char::Tick() already
+	bShouldUseAimOffsets = (CharacterState != ECharacterState::ECS_Reloading) && (!BlasterCharacter->GetDisableMostInput());
+	bShouldRotateRightHand = (CharacterState != ECharacterState::ECS_Reloading) && (!BlasterCharacter->GetDisableMostInput());
 }
 
 

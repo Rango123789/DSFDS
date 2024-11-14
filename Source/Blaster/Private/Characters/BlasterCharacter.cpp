@@ -159,6 +159,17 @@ void ABlasterCharacter::PollInit()
 			BlasterPlayerController->SetHUDDefeat(PlayerState_Blaster->GetDefeat());
 		}
 	}
+
+	//if (BlasterHUD == nullptr)
+	//{
+	//	BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
+	//	if (BlasterPlayerController)
+	//	{
+	//		BlasterHUD = BlasterPlayerController->GetHUD<ABlasterHUD>();
+	//		if (BlasterHUD) BlasterHUD->SetupBlasterHUD();
+	//	}
+
+	//}
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -172,6 +183,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	//DOREPLIFETIME_CONDITION(ABlasterCharacter, CombatComponent, COND_OwnerOnly);
 
 	DOREPLIFETIME(ABlasterCharacter, Health);
+	DOREPLIFETIME(ABlasterCharacter, bDisableMostInput);
 }
 
 void ABlasterCharacter::PostInitializeComponents()
@@ -179,6 +191,19 @@ void ABlasterCharacter::PostInitializeComponents()
 	//supposedly all components should be initialized and not null before this Post, but still I want to check as good practice:
 	Super::PostInitializeComponents();
 	if (CombatComponent) CombatComponent->Character = this;
+}
+
+void ABlasterCharacter::Destroyed()
+{
+	Super::Destroyed();
+
+	//ONLY WHEN you're in CoolDown state you need to destroy the weapon with the character lol
+	if (BlasterPlayerController &&
+		BlasterPlayerController->GetMatchState() == MatchState::CoolDown &&
+		GetEquippedWeapon())
+	{
+		GetEquippedWeapon()->Destroy();
+	}
 }
 
 void ABlasterCharacter::Tick(float DeltaTime)
@@ -189,13 +214,31 @@ void ABlasterCharacter::Tick(float DeltaTime)
 
 	HideCharacterIfCameraClose();
 
-	//for now: 
-	//if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy) //Auto or Authority
-	//if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled() ) // A&& = redudant
+//this block (in combination with ABP) make auto proxy do AimOffset when within [-90,90], TurnInPlace when goes beyond it
+// ; make non-auto proxies play turn animation All the time (everytime you delta rotation > threshold)
+	AimOffsetAndTurnInPlace_GLOBAL(DeltaTime);
+}
+
+void ABlasterCharacter::AimOffsetAndTurnInPlace_GLOBAL(float DeltaTime)
+{
+	//We dont do any of them when bDisableMostInput=true (say during CoolDownTime)
+	if (bDisableMostInput)
+	{
+		//make sure non-auto proxies wont get stuck and play turn anim all the time, while its TurningInPlace != NoTurning at the same time CoolDownTime start - like stop firing logic:
+		TurningInPlace = ETurningInPlace::RTIP_NoTurning;
+		//You can set this in PC::OnMatchStateSet_Pro()~>CoolDown~>HandleCoolDown() as well, but why do we just do her together with TurningInPlace too right? :)
+		bUseControllerRotationYaw = false; //since you can't move during b__ = true, so bOrientRotationWithMovement is irrelevant.
+		AO_Yaw = 0;
+
+		return;
+	}
+
+	//autonomous proxy will have its AO_Yaw set (and AO_Pitch)
 	if (IsLocallyControlled())
 	{
 		SetupAimOffsetVariables(DeltaTime);
 	}
+	//non-auto proxies will not have its AO_Yaw set, bRotateRoot = false (but AO_Pitch set normally)
 	else
 	{
 		//we should only need to accumilating time for SimulateProxy
@@ -205,7 +248,7 @@ void ABlasterCharacter::Tick(float DeltaTime)
 		if (AccumilatingTime > TimeThreshold)
 		{
 			OnRep_ReplicatedMovement();
-		//you dd NOT do this instead, because there is 'super:: ' that need to be run too
+			//you dd NOT do this instead, because there is 'super:: ' that need to be run too
 			//Turn_ForSimProxyOnly();
 			//AccumilatingTime = 0.f;
 		}
@@ -262,6 +305,9 @@ void ABlasterCharacter::Elim()
 	MulticastElim();
 
 	//CHAIN2: other things happen ONLY in server (and expected to be self-replicated, otherwise must let it go with Multicast above)
+	      //disable most input:
+	bDisableMostInput = true;
+	
 	      //respawn after 3s:
 	GetWorldTimerManager().SetTimer(TimerHandle_Elim, this , &ThisClass::TimerCallback_Elim,  DelayTime_Elim);
 
@@ -312,16 +358,20 @@ void ABlasterCharacter::MulticastElim_Implementation()
 	//start Dissolve process: it will start immediately , unlike respawn with Timer in Chain2
 	StartTimeline_Dissolve();
 
-	//disable movement and collision for char::capsule and getmesh() in all devices:
+	//disable ollision for char::capsule and getmesh() in all devices:
 	if(GetCapsuleComponent()) GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	if(GetMesh()) GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	GetCharacterMovement()->DisableMovement();
-	GetCharacterMovement()->StopMovementImmediately();
-	
+	//disable movement:
+	GetCharacterMovement()->DisableMovement(); //can move, but still can rotate
+	GetCharacterMovement()->StopMovementImmediately(); //can't move, can't rotate
+
+	//disable Input: if you can't move and can't rotate above already, this is REDUNDANT? No you still need to disable other things like Fire, Reload...input as well LOL:
+		//DisableInput(BlasterPlayerController);
+
 	//play UParticleSystem(a bot) and its sound:
 	FVector SpawnLocation = { GetActorLocation().X ,GetActorLocation().Y , GetActorLocation().Z + 200.f };
-
+	//I dont do BotParticleComp = --: 
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BotParticle, SpawnLocation, GetActorRotation(), true); //I pass in bAutoDestroy=true to make sure LOL
 	UGameplayStatics::PlaySoundAtLocation(this, BotSound, SpawnLocation);
 }
@@ -653,9 +703,9 @@ void ABlasterCharacter::PlayReloadMontage()
 	PlayMontage_SpecificSection(AM_ReloadMontage, SectionName);
 }
 
-
 void ABlasterCharacter::Input_Move(const FInputActionValue& Value)
 {
+	if (bDisableMostInput) return;
 	FVector2D Input = Value.Get<FVector2D>();
 	if (!Controller || Input.Size() == 0) return; //Input.Size() == 0 improve performance, where Controller are optional I think
 
@@ -693,6 +743,7 @@ void ABlasterCharacter::Input_Look(const FInputActionValue& Value)
 
 void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 {
+	if (bDisableMostInput) return;
 	//Super::Jump(); //you just override it, so call the new version instead
 
 	Jump();
@@ -700,6 +751,7 @@ void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 
 void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 {
+	if (bDisableMostInput) return;
 	if (CombatComponent == nullptr || OverlappingWeapon == nullptr) return;
 	//Without "HasAuthority()" both server add clients can pick. Server pick, clients see it. 
 	// where clients pick the server dont see it - but WHY? 
@@ -721,11 +773,13 @@ void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 
 void ABlasterCharacter::ServerEKeyPressed_Implementation()
 {
+	if (bDisableMostInput) return;
 	if (CombatComponent) CombatComponent->Equip(OverlappingWeapon);
 }
 
 void ABlasterCharacter::Input_Crouch(const FInputActionValue& Value)
 {
+	if (bDisableMostInput) return;
 	if (!bIsCrouched) Crouch();
 	else UnCrouch();
 }
@@ -739,30 +793,42 @@ void ABlasterCharacter::Jump()
 
 void ABlasterCharacter::Input_Aim_Pressed(const FInputActionValue& Value)
 {
+	if (bDisableMostInput) return;
 	if (CombatComponent == nullptr) return;
 	CombatComponent->SetIsAiming(true);
 }
 
 void ABlasterCharacter::Input_Aim_Released(const FInputActionValue& Value)
 {
+	if (bDisableMostInput) return;
 	if (CombatComponent == nullptr) return;
 	CombatComponent->SetIsAiming(false);
 }
 
 void ABlasterCharacter::Input_Fire_Pressed(const FInputActionValue& Value)
 {
+	if (bDisableMostInput) return;
 	if (CombatComponent == nullptr) return;
 	CombatComponent->Input_Fire(true);
 }
 
 void ABlasterCharacter::Input_Fire_Released(const FInputActionValue& Value)
 {
+	//this one is uqniue to this Input :)
+	if (bDisableMostInput)
+	{
+		//in case elimmed when firing and can't release the key one time to escape firing:
+		CombatComponent->bCanFire = false; //will be reset back to true when respawned, dont worry
+		return;
+	}
+
 	if (CombatComponent == nullptr) return;
 	CombatComponent->Input_Fire(false);
 }
 
 void ABlasterCharacter::Input_Reload(const FInputActionValue& Value)
 {
+	if (bDisableMostInput) return;
 	if(CombatComponent) CombatComponent->Input_Reload();
 }
 

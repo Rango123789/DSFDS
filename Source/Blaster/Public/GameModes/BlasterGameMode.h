@@ -6,6 +6,14 @@
 #include "GameFramework/GameMode.h"
 #include "BlasterGameMode.generated.h"
 
+
+//add more stuff to MatchState namespace from AGameMode:
+namespace MatchState
+{
+	//extern BLASTER_API is optional if you assign value right here:
+	extern BLASTER_API const FName CoolDown;//Match Duration has been reached. Diplay winner and begin cooldown timer.
+}
+
 /**
  * 
  */
@@ -33,8 +41,10 @@ protected:
 	UPROPERTY(EditAnywhere)
 	float WarmUpTime = 10.f;
 
-	float CountDownTime = WarmUpTime;//with this you dont even need BeginPlay
+	float CountingDownTime = WarmUpTime;//with this you dont even need BeginPlay
 
+	UPROPERTY(EditAnywhere)
+	float CoolDownTime = 10.f;  //ForNextLesson
 	//StarterMap -> LobbyMap ->     GameMap
 	//    0                      BlasterLevelStartingTime
 	float LevelStartingTime =0.f; //to be set in BeginPlay()
@@ -44,6 +54,8 @@ public:
 	float GetLevelStartingTime() { return LevelStartingTime; }
 	float GetWarmUpTime() { return WarmUpTime; }
 	float GetMatchTime() { return MatchTime; }
+	float GetCoolDownTime() { return CoolDownTime; }
 
+	float GetCountingDownTime() { return CountingDownTime; }
 	FName GetMatchState() { return MatchState; }
 };

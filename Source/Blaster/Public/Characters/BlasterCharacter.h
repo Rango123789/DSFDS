@@ -19,17 +19,23 @@ public:
 //category1: auto-generated functions:
 	ABlasterCharacter(); 
 	virtual void Tick(float DeltaTime) override;
+	void AimOffsetAndTurnInPlace_GLOBAL(float DeltaTime);
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 //category2: virtual functions:
 	/**<Actor>*/
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
+
+	virtual void Destroyed() override;
 	 /**</Actor>*/
 
 	/**<X>*/
 	virtual void Jump() override;
 	 /**</X>*/
+
+
+
 
 //category3: callbacks and RPC
 	UFUNCTION()
@@ -117,6 +123,12 @@ protected:
 	class ABlasterPlayerController* BlasterPlayerController; //NEWs
 
 	UPROPERTY()
+	class ABlasterHUD* BlasterHUD = nullptr;
+
+	UPROPERTY()
+	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget = nullptr;
+
+	UPROPERTY()
 	class APlayerState_Blaster* PlayerState_Blaster; //NEWs
 
 	//not sure it is a good idea to create a member of this where this is only meaningful to the server device
@@ -182,6 +194,11 @@ protected:
 	//sound and effects:
 	UPROPERTY(EditAnywhere) 
 	UParticleSystem* BotParticle; //(*)
+	  //stephen also create this, and then call ->Destroy() in char::Destroyed(), BUT i THINK it may not needed when you choose 'bAutoDestroy = true' as you spawn the BotParticle; as well well make sure the asset has no part last longer than it should:
+	UPROPERTY()
+	UParticleSystemComponent* BotParticleComp;
+
+
 	
 	//We dont intent to create default subobject of this, we just store the object return by (*) in MulticastElim, for a weird reason: it can't destroy itself after finshing playing :D :D. 
 	//Not sure it has been change in UE5.2 but let's see.
@@ -235,6 +252,9 @@ protected:
 	float TimeThreshold;
 
 	bool bIsEliminated = false; //IsFiring and IsAimin is in CombatComponent, not here
+
+	UPROPERTY(Replicated)
+	bool bDisableMostInput = false;
 
 private: 
 	/***functions***/
@@ -341,4 +361,7 @@ public:
 
 	ECharacterState GetCharacterState(); 
 
+	bool GetDisableMostInput() { return bDisableMostInput; }
+
+	void SetDisableMostInput(bool InBool) { bDisableMostInput = InBool; }
 };

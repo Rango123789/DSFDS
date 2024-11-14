@@ -2,6 +2,7 @@
 #include "HUD/BlasterHUD.h"
 #include "HUD/CharacterOverlay_UserWidget.h"
 #include "HUD/UW_Announcement.h"
+#include "PlayerController/BlasterPlayerController.h"
 
 ABlasterHUD::ABlasterHUD()
 {
@@ -13,10 +14,14 @@ void ABlasterHUD::BeginPlay()
 	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("HUD,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
 
 	Super::BeginPlay();
-	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
-	APlayerController* PlayerController1 = GetOwningPlayerController();
 
-//factorize them into one function if you use Stephen WAY1
+	SetupBlasterHUD();
+}
+void ABlasterHUD::SetupBlasterHUD()
+{
+	//APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+	ABlasterPlayerController* PlayerController = Cast<ABlasterPlayerController>(GetOwningPlayerController());
+	//factorize them into one function if you use Stephen WAY1
 	////WAY1 remove this, WAY2 keep this
 	if (CharacterOverlay_Class && PlayerController)
 	{
@@ -24,13 +29,26 @@ void ABlasterHUD::BeginPlay()
 	}
 
 	//if(CharacterOverlay_UserWidget) CharacterOverlay_UserWidget->AddToViewport();
-	 
+
 	if (PlayerController && Announcement_Class)
 	{
 		UserWidget_Announcement = CreateWidget<UUserWidget_Announcement>(PlayerController, Announcement_Class);
 	}
 
 	if (UserWidget_Announcement) UserWidget_Announcement->AddToViewport();
+}
+
+void ABlasterHUD::PollInit_HUD()
+{
+	if (UserWidget_Announcement == nullptr)
+	{
+		SetupBlasterHUD();
+	}
+}
+void ABlasterHUD::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	//PollInit_HUD();
 
 }
 void ABlasterHUD::DrawHUD()

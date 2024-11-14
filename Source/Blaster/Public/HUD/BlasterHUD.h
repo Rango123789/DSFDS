@@ -30,22 +30,24 @@ public:
 	ABlasterHUD(); //for testing
 	void virtual DrawHUD() override;
 	void DrawCrosshair(UTexture2D* InTexture, FVector2D ViewportSize, FVector2D ExpandOffset);
+	void SetupBlasterHUD();
+	void PollInit_HUD();
+	void virtual Tick(float DeltaTime) override;
 protected:
 	/***functions***/
 	virtual void BeginPlay() override;
 
+
 /***data members****/
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class UCharacterOverlay_UserWidget> CharacterOverlay_Class;
-
 	UPROPERTY()
-	UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget;
+	UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget = nullptr;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class UUserWidget_Announcement> Announcement_Class;
-
 	UPROPERTY()
-	UUserWidget_Announcement* UserWidget_Announcement;
+	UUserWidget_Announcement* UserWidget_Announcement = nullptr;
 
 	
 	FHUDPackage HUDPackage; //this will be assigned AWeapon::values via Character::Combat (as this is where you can access both EquippedWeapon and PlayerController()->GetHUD();

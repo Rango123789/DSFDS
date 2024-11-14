@@ -43,14 +43,14 @@ AProjectile::AProjectile()
 	ProjectileMovementComponent->MaxSpeed = 15000;
 }
 
-// Called every frame
+//	Called every frame
 void AProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 }
-// Called when the game starts or when spawned
 
+// Called when the game starts or when spawned
 void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
@@ -90,7 +90,6 @@ void AProjectile::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor
 
 	//last lesson:
 	Destroy();
-
 }
 
 //auto-call on all devices if the replicated actor is destroyed via AActor::Destroy() from the server

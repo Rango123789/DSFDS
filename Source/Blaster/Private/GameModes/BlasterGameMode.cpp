@@ -6,6 +6,12 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerStart.h"
 #include <PlayerStates/PlayerState_Blaster.h>
+#include "GameState/GameState_Blaster.h"
+
+namespace MatchState
+{
+	const FName CoolDown = FName(TEXT("CoolDown"));
+}
 
 ABlasterGameMode::ABlasterGameMode()
 {
@@ -24,34 +30,39 @@ void ABlasterGameMode::BeginPlay()
 	Super::BeginPlay();
 
 	LevelStartingTime = GetWorld()->GetTimeSeconds();
-	CountDownTime = WarmUpTime; //NO NEED
+	CountingDownTime = WarmUpTime; //NO NEED
 }
 
 void ABlasterGameMode::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	//now we CountDown from CountDownTime to zero and actively call StartMatch() so that the game now can OFFICALLY start, TimSeconds is now already CountDownTime :D :D
-
-	////OPTION1: dont care abou the STARTING time, locally work, not sycnh!
-	//if (MatchState == MatchState::WaitingToStart)
-	//{
-	//	CountDownTime -= DeltaTime;
-
-	//	if (CountDownTime <= 0.f) StartMatch();
-	//}
-
-	//OPTION2: use StartingTime and GetWorld()->GetTimeSeconds() - better to adapt to sycnhing solution later on:
+	//start counting to escape WaitingToStart
 	if (MatchState == MatchState::WaitingToStart)
 	{
-		CountDownTime = WarmUpTime - (GetWorld()->GetTimeSeconds() - LevelStartingTime);
+		CountingDownTime = WarmUpTime - (GetWorld()->GetTimeSeconds() - LevelStartingTime);
 
-		//after StartMatch, if succeed, next time you're no long in ::WaitingToStart and you dont have to worry this code will run again at all :D :D
-		if (CountDownTime <= 0.f)
+		//after this, you're no longer in ::WaitingToStart and you dont have to worry this code will run again at all :D :D
+		if (CountingDownTime <= 0.f)
 		{
-			//I add this to fix the bug - not fix neither
-			bDelayedStart = false; 
-
-			StartMatch();
+			StartMatch(); //SetMatchState(MatchState::InProgress);
+		}
+	}
+	//Start counting to escape InProgress
+	else if (MatchState == MatchState::InProgress)
+	{
+		CountingDownTime = MatchTime - (GetWorld()->GetTimeSeconds() - (LevelStartingTime + WarmUpTime));
+		if (CountingDownTime <= 0.f)
+		{
+			SetMatchState(MatchState::CoolDown);
+		}
+	}
+	else if (MatchState == MatchState::CoolDown)
+	{
+		CountingDownTime = CoolDownTime - (GetWorld()->GetTimeSeconds() - (LevelStartingTime + WarmUpTime + MatchTime));
+		//other things:
+		 if (CountingDownTime <= 0.f)
+		{
+			RestartGame();
 		}
 	}
 }
@@ -60,11 +71,6 @@ void ABlasterGameMode::Tick(float DeltaTime)
 void ABlasterGameMode::OnMatchStateSet()
 {
 	Super::OnMatchStateSet();
-
-	if (MatchState == MatchState::WaitingToStart)
-	{
-		if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("GM::MatchStage::WaitingToStart,  Time: %f "), GetWorld()->GetTimeSeconds())
-	}
 
 	//our goal is just to propogate GM::MatchState to PC::MatchState, and then handle thing from there:
 		//access the whole PC array || its Iterator_[new] stored in gamemode and call PC::SetMatchState(), the rest will be handled from there.
@@ -78,7 +84,7 @@ void ABlasterGameMode::OnMatchStateSet()
 		//but this work2:
 		ABlasterPlayerController* PlayerController = Cast<ABlasterPlayerController>(*It);
 
-		PlayerController->OnMatchStateSet(MatchState); //this helper funciton do more than just set
+		if(PlayerController) PlayerController->OnMatchStateSet(MatchState); //this helper funciton do more than just set
 	}
 }
 
@@ -93,16 +99,21 @@ void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* ElimininatedCharacter
 //extra things when we need to use AttackerPC:
 	APlayerState_Blaster* PS_Elimmed = EliminatedController->GetPlayerState<APlayerState_Blaster>();
 	APlayerState_Blaster* PS_Attacker = AttackerController->GetPlayerState<APlayerState_Blaster>();
+	//GameState_AGameStateBase is direct member of AGameModeBase, hence AGameMode, so you can cast from GM::GameState, but I prefer to use this Get template for more convenient: 
+	AGameState_Blaster* GameState_Blaster = GetGameState<AGameState_Blaster>();
 
 	if (PS_Elimmed == nullptr || PS_Attacker == nullptr) return;
 
 	//only when they're different should add Score for the Attacker:
-	if (PS_Attacker != PS_Elimmed)
+	if (PS_Attacker != PS_Elimmed) //(*)
 	{
 		PS_Attacker->UpdateHUD_Score();
-		//if you consider killing yourself is a defeat - then simply move it out of this if!
-		PS_Elimmed->UpdateHUD_Defeat();
+
+		//Update the GS::Array_TopScore, only when ...: 
+		if(GameState_Blaster) GameState_Blaster->UpdatePlayerStates_TopScore(PS_Attacker);
 	}
+	//if you consider killing yourself is a defeat - then simply move it out of (*), yes I did
+    PS_Elimmed->UpdateHUD_Defeat();
 }
 
 void ABlasterGameMode::RequestRespawn(ABlasterCharacter* ElimininatedCharacter, ABlasterPlayerController* EliminatedController)
