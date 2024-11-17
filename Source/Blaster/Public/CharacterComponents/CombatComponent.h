@@ -174,10 +174,12 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	int32 StartCarriedAmmo_AR = 45;
-
 	UPROPERTY(EditAnywhere)
 	int32 StartCarriedAmmo_Rocket = 0;
-
+	UPROPERTY(EditAnywhere)
+	int32 StartCarriedAmmo_Pistol = 20;
+	UPROPERTY(EditAnywhere)
+	int32 StartCarriedAmmo_SMG = 45;
 
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!

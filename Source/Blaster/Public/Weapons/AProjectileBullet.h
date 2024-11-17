@@ -14,6 +14,7 @@ class BLASTER_API AAProjectileBullet : public AProjectile
 {
 	GENERATED_BODY()
 public:
+	AAProjectileBullet();
 	virtual void OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit) override;
 
 };

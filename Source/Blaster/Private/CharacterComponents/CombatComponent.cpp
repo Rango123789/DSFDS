@@ -145,6 +145,9 @@ void UCombatComponent::InitializeCarriedAmmo()
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartCarriedAmmo_AR);
 
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_Rocket, StartCarriedAmmo_Rocket);
+
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_Pistol, StartCarriedAmmo_Pistol);
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_SMG, StartCarriedAmmo_SMG);
 }
 
 void UCombatComponent::OnRep_CharacterState()
@@ -382,14 +385,21 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 	bIsAutomatic = EquippedWeapon->GetIsAutomatic();
 	FireDelay = EquippedWeapon->GetFireDelay();
 
-	//I just add these lines to make sure it is off before pick up, THIS IS FOR THE SERVER:
+	//Our SMG dont need these to locally similated, move it out fix the bug:
 	EquippedWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
 	EquippedWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
-	EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	if (EquippedWeapon->GetWeaponType() != EWeaponType::EWT_SMG)
+	{
+		EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
+	{
+		EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
 
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
-
-	if(RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
+	if (RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
 
 	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()) )
 	{
@@ -412,8 +422,6 @@ void UCombatComponent::OnRep_EquippedWeapon()
 {
 	if (EquippedWeapon == nullptr || EquippedWeapon->GetWeaponMesh() ==nullptr || Character == nullptr) return;
 
-	UE_LOG(LogTemp, Warning, TEXT("OnRep_EquippedWeapon trigger"))
-
 	EquippedWeapon->PlayEquipSound(Character);
 	//the condition is optional, but since I know only that owning client have problem, so I only need to let this code run on that client LOL, hell yeah!
 
@@ -427,13 +435,22 @@ void UCombatComponent::OnRep_EquippedWeapon()
 	//choice2: 
 	EquippedWeapon->SetWeaponState_Only(EWeaponState::EWS_Equipped); //without needing to break the GLOBAL pattern, but you will have to setup physics here
 
+	//Our SMG dont need these to locally similated, move it out fix the bug:
 	EquippedWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
 	EquippedWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
-	EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (EquippedWeapon->GetWeaponType() != EWeaponType::EWT_SMG)
+	{
+		EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
+	{
+		EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
 
-	//even if Attachment action is replicated we call it here to make sure it works
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
 	if (RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
+
+	//even if Attachment action is replicated we call it here to make sure it works
 
 
 	if (Character->IsLocallyControlled())

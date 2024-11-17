@@ -697,7 +697,17 @@ void ABlasterCharacter::PlayReloadMontage()
 	case EWeaponType::EWT_AssaultRifle:
 		SectionName = FName("AttackRifle");
 		break;
+	
 	//more case will be added as we have more weapon types
+	case EWeaponType::EWT_Rocket:
+		SectionName = FName("AttackRifle"); //for now
+		break;
+	case EWeaponType::EWT_Pistol:
+		SectionName = FName("AttackRifle"); //for now
+		break;
+	case EWeaponType::EWT_SMG:
+		SectionName = FName("AttackRifle"); //for now
+		break;
 	}
 
 	PlayMontage_SpecificSection(AM_ReloadMontage, SectionName);

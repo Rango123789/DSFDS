@@ -36,11 +36,14 @@ AProjectile::AProjectile()
 	   //we need it to block GetMesh()=Pawn currently to create Hit Even with Chararacter
 	CollisionBox->SetCollisionResponseToChannel(ECC_SkeletalMesh, ECollisionResponse::ECR_Block); //replace block Pawn with blocking custom SkeletalMesh
 	
-	//Setup ProjectileMovementComp:
-	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>("Projectile Move Comp");
-	ProjectileMovementComponent->bRotationFollowsVelocity = true;
-	ProjectileMovementComponent->InitialSpeed = 6000;
-	ProjectileMovementComponent->MaxSpeed = 15000;
+	//Setup ProjectileMovementComp: now create in whatever child need it instead
+	//ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>("Projectile Move Comp");
+	//ProjectileMovementComponent->bRotationFollowsVelocity = true;
+	//ProjectileMovementComponent->InitialSpeed = 6000;
+	//ProjectileMovementComponent->MaxSpeed = 15000;
+
+	//Instigator is set from Weapon firing this projectile via Spawn parameter, this give a chance to fix, attacker running forwards and hit himself while firing , say, Rocket. Hopefully the requirement has been done before it reach this line of code:
+	//if (CollisionBox) CollisionBox->IgnoreActorWhenMoving(GetInstigator(), true); //this function is self-handled dont give crash even if GetInstigator()
 }
 
 //	Called every frame
@@ -76,6 +79,9 @@ void AProjectile::BeginPlay()
 
 		CollisionBox->OnComponentHit.AddDynamic(this, &ThisClass::OnBoxHit);
 	}
+
+	////Instigator is set from Weapon firing this projectile, this give a chance to fix, attacker running forwards and hit himself while firing , say, Rocket. Hopefully the requirement has been done before it reach this line of code:
+	//if (CollisionBox) CollisionBox->IgnoreActorWhenMoving(GetInstigator(), true);
 }
 
 //currently only in-server projectile copy can trigger this
