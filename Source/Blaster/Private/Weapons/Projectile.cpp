@@ -5,6 +5,9 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "NiagaraComponent.h"
+#include <NiagaraFunctionLibrary.h>
+
 #include "Kismet/GameplayStatics.h"
 #include <Characters/BlasterCharacter.h>
 #include "Blaster/Blaster.h"
@@ -58,6 +61,7 @@ void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	//if asset is ParticleSystem then choose this
 	if (Tracer)
 	{
 		//TracerComponent =
@@ -70,6 +74,9 @@ void AProjectile::BeginPlay()
 				EAttachLocation::KeepWorldPosition
 		);
 	}
+
+	//In fact we call it here, then we dont need to call it in child::BeginPlay() at all, for now we dont call it here:
+	//SpawnSmokeTrailSystem();
 
 	//Only the server projectile copy can generate hit event FIRST
 	if (HasAuthority() && CollisionBox)
@@ -84,6 +91,22 @@ void AProjectile::BeginPlay()
 	//if (CollisionBox) CollisionBox->IgnoreActorWhenMoving(GetInstigator(), true);
 }
 
+void AProjectile::SpawnSmokeTrailSystem()
+{
+	if (NiagaraSystem_SmokeTrail)
+	{
+		NiagaraComponent_SmokeTrail = UNiagaraFunctionLibrary::SpawnSystemAttached(
+			NiagaraSystem_SmokeTrail,
+			RootComponent,
+			FName(),
+			GetActorLocation(),
+			FRotator(),
+			EAttachLocation::KeepWorldPosition,
+			true //bAutoDestroy
+		);
+	}
+}
+
 //currently only in-server projectile copy can trigger this
 void AProjectile::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -96,9 +119,25 @@ void AProjectile::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor
 
 	//last lesson:
 	Destroy();
+
+	//StartDestroyTimer();
+}
+
+void AProjectile::StartDestroyTimer()
+{
+	GetWorldTimerManager().SetTimer(TimerHandle_Destroy, this, &ThisClass::TimerCallback_Destroy, DelayTime_Destroy, false); //self-replicated - can optionally move it up to GROUP1
+}
+
+
+
+void AProjectile::TimerCallback_Destroy()
+{
+	Destroy();
 }
 
 //auto-call on all devices if the replicated actor is destroyed via AActor::Destroy() from the server
+//current ONLY AProjectileBullet child call Super:: || not override mean call Super::
+//where AProjectileRocket override but dont call super:: to remove this funtionality
 void AProjectile::Destroyed()
 {
 	Super::Destroyed();
@@ -106,6 +145,3 @@ void AProjectile::Destroyed()
 	UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());     //Hit.ImpactPoint
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, GetActorTransform());//Hit.ImpactPoint
 }
-
-
-

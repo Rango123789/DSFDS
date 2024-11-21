@@ -336,6 +336,16 @@ void ABlasterCharacter::TimerCallback_Elim()
 
 void ABlasterCharacter::MulticastElim_Implementation()
 {
+	//In worst case when Sniper rifle is Aming and get elimmed:
+	//this will help to override the current frame (either end or middle frame) and play backward and help you to reach "first frame" with Scale = 0, Opacity=0
+    //also no need to do this when it is not sniper rifle nor not currently IsAiming, doing this in these cases only bring stupid side effect :D :D
+	if (IsLocallyControlled() && 
+		CombatComponent &&
+		CombatComponent->EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SniperRifle && 
+		CombatComponent->bIsAiming == true)
+	{
+		ShowScopeWidget(false);
+	}
 	//update HUD_Ammo to zero: (can't re-use CheckAndSetHUD_Ammo here, it has no parameter)
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
 	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(0);
@@ -578,6 +588,12 @@ void ABlasterCharacter::ReloadEnd1()
 	if(HasAuthority()) CombatComponent->UpdateHUD_CarriedAmmo();
 }
 
+//no need this LOL, this is BPImplementableEvent that is ONLY allowed to define in BP, not from C++ lol
+// NOT BPNativeEvent or like
+//void ABlasterCharacter::ShowScopeWidget_Implementation(bool bShowScope)
+//{
+//}
+
 
 //this can't only be called on client copies: adding param/using it or not doesn't matter
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
@@ -699,13 +715,22 @@ void ABlasterCharacter::PlayReloadMontage()
 		break;
 	
 	//more case will be added as we have more weapon types
-	case EWeaponType::EWT_Rocket:
+	case EWeaponType::EWT_RocketLauncher:
 		SectionName = FName("AttackRifle"); //for now
 		break;
 	case EWeaponType::EWT_Pistol:
 		SectionName = FName("AttackRifle"); //for now
 		break;
 	case EWeaponType::EWT_SMG:
+		SectionName = FName("AttackRifle"); //for now
+		break;
+	case EWeaponType::EWT_Shotgun:
+		SectionName = FName("AttackRifle"); //for now
+		break;
+	case EWeaponType::EWT_SniperRifle:
+		SectionName = FName("AttackRifle"); //for now
+		break;
+	case EWeaponType::EWT_GrenadeLauncher:
 		SectionName = FName("AttackRifle"); //for now
 		break;
 	}
@@ -806,6 +831,8 @@ void ABlasterCharacter::Input_Aim_Pressed(const FInputActionValue& Value)
 	if (bDisableMostInput) return;
 	if (CombatComponent == nullptr) return;
 	CombatComponent->SetIsAiming(true);
+	//option1: call BP_function(true) here && must call BP_function(false) in Input_Aim_Released as well LOL
+		//ShowScopeWidget(true);
 }
 
 void ABlasterCharacter::Input_Aim_Released(const FInputActionValue& Value)
@@ -813,6 +840,8 @@ void ABlasterCharacter::Input_Aim_Released(const FInputActionValue& Value)
 	if (bDisableMostInput) return;
 	if (CombatComponent == nullptr) return;
 	CombatComponent->SetIsAiming(false);
+	//option1:
+		//ShowScopeWidget(false);
 }
 
 void ABlasterCharacter::Input_Fire_Pressed(const FInputActionValue& Value)

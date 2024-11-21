@@ -16,6 +16,15 @@ class BLASTER_API AHitScanWeapon : public AWeapon
 public:
 	virtual void Fire(const FVector& HitTarget) override;
 protected:
+	//We create it here becase both SMG and Shotgun need it:
+	FVector RandomEndWithScatter(const FVector& Start, const FVector& HitTarget);
+	UPROPERTY(EditAnywhere)
+	float DistanceToSphere = 800.f;
+	UPROPERTY(EditAnywhere)
+	float SphereRadius = 75.f;
+	UPROPERTY(EditAnywhere)
+	bool bUseScatter = false;
+
 	//Damage is now with Weapon itself, no projectile can help it any more LOL
 	UPROPERTY(EditAnywhere)
 	float Damage = 15.f;

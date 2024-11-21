@@ -169,7 +169,6 @@ void UMultiplayerSession_GameSubsystem::OnFindSessionsComplete(bool bWasSuccessf
 
 	OnFindSessionsCompleteDelegate_Multiplayer.Broadcast(bWasSuccessful, LastSessionSearch->SearchResults);
 
-
 	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Orange, FString("End of OnFind__callback2()"), false);
 }
 

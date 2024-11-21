@@ -21,20 +21,21 @@ protected:
 	virtual void BeginPlay() override;
 
 
-	UPROPERTY(VisibleAnywhere)
-	class UStaticMeshComponent* RocketMesh1;
+	//UPROPERTY(VisibleAnywhere)
+	//class UStaticMeshComponent* ProjectileMesh;
 
-	UPROPERTY(EditAnywhere)
-	class UNiagaraSystem* NS_SmokeTracer; //SmokeEffect for N asset Vs SmokeParticle for P asset
-	UPROPERTY()
-	class UNiagaraComponent* NiagaraComponent_SmokeTracer;
-	//no need to create callback, the callback is 'void Destroy()' itself satisied signature requirement? No it require UFUNCTION(), where AActor::Destroy() is not a UFunction()
-	//you see it require TFunction ~> I guess it is 'function marked with UFUNCTION'
-	FTimerHandle TimerHandle_Destroy;
-	UPROPERTY(EditAnywhere)
-	float DelayTime_Destroy = 3.f;
-	UFUNCTION()
-	void TimerCallback_Destroy();
+	//UPROPERTY(EditAnywhere)
+	//class UNiagaraSystem* NiagaraSystem_SmokeTrail; //SmokeEffect for N asset Vs SmokeParticle for P asset
+	//UPROPERTY()
+	//class UNiagaraComponent* NiagaraComponent_SmokeTrail;
+
+	////no need to create callback, the callback is 'void Destroy()' itself satisied signature requirement? No it require UFUNCTION(), where AActor::Destroy() is not a UFunction()
+	////you see it require TFunction ~> I guess it is 'function marked with UFUNCTION'
+	//FTimerHandle TimerHandle_Destroy;
+	//UPROPERTY(EditAnywhere)
+	//float DelayTime_Destroy = 3.f;
+	//UFUNCTION()
+	//void TimerCallback_Destroy();
 
 	UPROPERTY(EditAnywhere)
 	USoundBase* RocketMovingSound;

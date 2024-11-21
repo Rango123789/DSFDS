@@ -3,6 +3,7 @@
 
 #include "Weapons/HitScanWeapon.h"
 #include <Kismet/GameplayStatics.h>
+#include "Kismet/KismetMathLibrary.h" //RandomUnitVector
 #include "Characters/BlasterCharacter.h"
 #include "Particles/ParticleSystemComponent.h"
 //HitTarget will be passed from Combat::DoLineTrace():: center screen -> forwards, everything is already setup, we need only to use it:
@@ -17,7 +18,16 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 	FTransform MuzzleFlashSocketTransform = WeaponMesh->GetSocketTransform(FName("MuzzleFlash")); //if you get socket by name instead, you have a chance to check whether it is valid or not, but anyway If it's not valid then I will see it LOL, and I will make sure the name match, so I dont follow Stephen's way
 
 	FVector Start = MuzzleFlashSocketTransform.GetLocation();
-	FVector End = Start + (HitTarget - Start) * 1.25f; //1.25 to make sure it hit the target, rather than just hit the surface that 50/50 you will fail!
+	FVector End{};
+
+	if (bUseScatter)
+	{
+		End = RandomEndWithScatter(Start, HitTarget);
+	}
+	else 
+	{
+		End = Start + (HitTarget - Start) * 1.25f; //1.25 to make sure it hit the target, rather than just hit the surface that 50/50 you will fail!
+	}
 
 	GetWorld()->LineTraceSingleByChannel(
 		HitResult,
@@ -86,4 +96,24 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 		MuzzleFlashSocketTransform,
 		true
 	);
+}
+
+//review, in case it didn't hit anything in first DOlineTrace it return end = 80.000, So dont worry
+FVector AHitScanWeapon::RandomEndWithScatter(const FVector& Start, const FVector& HitTarget)
+{
+	//this is where sphere center should be, from which we + RandomUnitVector * (0->R)
+	FVector SphereCenterEnd = Start + (HitTarget - Start).GetSafeNormal() * DistanceToSphere;
+
+	float RandomRadius = FMath::RandRange(0.f, SphereRadius);
+	FVector RandomPointWithinSphere = SphereCenterEnd + UKismetMathLibrary::RandomUnitVector() * RandomRadius;
+
+	//we dont stop at RandomPointWithinSphere that is 800.f = 8m only, we extend it so that it makes more sense
+	//Because this will be used for SMG (not just Shotgun, So stephen and I temporary trace it as far as End point in DoLineTrace_Crosshairs LOL, I JUST define TRACE_LENGTH 80000 in WeaponTypes.h:
+	FVector ActualEnd = Start + (RandomPointWithinSphere - Start).GetSafeNormal() * TRACE_LENGTH; 
+
+	DrawDebugSphere(GetWorld(), SphereCenterEnd, SphereRadius, 12, FColor::Red, true);
+	DrawDebugSphere(GetWorld(), RandomPointWithinSphere, 4.f, 12, FColor::Blue, true); //you can draw point instead if you want, but I think snall sphere look more cool, and we will remove it anyway so It will save me sometime not drawing point lol!
+	DrawDebugLine(GetWorld(), Start, ActualEnd, FColor::Cyan, true);
+
+	return ActualEnd;
 }

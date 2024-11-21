@@ -143,11 +143,13 @@ void UCombatComponent::CheckAndSetHUD_CarriedAmmo()
 void UCombatComponent::InitializeCarriedAmmo()
 {
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartCarriedAmmo_AR);
-
-	CarriedAmmoMap.Emplace(EWeaponType::EWT_Rocket, StartCarriedAmmo_Rocket);
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_RocketLauncher, StartCarriedAmmo_Rocket);
 
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_Pistol, StartCarriedAmmo_Pistol);
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_SMG, StartCarriedAmmo_SMG);
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_Shotgun, StartCarriedAmmo_Shotgun);
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_SniperRifle, StartCarriedAmmo_SniperRifle);
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_GrenadeLauncher, StartCarriedAmmo_GrenadeLauncher);
 }
 
 void UCombatComponent::OnRep_CharacterState()
@@ -462,15 +464,21 @@ void UCombatComponent::OnRep_EquippedWeapon()
 
 }
 
+//currently this could only call in IsLocallyControlled() /autonompus proxy - hence 'if(IsLocallyControlled()' become redudant!
 void UCombatComponent::SetIsAiming(bool InIsAiming)
 {
+	if (Character == nullptr || EquippedWeapon == nullptr) return;
 	if (Character->HasAuthority())
 	{
 		bIsAiming = InIsAiming;
 		if (Character->GetCharacterMovement()) Character->GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
 	}
-	else
-		ServerSetIsAiming(InIsAiming);
+	else ServerSetIsAiming(InIsAiming);
+	//option2: call BP_function(InIsAiming) here
+	if (Character->IsLocallyControlled() && EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SniperRifle)
+	{
+		Character->ShowScopeWidget(InIsAiming);
+	}
 }
 
 void UCombatComponent::ServerSetIsAiming_Implementation(bool InIsAiming) //REPLACE

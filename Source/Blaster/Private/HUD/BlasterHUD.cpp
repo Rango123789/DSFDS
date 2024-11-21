@@ -36,6 +36,7 @@ void ABlasterHUD::SetupBlasterHUD()
 	}
 
 	if (UserWidget_Announcement) UserWidget_Announcement->AddToViewport();
+
 }
 
 void ABlasterHUD::PollInit_HUD()

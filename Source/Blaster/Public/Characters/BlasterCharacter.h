@@ -73,6 +73,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ReloadEnd1();
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void ShowScopeWidget(bool bUseScopeWidget);
 
 	//others:
 	//void SetIsAiming(bool InIsAiming);	//REPLACE

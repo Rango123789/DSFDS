@@ -36,12 +36,15 @@ public:
     UFUNCTION()
     virtual void OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
+    void StartDestroyTimer();
+
     void virtual Destroyed() override;
 
 protected: //base	
 /***functions***/
 //category1: auto-generated functions:
 virtual void BeginPlay() override;
+void SpawnSmokeTrailSystem();
 //category2: virtual functions:
     /**<Actor>*/
 
@@ -72,6 +75,9 @@ virtual void BeginPlay() override;
     UPROPERTY(VisibleAnywhere)
     class UProjectileMovementComponent* ProjectileMovementComponent;
 
+    //move from child: so now only whater child need it should CreateDefaultObject there!
+    UPROPERTY(VisibleAnywhere)
+    class UStaticMeshComponent* ProjectileMesh;
 //category3: Engine types      
     //montages:
 
@@ -86,6 +92,21 @@ virtual void BeginPlay() override;
 
     UPROPERTY(EditAnywhere)
     UParticleSystem* HitParticle;
+
+    //Move from child
+    UPROPERTY(EditAnywhere)
+    class UNiagaraSystem* NiagaraSystem_SmokeTrail; //SmokeEffect for N asset Vs SmokeParticle for P asset
+    UPROPERTY()
+    class UNiagaraComponent* NiagaraComponent_SmokeTrail;
+
+    //Move from child:
+        //no need to create callback, the callback is 'void Destroy()' itself satisied signature requirement? No it require UFUNCTION(), where AActor::Destroy() is not a UFunction()
+        //you see it require TFunction ~> I guess it is 'function marked with UFUNCTION'
+    FTimerHandle TimerHandle_Destroy;
+    UPROPERTY(EditAnywhere)
+    float DelayTime_Destroy = 3.f;
+    UFUNCTION()
+    void TimerCallback_Destroy();
 
 //category4: basic and primitive types
     UPROPERTY(EditAnywhere)

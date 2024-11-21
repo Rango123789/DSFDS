@@ -152,6 +152,7 @@ protected: //base
     UFUNCTION()
     virtual void OnRep_Ammo();
 
+    UPROPERTY(EditAnywhere)
     int32 MagCapacity = 30; //not use yet
 
     UPROPERTY()

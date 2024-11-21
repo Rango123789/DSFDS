@@ -13,11 +13,11 @@
 AProjectileRocket::AProjectileRocket()
 {
 	//this is only for cosmetic, no need collision, as its cousin ProjectileBullet dont even have a mesh!
-	RocketMesh1 = CreateDefaultSubobject<UStaticMeshComponent>("RocketMesh1");
-	RocketMesh1->SetupAttachment(RootComponent);
-	RocketMesh1->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ProjectileMesh = CreateDefaultSubobject<UStaticMeshComponent>("ProjectileMesh");
+	ProjectileMesh->SetupAttachment(RootComponent);
+	ProjectileMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-		ProjectileMovementComponent_Rock = CreateDefaultSubobject<UProjectileMovementComponent_Rock>("Projectile Move Comp");
+	ProjectileMovementComponent_Rock = CreateDefaultSubobject<UProjectileMovementComponent_Rock>("Projectile Move Comp");
 	ProjectileMovementComponent_Rock->bRotationFollowsVelocity = true;
 	ProjectileMovementComponent_Rock->InitialSpeed = 300;
 	ProjectileMovementComponent_Rock->MaxSpeed = 700;
@@ -32,15 +32,23 @@ void AProjectileRocket::BeginPlay()
 {
 	Super::BeginPlay();
 
-	NiagaraComponent_SmokeTracer = UNiagaraFunctionLibrary::SpawnSystemAttached(
-		NS_SmokeTracer,
-		RootComponent,
-		FName(),
-		GetActorLocation(),
-		FRotator(),
-		EAttachLocation::KeepWorldPosition,
-		true //bAutoDestroy
-	);
+
+	SpawnSmokeTrailSystem();
+
+	//if (NiagaraSystem_SmokeTrail)
+	//{
+	//	NiagaraComponent_SmokeTrail = UNiagaraFunctionLibrary::SpawnSystemAttached(
+	//		NiagaraSystem_SmokeTrail,
+	//		RootComponent,
+	//		FName(),
+	//		GetActorLocation(),
+	//		FRotator(),
+	//		EAttachLocation::KeepWorldPosition,
+	//		true //bAutoDestroy
+	//	);
+	//}
+	
+	
 	//Set bAutoDestroy = true is just extra of safety when we want it stop before Actor::Destroy() is called, set it to false like Stephen doesn't actually change anything :D
 	AudioComponent =
 		UGameplayStatics::SpawnSoundAttached(
@@ -111,25 +119,26 @@ void AProjectileRocket::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* Othe
 	UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());  //NOT replicated
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, GetActorTransform()); //NOT replicated
 	//Other things:
-	if (RocketMesh1) RocketMesh1->SetVisibility(false); //self-replicated?? - NO
+	if (ProjectileMesh) ProjectileMesh->SetVisibility(false); //self-replicated?? - NO
 	//because the box is linger there for Delaytime, and its collision is till funcking working, hence turn it of for good lol, i miss this one!
 	if (CollisionBox) CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	//Deactivate N asset rather than Destroy its Actor+HostingComp, and set a timer to Destroy its Actor+HostingComp, so that Particle can linger a bit:
-	if(NiagaraComponent_SmokeTracer) NiagaraComponent_SmokeTracer->Deactivate(); //self-replicated?? - NO
+	if(NiagaraComponent_SmokeTrail) NiagaraComponent_SmokeTrail->Deactivate(); //self-replicated?? - NO
 	//the AudioComponent->IsPlaying() is redudant:
 	if (AudioComponent && AudioComponent->IsPlaying()) AudioComponent->Stop();
 
-	GetWorldTimerManager().SetTimer(TimerHandle_Destroy, this, &ThisClass::TimerCallback_Destroy, DelayTime_Destroy, false); //self-replicated - can optionally move it up to GROUP1
+	StartDestroyTimer();
+	//GetWorldTimerManager().SetTimer(TimerHandle_Destroy, this, &ThisClass::TimerCallback_Destroy, DelayTime_Destroy, false); //self-replicated - can optionally move it up to GROUP1
 	
 	//We must not call supper that has 'Destroy()' code, now we do it in Timer Delay=3s instead
 	//Super::OnBoxHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);
 }
 
-void AProjectileRocket::TimerCallback_Destroy()
-{
-	Destroy();
-}
+//void AProjectileRocket::TimerCallback_Destroy()
+//{
+//	Destroy();
+//}
 
 //we override to 'UNDO' to DoAction in Super::Destroyed() that is pasted into BoxHit already.
 void AProjectileRocket::Destroyed()
