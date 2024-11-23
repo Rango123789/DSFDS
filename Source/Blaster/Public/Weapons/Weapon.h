@@ -212,4 +212,7 @@ public:
     EWeaponType GetWeaponType() { return WeaponType; }
 
     USoundBase* GetEquipSound() { return EquipSound; }
+
+    bool IsFull() { return Ammo >= MagCapacity; }
+    bool IsEmpty() { return Ammo <= 0; }
 };

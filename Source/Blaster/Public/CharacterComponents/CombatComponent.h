@@ -27,10 +27,15 @@ public:
 
 	void UpdateHUD_CarriedAmmo();
 
+	void UpdateHUD_CarriedAmmo_SpecializedForShotgun();
+
 	void CheckAndSetHUD_CarriedAmmo();
 
 	UFUNCTION(BlueprintCallable)
 	void EndReload();
+	//this is specialized for shootgun:
+	UFUNCTION(BlueprintCallable)
+	void ReloadOneAmmo();
 
 	UFUNCTION(BlueprintCallable)
 	void EndReload_ContinueFiringIf();
@@ -175,7 +180,7 @@ private:
 	UPROPERTY(EditAnywhere)
 	int32 StartCarriedAmmo_AR = 45;
 	UPROPERTY(EditAnywhere)
-	int32 StartCarriedAmmo_Rocket = 2;
+	int32 StartCarriedAmmo_Rocket = 15;
 	UPROPERTY(EditAnywhere)
 	int32 StartCarriedAmmo_Pistol = 20;
 	UPROPERTY(EditAnywhere)

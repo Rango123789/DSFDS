@@ -341,7 +341,8 @@ void ABlasterCharacter::MulticastElim_Implementation()
     //also no need to do this when it is not sniper rifle nor not currently IsAiming, doing this in these cases only bring stupid side effect :D :D
 	if (IsLocallyControlled() && 
 		CombatComponent &&
-		CombatComponent->EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SniperRifle && 
+		CombatComponent->EquippedWeapon&&
+		CombatComponent->EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SniperRifle &&
 		CombatComponent->bIsAiming == true)
 	{
 		ShowScopeWidget(false);
@@ -711,31 +712,38 @@ void ABlasterCharacter::PlayReloadMontage()
 	switch (Type)
 	{
 	case EWeaponType::EWT_AssaultRifle:
-		SectionName = FName("AttackRifle");
+		SectionName = FName("AssaultRifle");
 		break;
-	
 	//more case will be added as we have more weapon types
 	case EWeaponType::EWT_RocketLauncher:
-		SectionName = FName("AttackRifle"); //for now
+		SectionName = FName("RocketLauncher"); //for now
 		break;
 	case EWeaponType::EWT_Pistol:
-		SectionName = FName("AttackRifle"); //for now
+		SectionName = FName("Pistol"); //for now
 		break;
 	case EWeaponType::EWT_SMG:
-		SectionName = FName("AttackRifle"); //for now
+		SectionName = FName("Pistol"); //for now
 		break;
 	case EWeaponType::EWT_Shotgun:
-		SectionName = FName("AttackRifle"); //for now
+		SectionName = FName("Shotgun"); //for now
 		break;
 	case EWeaponType::EWT_SniperRifle:
-		SectionName = FName("AttackRifle"); //for now
+		SectionName = FName("SniperRifle"); //for now
 		break;
 	case EWeaponType::EWT_GrenadeLauncher:
-		SectionName = FName("AttackRifle"); //for now
+		SectionName = FName("GrenadeLauncher"); //for now
 		break;
 	}
 
 	PlayMontage_SpecificSection(AM_ReloadMontage, SectionName);
+}
+
+//not sure this will cause any side effect on currently playing 'Realoading Montage'?
+//I guess as long as it is the same AM_ReloadMontage assset it know how to behave right?
+//[UPDATE] this work like a charm, however if you know that it current playing AM_ReloadMontage (no matter what section is played) you can skip the line "Montage_Play" and directly call "JumpToSection(AM_ , NewSection)" 
+void ABlasterCharacter::JumpToShotgunEndSection()
+{
+	PlayMontage_SpecificSection(AM_ReloadMontage, FName("ShotgunEnd"));
 }
 
 void ABlasterCharacter::Input_Move(const FInputActionValue& Value)

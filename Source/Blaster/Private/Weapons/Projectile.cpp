@@ -28,7 +28,7 @@ AProjectile::AProjectile()
 	//it is collision-capable comp, let's give it some settings:
 	   //it is moved by logic, also by physics so we choose WorldDynamic:
 	CollisionBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
-	   //we want it also have physics, we enable it right here rather than in BeginPlay() like for AWeapon::Sphere previously in this Multiplayer game.
+	   //we want it also have physics, we enable it right here rather than in BeginPlay() like for AWeapon::Sphere previously in this Multiplayer game. -->But why I thought Query is enough? PMCP dont need any comp to have Physics at all righ, it fake gravity already?
 	CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); 
 	   //ignore all first, and block some later: 
 	CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
@@ -120,7 +120,7 @@ void AProjectile::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor
 	//last lesson:
 	Destroy();
 
-	//StartDestroyTimer();
+	//StartDestroyTimer(); //NOT here
 }
 
 void AProjectile::StartDestroyTimer()

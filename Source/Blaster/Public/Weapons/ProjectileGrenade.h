@@ -17,5 +17,11 @@ public:
 	AProjectileGrenade();
 protected:
 	void virtual BeginPlay() override;
-	
+	void virtual Destroyed() override;
+
+	UFUNCTION()
+	void OnProjectileBounce(const FHitResult& ImpactResult, const FVector& ImpactVelocity);
+
+	UPROPERTY(EditAnywhere)
+	USoundBase* BounceSound;
 };

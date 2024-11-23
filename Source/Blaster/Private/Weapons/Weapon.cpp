@@ -169,7 +169,6 @@ void AWeapon::UpdateHUD_Ammo()
 	//{
 	//	OwnerCharacter->GetCombatComponent()->Input_Reload();
 	//}
-
 	Ammo--;
 
 	CheckAndSetHUD_Ammo();
@@ -178,6 +177,14 @@ void AWeapon::UpdateHUD_Ammo()
 void AWeapon::OnRep_Ammo()
 {
 	CheckAndSetHUD_Ammo();
+
+	//any weapon can trigger this hosting function should have owner, so dont worry:
+	if (OwnerCharacter == nullptr || OwnerCharacter->GetCombatComponent() == nullptr) return;
+
+	if (IsFull() || OwnerCharacter->GetCombatComponent()->GetCarriedAmmo() == 0)
+	{
+		if (OwnerCharacter) OwnerCharacter->JumpToShotgunEndSection();//helper from Character
+	}
 }
 
 void AWeapon::OnRep_Owner()

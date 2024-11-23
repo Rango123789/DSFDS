@@ -103,8 +103,8 @@ void AProjectileRocket::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* Othe
 			Damage, //BaseDamage 
 			10.f,   //MinimumDanage
 			GetActorLocation(), //Origin of the radial range
-			200.f, //DamgeInnerRadius, this is radius NOT Damage LOL
-			500.f,  //DamageOuterRadius
+			DamageInnerRadius, //DamgeInnerRadius, this is radius NOT Damage LOL
+			DamageOuterRadius,  //DamageOuterRadius
 			1.f,   // 1^[X] , here X = 1.f
 			UDamageType::StaticClass(),
 			TArray<AActor*>{},     //IgnoreActors
@@ -128,8 +128,8 @@ void AProjectileRocket::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* Othe
 	//the AudioComponent->IsPlaying() is redudant:
 	if (AudioComponent && AudioComponent->IsPlaying()) AudioComponent->Stop();
 
+	//For Rocket, StartDestroyTimer() when get first VALID hit (not hit owner):
 	StartDestroyTimer();
-	//GetWorldTimerManager().SetTimer(TimerHandle_Destroy, this, &ThisClass::TimerCallback_Destroy, DelayTime_Destroy, false); //self-replicated - can optionally move it up to GROUP1
 	
 	//We must not call supper that has 'Destroy()' code, now we do it in Timer Delay=3s instead
 	//Super::OnBoxHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);

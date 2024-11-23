@@ -59,6 +59,7 @@ public:
 	void PlayHitReactMontage();
 	void PlayElimMontage();
 	void PlayReloadMontage();
+	void JumpToShotgunEndSection();
 	//sound and effects:
 
 	//bool functions:

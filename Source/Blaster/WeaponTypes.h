@@ -7,7 +7,7 @@ enum class EWeaponType : uint8
 {
 	//Projectile weapon
 	EWT_AssaultRifle UMETA(DisplayName = "Attack Rifle"),
-	EWT_RocketLauncher UMETA(DisplayName = "Rocket"), //NEW1
+	EWT_RocketLauncher UMETA(DisplayName = "RocketLauncher"), //NEW1
 
 	//HitScan weapon
 	EWT_Pistol UMETA(DisplayName = "Pistol"), //NEW2

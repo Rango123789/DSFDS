@@ -112,6 +112,12 @@ void SpawnSmokeTrailSystem();
     UPROPERTY(EditAnywhere)
     float Damage = 5.f;
 
+    //Only make sense for childs applying RadialRadisu
+    UPROPERTY(EditAnywhere)
+    float DamageInnerRadius = 200.f;
+    UPROPERTY(EditAnywhere)
+    float DamageOuterRadius = 500.f;
+
 private: //FINAL child
 /***functions***/
 //category1: auto-generated functions:

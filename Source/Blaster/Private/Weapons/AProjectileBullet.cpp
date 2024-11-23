@@ -15,7 +15,7 @@ AAProjectileBullet::AAProjectileBullet()
 	ProjectileMovementComponent->MaxSpeed = 15000;
 
 	//Stephen recommend, but we dont need this if we dont already the UPMC, this bullet use the built-in version so dont need this here (but need in Rocket):
-	// UPDATE] to be exact the PURE version also need it in case you  'return from first hit in your code'
+	// [UPDATE] to be exact the PURE version also need it in case you  'return from first hit in your code'
 		ProjectileMovementComponent->SetIsReplicated(true);
 }
 

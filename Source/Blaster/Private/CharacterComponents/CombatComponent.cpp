@@ -79,7 +79,13 @@ void UCombatComponent::Input_Reload()
 //impliment things, RPCs(if needed) from here:
 	//the GOLDEN1 is reduced to this, also no point to reload if you dont have any CarriedAmmo left:
 	//we only reload if it is Unoccupied and currently not already Readling (avoiding Spam) -- && CharacterState != ECS_Reloading  is redudant
-	if(CarriedAmmo > 0 && CharacterState == ECharacterState::ECS_Unoccupied ) ServerInput_Reload();
+	if (CarriedAmmo > 0 &&
+		EquippedWeapon &&
+		EquippedWeapon->GetAmmo() < EquippedWeapon->GetMagCapacity() &&
+		CharacterState == ECharacterState::ECS_Unoccupied)
+	{
+		ServerInput_Reload();
+	}
 }
 
 void UCombatComponent::ServerInput_Reload_Implementation()
@@ -94,10 +100,11 @@ void UCombatComponent::ServerInput_Reload_Implementation()
 //all code bellow will be copied and pasted to OnRep_, STEPHEN factorize all of them into ReloadHandle() so that when we add more stuff to ReloadHandle() we dont need to go and paste to OnRep_ again LOL, BUT I say we way LOL
 	//you must go and use AimNotify to reset it back to UnOccupied, otherwise you get stuck in state :D :D
 	Character->PlayReloadMontage(); //call it in  OnRep_CharacterState too for clients
-
 }
 
 //I haven't call this anywhere yet, as this i meant for when Reloading
+//this will be called in RealoadEnd Notify, giving the sense of rewarding after wating for the anim animation to finish, except Shotgun will use the specialized version below this one:
+//Change Ammo + CarriedAmmo should be done in the server first, this function will be  wrapped inside ReloadEnd() and checked there, dont worry:
 void UCombatComponent::UpdateHUD_CarriedAmmo()
 {
 	if (EquippedWeapon == nullptr) return;
@@ -115,7 +122,6 @@ void UCombatComponent::UpdateHUD_CarriedAmmo()
 	{
 		CarriedAmmoMap[EquippedWeapon->GetWeaponType()] = CarriedAmmo;
 	}
-
 //you can move these 2 lines into Char::ReloadEnd() so that it wont update before that point, however the SetHUDAmmo trigger in Client already, so you have to move them all together :D :D. 
 //So the final idea is to Call this HOSTING function in ReloadEnd() instead of in ServerInput_Reload()
 //So because it is called in the server, so to compensate we add 'HasAuthority()' if call from there! 
@@ -126,6 +132,48 @@ void UCombatComponent::UpdateHUD_CarriedAmmo()
 	//still need to help HUDAmmo in the server update to, I choose to do it here too, rather than outside:
 	EquippedWeapon->CheckAndSetHUD_Ammo();
 }
+
+//For PlayReloadAnimation ~>Shotgun section, we call this instead:
+//if it reach this function for first time, it must pass the condition < MagCapacity I guess
+//so for now I dont check it full when I start to Load :D :D
+//TO MAKE it consistent, I will create 'ReloadOneShell()' and wrap around this function and then check HasAuthorioty() from there too - simply make a copy of 'ReloadEnd()' and adjust it!
+void UCombatComponent::UpdateHUD_CarriedAmmo_SpecializedForShotgun()
+{
+//PART1: almost the same UpdateHUD_CarriedAmmo()
+	if (EquippedWeapon == nullptr) return;
+
+	//this time it will much more easier LOL:
+	int32 LoadAmount = 1;
+
+	//Change Ammo here will trigger OnRep_Ammo ->SetHUDAmmo work automatically in clients!
+	EquippedWeapon->SetAmmo(EquippedWeapon->GetAmmo() + LoadAmount);
+
+	//Stephen swap order of them for sematic reason, but I prefer this, changing CarriedAmmo here ill trigger OnRep_CarriedAmmo  ->SetHUDCarriedAmmo work automatically in clients!
+	CarriedAmmo = CarriedAmmo - LoadAmount;
+	//this line not affect this lesson but update the author_Char::Combat::CarriedAmmoMap
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+	{
+		CarriedAmmoMap[EquippedWeapon->GetWeaponType()] = CarriedAmmo;
+	}
+	//you can move these 2 lines into Char::ReloadEnd() so that it wont update before that point, however the SetHUDAmmo trigger in Client already, so you have to move them all together :D :D. 
+	//So the final idea is to Call this HOSTING function in ReloadEnd() instead of in ServerInput_Reload()
+	//So because it is called in the server, so to compensate we add 'HasAuthority()' if call from there! 
+	// So you must understand that once we add it for Do_Action, the clients wont pass it and wont excecute it, so you must rely on OnRep (if any)
+
+	CheckAndSetHUD_CarriedAmmo();
+
+	//still need to help HUDAmmo in the server update to, I choose to do it here too, rather than outside:
+	EquippedWeapon->CheckAndSetHUD_Ammo();
+
+//PART2: check if it full or out of CarriedAmmo and jump directly to sub section 'Shotgun End':
+	//this only jump in the server within ReloadOneAmmo(), hence also check and call it in Weapon::OnRep_Ammo() is perfect! but from there we could only check 'EquippedWeapon->IsFull()' ? Well it has 'Ownercharacter' you can use :D 
+	if (EquippedWeapon->IsFull() || CarriedAmmo == 0)
+	{
+		CharacterState = ECharacterState::ECS_Unoccupied; //moved from LoadOneAmmo(); so not any other React can intterupt it after first reload
+		if (Character) Character->JumpToShotgunEndSection();//helper from Character
+	}
+}
+
 
 //It first change when Equipped, this is auto-triggered
 void UCombatComponent::OnRep_CarriedAmmo()
@@ -368,11 +416,22 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 
 	EquippedWeapon = InWeapon;  // -->trigger OnRep_EquippedWeapon, why my OnRep_ didn't trigger?
 
+	if (EquippedWeapon == nullptr) return;
+
 	EquippedWeapon->PlayEquipSound(Character); //just for cosmetic
 
+	//you must update CarriedAmmo from the map first before you check on it LOL
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+	{
+		//map[KEY] = value of that KEY, remeMber? 
+		CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
+		//CarriedAmmo = *(CarriedAmmoMap.Find(EquippedWeapon->GetWeaponType())) ;
+	}
+	CheckAndSetHUD_CarriedAmmo();
+
 	//checking if Ammo is 0 and CarriedAmmo to Auto-Reload it:
-	if (EquippedWeapon == nullptr) return;
-	if (EquippedWeapon->GetAmmo() <= 0 && CarriedAmmo <= 0) return;
+
+	//if (EquippedWeapon->GetAmmo() <= 0 && CarriedAmmo <= 0) return; //this line is stupid
 	if (EquippedWeapon->GetAmmo() <= 0 && CarriedAmmo > 0)
 	{
 		Input_Reload(); //self-organized (i.e self replicated in some way)
@@ -403,13 +462,6 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
 	if (RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
 
-	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()) )
-	{
-		//map[KEY] = value of that KEY, remeMber? 
-		CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
-		//CarriedAmmo = *(CarriedAmmoMap.Find(EquippedWeapon->GetWeaponType())) ;
-	}
-	CheckAndSetHUD_CarriedAmmo();
 
 	//I decide to call it here, safe enough from SetOwner above LOL:
 	EquippedWeapon->CheckAndSetHUD_Ammo();
@@ -578,6 +630,30 @@ void UCombatComponent::EndReload()
 	}
 	//If you want..., you call this either here or in Combat::ServerInput_Reload, not both:
 	if (Character->HasAuthority()) UpdateHUD_CarriedAmmo();
+}
+
+void UCombatComponent::ReloadOneAmmo()
+{
+	if (Character == nullptr) return;
+
+	//Not sure if this is still appropriate? this can be called 4 times lol, it will even set to Unoccupied after first load, and any other Montage can intterupt it (including Fire(wanted), React(depdens): 
+	//if you dont like this behaviour simply move it into if(CarriedAmmo =0 || IsFull()) together with JumpToShotgunEnd() in the UpdateHUD_CarriedAmmo_SpecializedForShotgun() bellow! and its hosting function is currently having HasAuthority() here anyway LOL!
+		//if (Character->HasAuthority())
+		//{
+		//	CharacterState = ECharacterState::ECS_Unoccupied;
+		//}
+
+	//Optional for shotgun if you want it to continue to fire if Fire button is still press after reload at least one ammo!
+	if (Character->IsLocallyControlled())
+	{
+		if (bIsFiring) Input_Fire(bIsFiring);
+	}
+
+	//If you want..., you call this either here or in Combat::ServerInput_Reload, not both:
+	if (Character->HasAuthority())
+	{
+		UpdateHUD_CarriedAmmo_SpecializedForShotgun();
+	}
 }
 
 //I separate it here to avoid, replication late:
