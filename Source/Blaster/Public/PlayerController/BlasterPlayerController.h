@@ -31,6 +31,8 @@ public:
 
 	void SetHUDCarriedAmmo(int InCarriedAmmo);
 
+	void SetHUDThrowGrenade(int InThrowGrenade);
+
 	void SetHUDMatchTimeLeft(int32 MatchTimeLeft);
 
 	void SetHUDWarmUpTimeLeft(int32 InTimeLeft);

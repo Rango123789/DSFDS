@@ -20,6 +20,14 @@ public:
 
 	void Equip(class AWeapon* InWeapon);
 
+	void AttachEquippedWeaponToRightHandSocket();
+
+	void AttachEquippedWeaponToLeftHandSocket();
+
+	void ExtractCarriedAmmoFromMap_UpdateHUDAmmos_ReloadIfEmpty();
+
+	void DropCurrentWeaponIfAny();
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	//stephen name it 'TraceUnderCrosshairs' . In last course we name BoxHit ->better BoxHitResult
@@ -32,20 +40,36 @@ public:
 	void CheckAndSetHUD_CarriedAmmo();
 
 	UFUNCTION(BlueprintCallable)
-	void EndReload();
+	void ReloadEnd();
 	//this is specialized for shootgun:
 	UFUNCTION(BlueprintCallable)
 	void ReloadOneAmmo();
 
 	UFUNCTION(BlueprintCallable)
-	void EndReload_ContinueFiringIf();
+	void ThrowEnd();
+
+	//stephen didn't have this, he spawn it with Input_Throw LOL, hence must solve 'client part' as well, but me dont need according to universal rule: 'as long as montage is played all devices in the end, any notify will trigger in all devices'
+	UFUNCTION(BlueprintCallable)
+	void ShowGrenadeMesh();
+
+	UFUNCTION(BlueprintCallable)
+	void HideGrenadeMesh_SpawnActualProjectileGrenade();
+
+	UFUNCTION(Server, Reliable)
+	void ServerSpawnGrenade(const FVector& Target);
+
+	//UFUNCTION(BlueprintCallable)
+	//void EndReload_ContinueFiringIf();
 
 	//Reload
 	void Input_Reload();
-
-	//Stephen make it Reliable, but i think this is just for cosmetic UNLESS it involve technical calculation:) 
+		//Stephen make it Reliable, but i think this is just for cosmetic UNLESS it involve technical calculation:) 
 	UFUNCTION(Server, Reliable)
 	void ServerInput_Reload();
+
+	void Input_Throw();
+	UFUNCTION(Server, Reliable)
+	void ServerInput_Throw();
 
 protected:
 	virtual void BeginPlay() override;
@@ -60,6 +84,8 @@ private:
 
 	//fire
 	void Input_Fire(bool InIsFiring);
+
+	bool CanFire();
 
 	UFUNCTION(Server, Reliable)
 	void ServerInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
@@ -98,7 +124,8 @@ private:
 	UFUNCTION()
 	void OnRep_EquippedWeapon();
 
-
+	UFUNCTION()
+	void OnRep_ThrowGrenade();
 
 //***data member***
 	
@@ -111,6 +138,9 @@ private:
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
 
+	//to spawn Grenade:
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class AProjectile> ProjectileClass;
 
 	//need to change it back to Unoccupied via Anim Notify from ABP, BPAccess require not private or need meta = no it is the intermediate one from AimInstance need to be like that lol
 	//thi need to be propogated to AnimInstance to be used in ABP
@@ -188,12 +218,13 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	int32 StartCarriedAmmo_Shotgun = 8;
-
 	UPROPERTY(EditAnywhere)
 	int32 StartCarriedAmmo_SniperRifle = 4;
-
 	UPROPERTY(EditAnywhere)
 	int32 StartCarriedAmmo_GrenadeLauncher = 4;
+
+	UPROPERTY(ReplicatedUsing = OnRep_ThrowGrenade)
+	int32 ThrowGrenade{};
 
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!

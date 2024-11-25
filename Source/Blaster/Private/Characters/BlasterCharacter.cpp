@@ -68,6 +68,15 @@ ABlasterCharacter::ABlasterCharacter()
 	//setup TimelineComp:
 	TimelineComponent = CreateDefaultSubobject<UTimelineComponent>("TimelineComp");
 
+	//Setup TempGrenadeMesh:
+	TempGrenadeMesh = CreateDefaultSubobject<UStaticMeshComponent>("Temp Grenade Mesh");
+		//You must go to CharacterMesh add this 'GrenadeSocket' socket on right hand bone, alongside with RightHandSocket for holding the weapon, it make sense that 2 sockets are created on the same parent bone for 'holding' !
+	TempGrenadeMesh->SetupAttachment(GetMesh(), "GrenadeSocket");
+		//this temp mesh wont need any collision, the ACTUAL Projectile_ThrowGrenade for stage2 will indepdently
+	TempGrenadeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		//it should be NOT visble until some point during ThrowMontage, for now i temporarily let it be for testing purposes:
+		// Stephen say hide it in constructor is too early, should do it BeginPlay instead, but I dont think so :)
+	TempGrenadeMesh->SetVisibility(false);
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -141,6 +150,16 @@ void ABlasterCharacter::SetupEnhancedInput_IMC()
 		//the priority=0 is just for fun, there is only one IMC we're gonna add to our Blaster Character: 
 		if (EISubsystem) EISubsystem->AddMappingContext(IMC_Blaster, 0);
 	}
+}
+
+void ABlasterCharacter::ShowGrenadeMesh()
+{
+	if (TempGrenadeMesh) TempGrenadeMesh->SetVisibility(true);
+}
+
+void ABlasterCharacter::HideGrenadeMesh()
+{
+	if (TempGrenadeMesh) TempGrenadeMesh->SetVisibility(false);
 }
 
 //Stephen way, for now I use my way already
@@ -661,6 +680,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedPlayerInputComponent->BindAction(IA_Fire_Released, ETriggerEvent::Triggered, this, &ThisClass::Input_Fire_Released);
 
 		EnhancedPlayerInputComponent->BindAction(IA_Reload, ETriggerEvent::Triggered, this, &ThisClass::Input_Reload);
+		EnhancedPlayerInputComponent->BindAction(IA_Throw, ETriggerEvent::Triggered, this, &ThisClass::Input_Throw);
 	}
 }
 
@@ -736,6 +756,11 @@ void ABlasterCharacter::PlayReloadMontage()
 	}
 
 	PlayMontage_SpecificSection(AM_ReloadMontage, SectionName);
+}
+
+void ABlasterCharacter::PlayThrowMontage()
+{
+	PlayMontage_SpecificSection(AM_ThrowMontage);
 }
 
 //not sure this will cause any side effect on currently playing 'Realoading Montage'?
@@ -877,6 +902,14 @@ void ABlasterCharacter::Input_Reload(const FInputActionValue& Value)
 {
 	if (bDisableMostInput) return;
 	if(CombatComponent) CombatComponent->Input_Reload();
+}
+
+//Like Input_Equip, we dont need to pass in true/false, So I think we can directly create RPC in TIRE1 here?
+//Well because you may 'want' to do LineTrace from UCombatComponent instead, so it is up to you do choose which tire to create RCP lol
+void ABlasterCharacter::Input_Throw(const FInputActionValue& Value)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Char::InputThrow"));
+	if (CombatComponent) CombatComponent->Input_Throw();
 }
 
 void ABlasterCharacter::HideCharacterIfCameraClose()

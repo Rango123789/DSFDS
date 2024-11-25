@@ -44,5 +44,9 @@ void UCharacterOverlay_UserWidget::SetMatchTimeLeftText(const FString& InString)
 	if (TextBlock_MatchTimeLeft) TextBlock_MatchTimeLeft->SetText(FText::FromString(InString));
 }
 
-
+void UCharacterOverlay_UserWidget::SetThrowGrenadeText(const int& InThrowGrenade)
+{
+	FString InString = FString::FromInt(InThrowGrenade);
+	if (TextBlock_ThrowGrenade) TextBlock_ThrowGrenade->SetText(FText::FromString(InString));
+}
 

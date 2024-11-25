@@ -59,6 +59,7 @@ public:
 	void PlayHitReactMontage();
 	void PlayElimMontage();
 	void PlayReloadMontage();
+	void PlayThrowMontage();
 	void JumpToShotgunEndSection();
 	//sound and effects:
 
@@ -92,6 +93,9 @@ public:
 	void Elim();
 	
 	void SetupEnhancedInput_IMC();
+
+	void ShowGrenadeMesh();
+	void HideGrenadeMesh();
 protected:
 	/***functions***/
 //category1: auto-generated functions:
@@ -180,6 +184,10 @@ protected:
 	UPROPERTY(EditAnywhere)
 	USkeletalMesh* SkeletalMesh_Optimized;
 
+	//TempGrenade for stage1 of throwing:
+	UPROPERTY(VisibleAnywhere)
+	UStaticMeshComponent* TempGrenadeMesh;
+
 //category3: Engine types      
 	//montages:
 	UPROPERTY(EditAnywhere)
@@ -193,6 +201,9 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* AM_ReloadMontage;
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* AM_ThrowMontage;
 
 	//sound and effects:
 	UPROPERTY(EditAnywhere) 
@@ -277,6 +288,7 @@ private:
 	void Input_Fire_Released(const FInputActionValue& Value);
 
 	void Input_Reload(const FInputActionValue& Value);
+	void Input_Throw(const FInputActionValue& Value);
 
 //category4: regular functions 
 	void HideCharacterIfCameraClose();
@@ -316,6 +328,9 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	class UInputAction* IA_Reload;
+
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_Throw;
 
 	//montages:
 

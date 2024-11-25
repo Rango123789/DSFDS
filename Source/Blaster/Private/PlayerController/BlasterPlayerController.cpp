@@ -324,6 +324,19 @@ void ABlasterPlayerController::SetHUDCarriedAmmo(int InCarriedAmmo)
 	CharacterOverlay_UserWidget->SetCarriedAmmoText(InCarriedAmmo);
 }
 
+void ABlasterPlayerController::SetHUDThrowGrenade(int InThrowGrenade)
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+	//Back to main business:
+	CharacterOverlay_UserWidget->SetThrowGrenadeText(InThrowGrenade);
+}
+
+
 //we calculate 'synched' timeleft from outside
 void ABlasterPlayerController::SetHUDMatchTimeLeft(int32 InTimeLeft)
 {
@@ -441,7 +454,6 @@ void ABlasterPlayerController::SetHUDAnnounceAndInfo()
 		if (UserWidget_Announcement) UserWidget_Announcement->SetInfoText(InfoText);
 	}
 }
-
 
 //the turn ON/OFF of WBP_Announce and WBP_Overlay already done externally, partly in PC::OnMatchStateSet(), so you dont have to worry about it here:
 void ABlasterPlayerController::UpdateHUDTime()

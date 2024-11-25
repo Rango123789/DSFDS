@@ -59,6 +59,17 @@ AWeapon::AWeapon()
 	SetReplicateMovement(true); //this one, actually set bReplicateMovement = true
 	//SetReplicatedMovement(FRepMovement::); //not this one
 
+//PP_Hightlight, CustomDepth Stencil, Render CustomDepth Pass:
+	//step1: set Stentil Value DOOR2 first
+	WeaponMesh->SetCustomDepthStencilValue(251); //recommended
+		//WeaponMesh->CustomDepthStencilValue = 251; //not recommended
+	//step2: Enable RenderCustomDepth (Pass) DOOR1
+		//option1:
+	//WeaponMesh->SetCustomDepthStencilValue(251);
+	WeaponMesh->SetRenderCustomDepth(true);
+		//option2: 
+		//WeaponMesh->bRenderCustomDepth = true;
+		//WeaponMesh->MarkRenderStateDirty();
 }
 
 void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -127,6 +138,9 @@ void AWeapon::Drop()
     //but this time you MUST check if (Owner == nullptr) before you do these, because it replicated when it is set to nullptr or to valid pointer (dont want this)
 	OwnerCharacter = nullptr; //not self-replicated
 	BlasterPlayerController = nullptr;
+
+	////turn on CustomDepth as well: do client parts in OnRep_WeaponState()~>Dropped case -->better do it in SetWeaponState()
+	//if(WeaponMesh) WeaponMesh->SetRenderCustomDepth(true);
 }
 
 void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -261,6 +275,9 @@ void AWeapon::SetWeaponState(EWeaponState InState)
 			//GLOBALLY we turn it off all collision responses, hence this become 'PURE locally Simualted', but this has consequence steps:
 			 WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		 }
+		 //turn off CustomDepth
+		 WeaponMesh->MarkRenderStateDirty();
+		 WeaponMesh->SetRenderCustomDepth(false);
 
 		 break;
 	 case EWeaponState::EWS_Droppped :
@@ -285,6 +302,11 @@ void AWeapon::SetWeaponState(EWeaponState InState)
 			 //WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //remove this contradiction line
 
 		 }
+
+		 //turn ON CustomDepth:
+		 WeaponMesh->SetCustomDepthStencilValue(251);
+		 WeaponMesh->SetRenderCustomDepth(true);
+
 		 break;
 	 }
 }
@@ -324,6 +346,10 @@ void AWeapon::OnRep_WeaponState()
 		//so there is no gaurantee but double-kill does 'INCREASE' the chance of success:
 		if (Character) AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, FName("RightHandSocket"));
 
+		//turn OFF CustomDepth:
+		//WeaponMesh->MarkRenderStateDirty(); //doesn't really help LOL
+		WeaponMesh->SetRenderCustomDepth(false);
+		UE_LOG(LogTemp, Warning, TEXT("OnRep_WeaponState~>Equipped"));
 		break;
 	case EWeaponState::EWS_Droppped:
 		//NOR need we enable it back for Clients
@@ -343,6 +369,12 @@ void AWeapon::OnRep_WeaponState()
 			WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore); //NEW
 			//WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //remove this contradiction line
 		}
+
+		//turn ON CustomDepth:
+		//WeaponMesh->MarkRenderStateDirty(); //doesn't really help lol 
+		WeaponMesh->SetCustomDepthStencilValue(251);
+		WeaponMesh->SetRenderCustomDepth(true);
+		UE_LOG(LogTemp, Warning, TEXT("OnRep_WeaponState~>Dropped"));
 		break;
 	};
 }

@@ -142,14 +142,24 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	//bIsEliminated = BlasterCharacter->GetIsEliminated();
 
 	CharacterState = BlasterCharacter->GetCharacterState();
-	//they gonna be different at some point during the rest of the course:
-	bShouldUseFABRIK = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+
+//they gonna be different at some point during the rest of the course:
+	//History1: only consider Reloading
+	//bShouldUseFABRIK = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+	//		//bShouldUseAimOffsets = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+	//		//bShouldRotateRightHand = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+		//this may or may not needed, as we stop counting AO_Yaw from Char::Tick() already
+	//bShouldUseAimOffsets = (CharacterState != ECharacterState::ECS_Reloading) && (!BlasterCharacter->GetDisableMostInput());
+	//bShouldRotateRightHand = (CharacterState != ECharacterState::ECS_Reloading) && (!BlasterCharacter->GetDisableMostInput());
+	
+	//History2: change !=Reloading --> ==UnOcupied, so only when it is Unoccupied (either Reloading or Throwing) we dont want to use any FABRIK , rotate right hand, aim offset, so that our hand are 'FREE' to do other things:
+	bShouldUseFABRIK = CharacterState == ECharacterState::ECS_Unoccupied ? true : false; //revert true, false
 	//bShouldUseAimOffsets = CharacterState == ECharacterState::ECS_Reloading ? false : true;
 	//bShouldRotateRightHand = CharacterState == ECharacterState::ECS_Reloading ? false : true;
-	
+
 	//this may or may not needed, as we stop counting AO_Yaw from Char::Tick() already
-	bShouldUseAimOffsets = (CharacterState != ECharacterState::ECS_Reloading) && (!BlasterCharacter->GetDisableMostInput());
-	bShouldRotateRightHand = (CharacterState != ECharacterState::ECS_Reloading) && (!BlasterCharacter->GetDisableMostInput());
+	bShouldUseAimOffsets = (CharacterState == ECharacterState::ECS_Unoccupied) && (!BlasterCharacter->GetDisableMostInput());
+	bShouldRotateRightHand = (CharacterState == ECharacterState::ECS_Unoccupied) && (!BlasterCharacter->GetDisableMostInput());
 }
 
 
