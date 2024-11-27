@@ -150,13 +150,6 @@ void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* 
 	if (BlasterCharacter && Pickup_WidgetComponent)
 	{
 		BlasterCharacter->SetOverlappingWeapon(this);
-		
-		// //if we do it here we can use replication trick from char having this class as replicated member.
-		//if (HasAuthority() && BlasterCharacter->GetRemoteRole() == ENetRole::ROLE_AutonomousProxy)
-		//{
-		//	//focus on the server copy only! the rest has been taken cared already, do not mess it up LOL:
-		//	Pickup_WidgetComponent->SetVisibility(true);
-		//}
 	}
 }
 
@@ -186,6 +179,7 @@ void AWeapon::UpdateHUD_Ammo()
 	Ammo--;
 
 	CheckAndSetHUD_Ammo();
+
 }
 
 void AWeapon::OnRep_Ammo()

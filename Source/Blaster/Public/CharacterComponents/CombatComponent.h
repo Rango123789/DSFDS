@@ -19,6 +19,8 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	void Equip(class AWeapon* InWeapon);
+	void PickupAmmo(EWeaponType InWeaponType, uint32 InAmmoAmmount);
+
 
 	void AttachEquippedWeaponToRightHandSocket();
 
@@ -37,7 +39,11 @@ public:
 
 	void UpdateHUD_CarriedAmmo_SpecializedForShotgun();
 
+	void UpdateHUD_ThrowGrenade();
+
 	void CheckAndSetHUD_CarriedAmmo();
+
+	void CheckAndSetHUD_ThrowGrenade();
 
 	UFUNCTION(BlueprintCallable)
 	void ReloadEnd();
@@ -204,6 +210,9 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_CarriedAmmo)
 	int32 CarriedAmmo{}; //let each Char has 45 when GameStart even when they dont have any gun
 
+	UPROPERTY(EditAnywhere)
+	uint32 MaxCarriedAmmo = 500;
+
 	//this is for the sake of local organization, not for replication as TMap can't, when we pick a weapon of a specific Weapon::WeaponType (which will be created from there soon) we add it to this map for local organization:
 	TMap<EWeaponType, int> CarriedAmmoMap;
 
@@ -224,7 +233,9 @@ private:
 	int32 StartCarriedAmmo_GrenadeLauncher = 4;
 
 	UPROPERTY(ReplicatedUsing = OnRep_ThrowGrenade)
-	int32 ThrowGrenade{};
+	int32 ThrowGrenade = 4; //now  = 4 for testing
+	UPROPERTY(EditAnywhere)
+	int32 ThrowGrenadeCapacity = 4;
 
 public:	
 	friend class ABlasterCharacter;     //since already forward-declare, so 'class' here is optional!

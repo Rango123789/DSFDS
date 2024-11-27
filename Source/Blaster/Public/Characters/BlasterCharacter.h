@@ -50,7 +50,7 @@ public:
 	UFUNCTION() //because OnTakeAnyDamgage is DYNAMIC delegate
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
-	void UpdateHUD_Health();
+	void CheckAndUpdateHUD_Health();
 
 //category4: regular functions: 
 	//montages:
@@ -156,6 +156,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly) 
 	class UCombatComponent* CombatComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class UBuffComponent* BuffComponent;
 
 	//for Timeline: (I move them apart later)
 	UPROPERTY(VisibleAnywhere)
@@ -359,6 +362,7 @@ public:
 	float GetAO_Pitch() { return AO_Pitch; }
 
 	UCombatComponent* GetCombatComponent() { return CombatComponent; }
+	UBuffComponent* GetBuffComponent() { return BuffComponent; }
 
 	AWeapon* GetEquippedWeapon();
 
@@ -375,6 +379,9 @@ public:
 	float GetHealth() { return Health; }
 	float GetMaxHealth() { return MaxHealth; }
 
+	void SetHealth(float InHealth) { Health = InHealth; };
+	void AddHealth(float InExtraHealth) { Health += InExtraHealth; };
+
 	ABlasterPlayerController* GetBlasterPlayerController();
 
 	ECharacterState GetCharacterState(); 
@@ -382,4 +389,6 @@ public:
 	bool GetDisableMostInput() { return bDisableMostInput; }
 
 	void SetDisableMostInput(bool InBool) { bDisableMostInput = InBool; }
+
+	bool GetIsElimminated() { return bIsEliminated; };
 };

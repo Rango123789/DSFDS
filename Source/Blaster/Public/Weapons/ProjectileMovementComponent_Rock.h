@@ -16,7 +16,7 @@ class BLASTER_API UProjectileMovementComponent_Rock : public UProjectileMovement
 
 public:
 	//no need to override this at all, what stephen does doesn't make any sense:
-		//virtual EHandleBlockingHitResult HandleBlockingHit(const FHitResult& Hit, float TimeTick, const FVector& MoveDelta, float& SubTickTimeRemaining);
+		virtual EHandleBlockingHitResult HandleBlockingHit(const FHitResult& Hit, float TimeTick, const FVector& MoveDelta, float& SubTickTimeRemaining) override;
 	//this is enough:
 	virtual void HandleImpact(const FHitResult& Hit, float TimeSlice = 0.f, const FVector& MoveDelta = FVector::ZeroVector) override;
 };

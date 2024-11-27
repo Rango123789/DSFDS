@@ -24,7 +24,31 @@ UCombatComponent::UCombatComponent()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true; //if you tick later, then turn it on
 
+	SetIsReplicated(true);
+
 	//TimerDelegate.BindUFunction(this, FName("FireTimer_Callback")); 
+
+	/*
+	#Puzzle: 
++I didn't set UCombatComponent::SetIsReplicated(true)/LIKE
+, how it can still work so well? did I check it from BP_Char?
+
++Well i set this from the HOSTING actor perspective already
+, meaning for UActorComponent created by CreateDefaultSubobject we register the component in the hosting actor's constructor
+
++There is a thing you must be aware of
+(1) Char::Char(){ Combat::SetIsReplicated(true)} and Combat::Combat(){  SetIsReplicated(true)  } in fact change the same underlying data
+=you need to only change EITHER of them, if you do both, then the setting in the HOSTING actor will take precendence naturally (Actor's contructor run after its comp's constructor, who ever run after will be the final value)
+(2)_[UPDATE] if you did do SetIsReplicated(true) LOCALLY in UCombatComponent
+, then it will be the default value of it in the HOSTING actor too
+, hell yeah!
+(3) However for the built-in UActorComponent, UE5 dont typically set SetIsReplicated(true)
+, perhaps because it suit better for the default case of single player
+, hence if you use any buil-in Component, you gotta remember call HostingActor::UActorComponent::SetIsReplicated(true) within the Hosting Actor class!
+
++However a common practice is that you DO NOT do it in LOCAL UActorComponent class (even if it work) so that the default behaviour is NOT replicated
+, you follow UE5's practice and only do it in hosting Actgor
+	*/
 }
 
 void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -92,7 +116,9 @@ void UCombatComponent::Input_Throw()
 	if (Character == nullptr) return;
 	//so that it wont spam itself and any other montages:
 	if (CharacterState != ECharacterState::ECS_Unoccupied) return;
+	if (ThrowGrenade <= 0) return;
 
+//i start to feel this STUPID lol, if you bother to make it happen in server first, why still bother to restrict it to be called in the server and then give up and make it work in the controlling device first?
 	//Stephen said, that he want to play Montage in controlling device immediately to see it immediatly, and then send RPC to the server and other clients later:  FIRST TIME!
 	// However in OnRep_CharState we will include the IsLocallycontroll case to avoid playing twice LOL: FIRST TIME!
 	//Consequencely you must change the state for it to (even before it receive LEGAL value from server later)
@@ -100,6 +126,8 @@ void UCombatComponent::Input_Throw()
 
 	Character->PlayThrowMontage(); //too see immediate effect in controlling device
 	AttachEquippedWeaponToLeftHandSocket();
+
+	UpdateHUD_ThrowGrenade(); //in case it is already the server and can't pass next check
 
 	//the second consequence, because you do the 2 line above, so you can in fact OPTIONALLY put the 'ServerInput_Throw()' inside if(!HasAuthority())), because in worst case it is called in the server it skip this RPC it still has the 2 line above back it up! :D :D
 	    //usual option:
@@ -119,6 +147,8 @@ void UCombatComponent::ServerInput_Throw_Implementation()
 
 	Character->PlayThrowMontage();
 	AttachEquippedWeaponToLeftHandSocket(); //this is self-replicated, no need to call it in OnRep_CharacterState::Throwing at all _VERFIED - I test it!
+
+	UpdateHUD_ThrowGrenade();
 }
 
 void UCombatComponent::ServerInput_Reload_Implementation()
@@ -207,6 +237,16 @@ void UCombatComponent::UpdateHUD_CarriedAmmo_SpecializedForShotgun()
 	}
 }
 
+void UCombatComponent::UpdateHUD_ThrowGrenade()
+{
+	if (ThrowGrenade <= 0) return;
+	
+	ThrowGrenade--;
+
+	CheckAndSetHUD_ThrowGrenade();
+}
+
+
 //It first change when Equipped, this is auto-triggered
 void UCombatComponent::OnRep_CarriedAmmo()
 {
@@ -217,6 +257,7 @@ void UCombatComponent::CheckAndSetHUD_CarriedAmmo()
 {
 	if (Character == nullptr) return;
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Character->GetController<ABlasterPlayerController>() : BlasterPlayerController;
+
 	if (BlasterPlayerController) BlasterPlayerController->SetHUDCarriedAmmo(CarriedAmmo);
 }
 
@@ -230,6 +271,18 @@ void UCombatComponent::InitializeCarriedAmmo()
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_Shotgun, StartCarriedAmmo_Shotgun);
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_SniperRifle, StartCarriedAmmo_SniperRifle);
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_GrenadeLauncher, StartCarriedAmmo_GrenadeLauncher);
+}
+
+void UCombatComponent::OnRep_ThrowGrenade()
+{
+	CheckAndSetHUD_ThrowGrenade();
+}
+
+void UCombatComponent::CheckAndSetHUD_ThrowGrenade()
+{
+	if (Character == nullptr) return;
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Character->GetController<ABlasterPlayerController>() : BlasterPlayerController;
+	if (BlasterPlayerController) BlasterPlayerController->SetHUDThrowGrenade(ThrowGrenade);
 }
 
 void UCombatComponent::OnRep_CharacterState()
@@ -335,20 +388,6 @@ void UCombatComponent::Input_Fire(bool InIsFiring)
 
 	bIsFiring = InIsFiring;
 
-
-//can factorize these in to Combat::Fire() to be used instead of Input_Fire itself in timer_callback
-	//you may wan to factorize this block into CanFire(), but I say no, I let it be here
-	//{
-	//	//this is a part of stopping Gun can't stop firing:
-	//	if (bCanFire == false) return;
-	//	//extra condition about ammo: || EquippedWeapon->GetAmmo() <= 0 - no need because we check it above also
-	//	if (
-	//		( EquippedWeapon == nullptr || CharacterState != ECharacterState::ECS_Unoccupied || EquippedWeapon->GetAmmo() <= 0) )
-	//	{
-	//		return;
-	//	}
-	//}
-
 	if (CanFire())
 	{
 		//set it back to false as a part of preventing we spam the fire button during WaitTime to reach Timer callback
@@ -397,8 +436,8 @@ void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FV
 
 	MulticastInput_Fire(InIsFiring, Target);
 
-	//I decide to call it here, safe enough from SetOwner above LOL:
-	if (EquippedWeapon) EquippedWeapon->UpdateHUD_Ammo();
+	//I decide to call it here, Hell no! if you call it here, Ammo will be subtracted even before the PlayFireMontage happen - which we're not even sure it will pass it next condition to be up there :D :D :
+	//if (EquippedWeapon) EquippedWeapon->UpdateHUD_Ammo();
 }
 
 //when it reaches this TIRE it must pass CanFire() and have Ammo > 0, So we dont need to check it again I suppose:
@@ -426,6 +465,9 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const
 
 		EquippedWeapon->Fire(Target); //instead of member HitTarget, now you can remove it!
 
+		//it should be here:
+		if (Character->HasAuthority()) EquippedWeapon->UpdateHUD_Ammo();
+
 		/*
 		Stepehen directly set it back to Unoccupied right in "Combat::MulticastInput_Fire"
 		, this is the reason:
@@ -434,7 +476,6 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const
 		=hell yeah!
 		*/
 		CharacterState = ECharacterState::ECS_Unoccupied;
-
 	}
 }
 
@@ -452,14 +493,14 @@ void UCombatComponent::FireTimer_Callback()
 
 	//I move it up here, shouldn't put any code below a RECURSIVE code:
 	//this is the best place to reload, Stephen said, as this reach after DelayTime and eveything has been settle correctly! it is true I didn't have side effect as I release the Fire button and lose one more button without playing FireSound lol
-	if (EquippedWeapon && EquippedWeapon->IsEmpty() && CarriedAmmo > 0)
-	{
-		Input_Reload();
-	}
 
 	//Option2 to fix Fire intterupt Reload back when timer reach:
 	if(CharacterState == ECharacterState::ECS_Unoccupied) Input_Fire(bIsFiring);
 
+	if (EquippedWeapon && EquippedWeapon->IsEmpty() && CarriedAmmo > 0)
+	{
+		Input_Reload();
+	}
 }
 
 void UCombatComponent::Input_Fire_WithoutAssingmentLine()
@@ -535,6 +576,30 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 //we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
 	Character->bUseControllerRotationYaw = true; //at first it is false
+}
+
+//Pickup::Overlap trigger in server -->this Combat::PickupAmmo also trigger in the server first
+void UCombatComponent::PickupAmmo(EWeaponType InWeaponType, uint32 InAmmoAmmount)
+{
+	//Increase Ammo: both of them are self-replicated if called in the server, yes currently is
+	if (CarriedAmmoMap.Contains(InWeaponType))
+	{
+		//this only update the map (to be retrieved later) but doesn't in fact update the CarriedAmmo in case it match the current EquippedWeapon's Type at all:
+		CarriedAmmoMap[InWeaponType] = FMath::Clamp(CarriedAmmoMap[InWeaponType] + InAmmoAmmount, 0, MaxCarriedAmmo);
+		//This will actually change the Carried Ammo in worst case:
+		if (EquippedWeapon && InWeaponType == EquippedWeapon->GetWeaponType())
+		{
+			CarriedAmmo = CarriedAmmoMap[InWeaponType]; //OnRep_CarriedAmmo will trigger for client part
+		}
+		//it check on current CarriedAmmo and update HUD, if the WeaponType's Pickup doesn't match WeaponType's EquippedWeapon then this wont cause any visual effect :D :D
+		CheckAndSetHUD_CarriedAmmo(); //this for the server part ONLY
+	}
+
+	//If it matches the type of EquippedWeapon and EquippedWeapon::Ammo = 0 then auto-reload it;
+	if (EquippedWeapon  && EquippedWeapon->IsEmpty() && InWeaponType == EquippedWeapon->GetWeaponType())
+	{
+		Input_Reload(); //this is self-handled, no matter where you call it
+	}
 }
 
 //call this specialized function with ThrowEnd():
@@ -641,10 +706,6 @@ void UCombatComponent::OnRep_EquippedWeapon()
 
 }
 
-void UCombatComponent::OnRep_ThrowGrenade()
-{
-
-}
 
 //currently this could only call in IsLocallyControlled() /autonompus proxy - hence 'if(IsLocallyControlled()' become redudant!
 void UCombatComponent::SetIsAiming(bool InIsAiming)

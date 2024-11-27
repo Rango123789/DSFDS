@@ -10,6 +10,7 @@
 #include <Net/UnrealNetwork.h>
 #include "Kismet/GameplayStatics.h"
 #include "GameState/GameState_Blaster.h"
+#include "CharacterComponents/CombatComponent.h"
 
 ABlasterPlayerController::ABlasterPlayerController()
 {
@@ -61,6 +62,11 @@ void ABlasterPlayerController::OnPossess(APawn* InPawn)
 	if (BlasterCharacter)
 	{
 		SetHUDHealth(BlasterCharacter->GetHealth(), BlasterCharacter->GetMaxHealth());
+		if (BlasterCharacter->GetCombatComponent())
+		{
+			BlasterCharacter->GetCombatComponent()->CheckAndSetHUD_CarriedAmmo();
+			BlasterCharacter->GetCombatComponent()->CheckAndSetHUD_ThrowGrenade();
+		}
 	}
 
 	//Optional so far:

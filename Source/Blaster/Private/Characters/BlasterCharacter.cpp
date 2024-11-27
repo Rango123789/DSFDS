@@ -7,6 +7,7 @@
 #include "GameModes/BlasterGameMode.h"
 #include "Weapons/Weapon.h"
 #include "Components/CapsuleComponent.h"
+#include "CharacterComponents/BuffComponent.h"
 
 //#include "Curves/CurveFloat.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -54,6 +55,10 @@ ABlasterCharacter::ABlasterCharacter()
 	//Setup UCombatComponent: We will replicate this Component[/pointer object] ; it is not SceneComponent so...
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	CombatComponent->SetIsReplicated(true); // || ->SetIsReplicatedByDefault(true) || ->bReplicates = true || directly set it from the local class AWeapon is also fine - I refer to do it where the local class is LOL. But it may set back false if it is within the other class?, It could be LOL.
+
+	//Setup UBuffComponent:
+	BuffComponent = CreateDefaultSubobject<UBuffComponent>(TEXT("BuffComponent"));
+	BuffComponent->SetIsReplicated(true);
 
 	//make sure you can
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
@@ -106,6 +111,12 @@ void ABlasterCharacter::BeginPlay()
 		BlasterPlayerController->SetHUDScore(PlayerState_Blaster->GetScore()); 	//medicine1
 		BlasterPlayerController->SetHUDDefeat(PlayerState_Blaster->GetDefeat()); 	//medicine1
 	}
+	if (BlasterPlayerController && CombatComponent)
+	{
+		CombatComponent->CheckAndSetHUD_CarriedAmmo(); //hardcode, no need
+		CombatComponent->CheckAndSetHUD_ThrowGrenade();
+	}
+
 	
 	////Only the server device can get a valid reference to GameMode as it is only created in the server device, not sure it is a good idea to create a member of this where this is only meaningful to the server device
 	//BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
@@ -209,7 +220,8 @@ void ABlasterCharacter::PostInitializeComponents()
 {
 	//supposedly all components should be initialized and not null before this Post, but still I want to check as good practice:
 	Super::PostInitializeComponents();
-	if (CombatComponent) CombatComponent->Character = this;
+	if (CombatComponent) CombatComponent->Character = this; //make ABlasterCharater friend of it
+	if (BuffComponent) BuffComponent->Character = this; //to access even private member withou getter
 }
 
 void ABlasterCharacter::Destroyed()
@@ -292,11 +304,15 @@ void ABlasterCharacter::OnRep_ReplicatedMovement()
 //currently only the server can trigger this
 void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
+	//Even if you turn off collision for Elimmed char during elim process
+	//, but RadialDamage can still hurt them, this fix the elimmed can be killed again by RadialDamage during elim process:
+	if (bIsEliminated) return;  // || if(Health <= 0) return;
+
 	Health = FMath::Clamp(Health - Damage, 0, MaxHealth);
 
 	//to be replicated to clients via OnRep_Health as well
 	if(Health > 0.f)  PlayHitReactMontage();
-	UpdateHUD_Health();
+	CheckAndUpdateHUD_Health();
 
 	//only when Health ==0 we should summon the gamemode to do its very job
 	if (Health <= 0.f) 
@@ -430,10 +446,11 @@ void ABlasterCharacter::OnTimelineFloat_Callback_Dissolve(float DissolveAdding)
 void ABlasterCharacter::OnRep_Health()
 {
 	if (Health > 0.f) PlayHitReactMontage();
-	UpdateHUD_Health();
+	CheckAndUpdateHUD_Health();
 }
 
-void ABlasterCharacter::UpdateHUD_Health()
+//I rename UpdateHUD_Health() --> CheckAndUpdateHUD_Health() for consistency, meaning Char dont have UpdateHUD_Health() for its own reason in ReceiveDamage LOL
+void ABlasterCharacter::CheckAndUpdateHUD_Health()
 {
 	//Read Appendix28, to know why this line of code is more than necessary!
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
