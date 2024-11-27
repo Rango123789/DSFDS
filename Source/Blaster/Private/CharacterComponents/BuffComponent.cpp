@@ -31,40 +31,43 @@ void UBuffComponent::PickHealth(float InHealthAmount, float InHealingTime)
 
 	//planB: make it heal Char over time:
 	bIsHealing = true; //not it pass bOuter in Tick and reach RampUpHealth()
-	AmountToHeal = InHealthAmount; //+= is more correct in case you pick a lot of Health pickups LOL
-	HealingTime = InHealingTime;
-	RemainingAmount += AmountToHeal; //+= is in case you pick a lot of Health pickups LOL!
+
+	HealingRate = InHealthAmount / InHealingTime; //this will be constant until pick a new Health Pickup
+
+	//Whenever you pick a new Health pickup, this will increase:
+	AmountToHeal += InHealthAmount; //+= is in case you pick a lot of Health pickups LOL!
 }
 
 void UBuffComponent::RampUpHealth(float DeltaTime)
 {
-	if (Character == nullptr) return;
+	//DOOR1: bIsHealing, because of Door3 it becomes optional!
+	if (Character == nullptr || bIsHealing == false) return;
 
+	//DOOR2: you shoudn't increase health for a dying char LOL:
 	if (Character->GetIsEliminated()) return; //I forget this line
 
-	if (RemainingAmount <= 0)
+	//DOOR3: Optional, stop healing when Health reach max during process:
+	if (AmountToHeal <= 0 || Character->GetHealth() >= Character->GetMaxHealth())
 	{
 		bIsHealing = false;
-		RemainingAmount = 0.f; //clamp it back to Zero in worst case LOL
+		AmountToHeal = 0.f; //this is recommended I think
 		return;
 	}
 
-	//This line must go before the next line, keeping both AmountToHealth and HealingTime const is the way make it work as expected LOL:
-	float AmountHeal_thisframe = DeltaTime * AmountToHeal / HealingTime;
+	float HealThisFrame = DeltaTime * HealingRate;
 
-	//this will cause imperfection and slow speed at the end:
-	//AmountToHeal -= DeltaTime * AmountToHeal / HealingTime;
-	//this is the correct way to go, meaning create yet another extra var LOL:
-	RemainingAmount -= DeltaTime * AmountToHeal / HealingTime;
+	//This trigger OnRep_Health() per Net Update lol (may be OKAY), But I think we should use "one-second" technique to reduce the Net replication LOL: you must create "a shadow member" in this BuffComponent for this purpose - WORK TO DO1 (anyway stephen didn't bother to do it)
+	// And consequencely 'PlayReactMontage()' - need to fix this side effect: 
+	// simply add 'if ( Health < Health_LastFrame) PlayReactMontage()' will fix it!
+	Character->SetHealth( 
+		FMath::ClampAngle(Character->GetHealth() + HealThisFrame,
+		0, Character->GetMaxHealth())
+	); 
 
-	//INCORRECT approachA: When it move to this line, AmmountToHeal has been changed lol, so if you use this, you will lose an amount of heal exactly 'HealingTime' when the process finish LOL:
-	// NOW become correct when AmountToHeal = const, due to creating 'RemainingAmount'
-	//Character->AddHealth(DeltaTime * AmountToHeal / HealingTime);
+	AmountToHeal -= HealThisFrame;
 
-	//CORRECT approachA:
-	Character->AddHealth(AmountHeal_thisframe);
-
-	//you can use "one-sec" technique to avoid it update HUD per frame!
+	//you can use "one-sec" technique to avoid it update HUD per frame! - WORK TO DO1 (anyway stephen didn't bother to do it)
+	//the other idea is to reduce the HealingTime, but it will increase the level of incurracy to heal in last frame LOL, so be careful
 	Character->CheckAndUpdateHUD_Health();
 }
 

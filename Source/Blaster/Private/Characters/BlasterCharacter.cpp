@@ -443,11 +443,15 @@ void ABlasterCharacter::OnTimelineFloat_Callback_Dissolve(float DissolveAdding)
 }
 
 //this will be called on all clients 
-void ABlasterCharacter::OnRep_Health()
+void ABlasterCharacter::OnRep_Health(float Health_LastFrame)
 {
-	if (Health > 0.f) PlayHitReactMontage();
+	//Health > 0, to make sure you're not elimmed; the second cond for avoiding the case you increase Health due to HealthPickup instead of being Hit
+	if (Health > 0.f && Health < Health_LastFrame) PlayHitReactMontage();
+
 	CheckAndUpdateHUD_Health();
 }
+
+
 
 //I rename UpdateHUD_Health() --> CheckAndUpdateHUD_Health() for consistency, meaning Char dont have UpdateHUD_Health() for its own reason in ReceiveDamage LOL
 void ABlasterCharacter::CheckAndUpdateHUD_Health()

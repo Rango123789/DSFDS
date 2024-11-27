@@ -33,10 +33,7 @@ protected:
 	//for ramp up health over healing time in Tick:
 	bool bIsHealing = false;
 	float AmountToHeal = 0.f;
-	float RemainingAmount = 0.f;
-
-	float HealingTime = 0.f;
-
+	float HealingRate = 0.f; // = InHealhAmount / HealingTime
 
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

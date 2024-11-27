@@ -350,8 +350,10 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_Health, EditAnywhere) //EditAnywhere, for debugging purpose
 	float Health = 10.f;
 
+
+	//add more parameter to fix the bug
 	UFUNCTION()
-	void OnRep_Health();
+	void OnRep_Health(float Health_LastFrame);
 
 public:	
 	/***Setters and Getters***/
