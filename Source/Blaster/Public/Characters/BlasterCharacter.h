@@ -51,6 +51,7 @@ public:
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
 	void CheckAndUpdateHUD_Health();
+	void CheckAndUpdateHUD_Shield();
 
 //category4: regular functions: 
 	//montages:
@@ -350,10 +351,20 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_Health, EditAnywhere) //EditAnywhere, for debugging purpose
 	float Health = 10.f;
 
-
 	//add more parameter to fix the bug
 	UFUNCTION()
 	void OnRep_Health(float Health_LastFrame);
+
+	//attributes:
+	UPROPERTY(EditAnywhere)
+	float MaxShield = 100.f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Shield, EditAnywhere) //EditAnywhere, for debugging purpose
+	float Shield = 10.f;
+
+	//add more parameter to fix the bug
+	UFUNCTION()
+	void OnRep_Shield(float Shield_LastFrame);
 
 public:	
 	/***Setters and Getters***/
@@ -380,9 +391,12 @@ public:
 
 	float GetHealth() { return Health; }
 	float GetMaxHealth() { return MaxHealth; }
-
 	void SetHealth(float InHealth) { Health = InHealth; };
 	void AddHealth(float InExtraHealth) { Health += InExtraHealth; };
+
+	float GetShield() { return Shield; }
+	float GetMaxShield() { return MaxShield; }
+	void SetShield(float InShield) { Shield = InShield; };
 
 	ABlasterPlayerController* GetBlasterPlayerController();
 

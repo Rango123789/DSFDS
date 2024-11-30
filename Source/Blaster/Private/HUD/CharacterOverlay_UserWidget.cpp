@@ -15,6 +15,17 @@ void UCharacterOverlay_UserWidget::SetHealthText(const FString& InString)
 	if(TextBlock_Health) TextBlock_Health->SetText( FText::FromString(InString) );
 }
 
+void UCharacterOverlay_UserWidget::SetShieldPercent(float InPercent)
+{
+	if (ProgressBar_Shield) ProgressBar_Shield->SetPercent(InPercent);
+}
+
+void UCharacterOverlay_UserWidget::SetShieldText(const FString& InString)
+{
+	if (TextBlock_Shield) TextBlock_Shield->SetText(FText::FromString(InString));
+}
+
+
 void UCharacterOverlay_UserWidget::SetScoreText(const int& InScore)
 {
 	FString InString = FString("Score: ") + FString::FromInt(InScore);

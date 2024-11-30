@@ -34,8 +34,6 @@ UMultiplayerSession_GameSubsystem::UMultiplayerSession_GameSubsystem() :
 		//OnlineSessionInterface->AddOnJoinSessionCompleteDelegate_Handle(OnJoinSessionCompleteDelegate) ;
 		//OnlineSessionInterface->AddOnStartSessionCompleteDelegate_Handle(OnStartSessionCompleteDelegate) ;
 		//OnlineSessionInterface->AddOnDestroySessionCompleteDelegate_Handle(OnDestroySessionCompleteDelegate) ;
-
-
 }
 
 //Create:

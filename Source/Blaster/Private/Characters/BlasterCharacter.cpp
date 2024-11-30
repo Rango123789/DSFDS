@@ -95,7 +95,6 @@ void ABlasterCharacter::BeginPlay()
 	PlayerState_Blaster = GetPlayerState<APlayerState_Blaster>();
 	if (BlasterPlayerController)
 	{
-
 		BlasterPlayerController->SetHUDHealth(Health, MaxHealth); 	//this is for GameStart
 		//OPTION1 to delay HUD to be shown during WarmUpTime:
 			//ABlasterHUD* BlasterHUD = BlasterPlayerController->GetHUD<ABlasterHUD>();
@@ -103,11 +102,11 @@ void ABlasterCharacter::BeginPlay()
 			//{
 			//	BlasterHUD->GetCharacterOverlay_UserWidget()->AddToViewport();
 			//}
+		BlasterPlayerController->SetHUDShield(Shield, MaxShield);
 	}
 
 	if (PlayerState_Blaster && BlasterPlayerController)
 	{ 
-
 		BlasterPlayerController->SetHUDScore(PlayerState_Blaster->GetScore()); 	//medicine1
 		BlasterPlayerController->SetHUDDefeat(PlayerState_Blaster->GetDefeat()); 	//medicine1
 	}
@@ -214,6 +213,8 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 	DOREPLIFETIME(ABlasterCharacter, Health);
 	DOREPLIFETIME(ABlasterCharacter, bDisableMostInput);
+
+	DOREPLIFETIME(ABlasterCharacter, Shield);
 }
 
 void ABlasterCharacter::PostInitializeComponents()
@@ -308,11 +309,26 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	//, but RadialDamage can still hurt them, this fix the elimmed can be killed again by RadialDamage during elim process:
 	if (bIsEliminated) return;  // || if(Health <= 0) return;
 
-	Health = FMath::Clamp(Health - Damage, 0, MaxHealth);
+	//calculate Shield and Health after receive Damage:
+	float DamageToHealth;
+	if (Damage <= Shield)
+	{
+		Shield -= Damage;
+		DamageToHealth = 0.f;
+	}
+	else
+	{
+		Shield = 0.f;
+		DamageToHealth = Damage - Shield;
+	}
 
-	//to be replicated to clients via OnRep_Health as well
-	if(Health > 0.f)  PlayHitReactMontage();
+	Health = FMath::Clamp(Health - DamageToHealth, 0, MaxHealth); //now  - DamageToHealh instead
+
+	//I think only when DamageToHealth > 0 we play react montage!
+	if(Health > 0.f && DamageToHealth > 0)  PlayHitReactMontage();
+
 	CheckAndUpdateHUD_Health();
+	CheckAndUpdateHUD_Shield();
 
 	//only when Health ==0 we should summon the gamemode to do its very job
 	if (Health <= 0.f) 
@@ -459,6 +475,13 @@ void ABlasterCharacter::CheckAndUpdateHUD_Health()
 	//Read Appendix28, to know why this line of code is more than necessary!
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
 	if (BlasterPlayerController) BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
+}
+
+void ABlasterCharacter::CheckAndUpdateHUD_Shield()
+{
+	//Read Appendix28, to know why this line of code is more than necessary!
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
+	if (BlasterPlayerController) BlasterPlayerController->SetHUDShield(Shield, MaxShield);
 }
 
 void ABlasterCharacter::Turn_ForSimProxyOnly()
@@ -649,6 +672,13 @@ void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 	{
 		LastWeapon->ShowPickupWidget(false);
 	}
+}
+
+void ABlasterCharacter::OnRep_Shield(float Shield_LastFrame)
+{
+	CheckAndUpdateHUD_Shield();
+	//this is optional: I dont think we need to react on losing shield! And be careful to notreact TWICE if Damage make Shield to 0 and continue to hurt Health!
+		//if (Shield > 0.f && Shield < Shield_LastFrame) PlayHitReactMontage();
 }
 
 //this will be called in Weapon::Overlap which could only happen in-server copy

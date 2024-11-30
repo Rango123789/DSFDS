@@ -23,11 +23,11 @@ protected:
 /**FUNCTIONs**/
 
 /**DATA members**/
-	UPROPERTY(VisibleAnywhere)
-	class UNiagaraComponent* NiagaraComponent; //to hold long-term Health System
+	//UPROPERTY(VisibleAnywhere)
+	//class UNiagaraComponent* NiagaraComponent; //to hold long-term Health System
 
-	UPROPERTY(EditAnywhere)
-	class UNiagaraSystem* NiagaraSystem_SpawnedWhenDestroyed; //spawned when Destroyed()
+	//UPROPERTY(EditAnywhere)
+	//class UNiagaraSystem* NiagaraSystem_SpawnedWhenDestroyed; //spawned when Destroyed()
 
 	UPROPERTY(EditAnywhere)
 	float HealthAmount = 50.f;

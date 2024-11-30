@@ -4,14 +4,14 @@
 #include "Pickups/Pickup_Health.h"
 #include <Characters/BlasterCharacter.h>
 #include "CharacterComponents/BuffComponent.h"
-#include "NiagaraComponent.h"
-#include <NiagaraFunctionLibrary.h>
+//#include "NiagaraComponent.h"
+//#include <NiagaraFunctionLibrary.h>
 
 APickup_Health::APickup_Health()
 {
 	//setup the extra Niagara Comp:
-	NiagaraComponent = CreateDefaultSubobject<UNiagaraComponent>("NiagaraComp");
-	NiagaraComponent->SetupAttachment(RootComponent);
+	//NiagaraComponent = CreateDefaultSubobject<UNiagaraComponent>("NiagaraComp");
+	//NiagaraComponent->SetupAttachment(RootComponent);
 
 }
 
@@ -29,10 +29,11 @@ void APickup_Health::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, A
 	}
 }
 
+//now you can remove this if you want
 void APickup_Health::Destroyed()
 {
 	Super::Destroyed(); //play Picksound, can select a different one from BP_child to match
 
-	//spawn extra Niagara asset when destroyed():
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, NiagaraSystem_SpawnedWhenDestroyed, GetActorLocation()); //autodestroy
+	////spawn extra Niagara asset when destroyed():
+	//UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, NiagaraSystem_SpawnedWhenDestroyed, GetActorLocation()); //autodestroy
 }

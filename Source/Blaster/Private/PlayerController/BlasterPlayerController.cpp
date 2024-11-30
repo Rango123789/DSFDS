@@ -62,6 +62,8 @@ void ABlasterPlayerController::OnPossess(APawn* InPawn)
 	if (BlasterCharacter)
 	{
 		SetHUDHealth(BlasterCharacter->GetHealth(), BlasterCharacter->GetMaxHealth());
+		SetHUDShield(BlasterCharacter->GetShield(), BlasterCharacter->GetMaxShield());
+
 		if (BlasterCharacter->GetCombatComponent())
 		{
 			BlasterCharacter->GetCombatComponent()->CheckAndSetHUD_CarriedAmmo();
@@ -280,6 +282,25 @@ void ABlasterPlayerController::SetHUDHealth(float Health, float MaxHealth)
 
 	FString Text = FString::FromInt(Health) + FString(" / ") + FString::FromInt(MaxHealth);
 	if (CharacterOverlay_UserWidget) CharacterOverlay_UserWidget->SetHealthText(Text);
+}
+
+void ABlasterPlayerController::SetHUDShield(float Shield, float MaxShield)
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+	//UE_LOG(LogTemp, Warning, TEXT("BasterHUD valid"));
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+	//UE_LOG(LogTemp, Warning, TEXT("CharacterOverlay_UserWidget valid"));
+
+//Back to main business:
+	float ShieldPercent = FMath::Clamp(Shield / MaxShield, 0.f, 1.f);
+	if (CharacterOverlay_UserWidget) CharacterOverlay_UserWidget->SetShieldPercent(ShieldPercent);
+
+	FString Text = FString::FromInt(Shield) + FString(" / ") + FString::FromInt(MaxShield);
+	if (CharacterOverlay_UserWidget) CharacterOverlay_UserWidget->SetShieldText(Text);
 }
 
 void ABlasterPlayerController::SetHUDScore(int InScore)

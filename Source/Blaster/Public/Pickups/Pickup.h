@@ -31,6 +31,13 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* PickupMesh;
 
+	//move from APickupHealth:
+	UPROPERTY(VisibleAnywhere)
+	class UNiagaraComponent* NiagaraComponent; //to hold long-term Health System
+
+	UPROPERTY(EditAnywhere)
+	class UNiagaraSystem* NiagaraSystem_SpawnedWhenDestroyed; //spawned when Destroyed()
+
 	UPROPERTY(EditAnywhere)
 	USoundBase* PickSound;
 

@@ -24,6 +24,7 @@ public:
 	void UpdateHUDTime();
 
 	void SetHUDHealth(float Health, float MaxHealth);
+	void SetHUDShield(float Shield, float MaxShield);
 	void SetHUDScore(int InScore);
 	void SetHUDDefeat(int InDefeat);
 

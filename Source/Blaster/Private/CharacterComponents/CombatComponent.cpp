@@ -67,9 +67,14 @@ void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+//this focus on Aiming, where Crouch speed is handled automatically by UE5 when we press Crouch and UnCrouch
 	//assign its value here (or BeginPlay()), so surely all character instances has it
-	MaxWalkSpeed_Backup = Character->GetCharacterMovement()->MaxWalkSpeed;
-	AimWalkSpeed = 300.f;
+	if (Character && Character->GetCharacterMovement())
+	{
+		MaxWalkSpeed_Backup = Character->GetCharacterMovement()->MaxWalkSpeed;
+		//We have MaxWalkSpeed, [Max]CrouchSpeed , but we dont have AimWalkSpeed lol, hence instead of accessing it, we assign it ourself!
+		AimWalkSpeed = 300.f; //you shouldn't do this here, let it be in .h so that you can change from UE5 without being changed back here
+	}
 
 	if (Character)
 	{

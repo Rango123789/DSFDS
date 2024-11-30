@@ -16,6 +16,9 @@ class BLASTER_API UCharacterOverlay_UserWidget : public UUserWidget
 public:
 	void SetHealthPercent(float InPercent);
 	void SetHealthText(const FString& InString);
+	void SetShieldPercent(float InPercent);
+	void SetShieldText(const FString& InString);
+
 	void SetScoreText(const int& InScore);
 	void SetDefeatText(const int& InDefeat);
 	void SetAmmoText(const int& InAmmo);
@@ -29,6 +32,13 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_Health;
+
+	UPROPERTY(meta = (BindWidget))
+	class UProgressBar* ProgressBar_Shield;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TextBlock_Shield;
+
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_Score;

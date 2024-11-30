@@ -4,6 +4,10 @@
 #include "Pickups/Pickup.h"
 #include <Components/SphereComponent.h>
 #include <Kismet/GameplayStatics.h>
+#include "NiagaraComponent.h"
+#include <NiagaraFunctionLibrary.h>
+
+#include "Pickups/PickupSpawnPoint.h"
 
 // Sets default values
 APickup::APickup()
@@ -35,14 +39,13 @@ APickup::APickup()
 	PickupMesh->SetRenderCustomDepth(true);
 	//the same logic here:
 	PickupMesh->SetRelativeScale3D(FVector(3.f, 3.f, 3.f));
+
+	//move from PickupHealth:
+	NiagaraComponent = CreateDefaultSubobject<UNiagaraComponent>("NiagaraComp");
+	NiagaraComponent->SetupAttachment(RootComponent);
 }
 
-void APickup::Destroyed()
-{
-	Super::Destroyed();
 
-	UGameplayStatics::PlaySoundAtLocation(this, PickSound, GetActorLocation());
-}
 
 // Called when the game starts or when spawned
 void APickup::BeginPlay()
@@ -71,4 +74,20 @@ void APickup::Tick(float DeltaTime)
 //this will only trigger in the server
 void APickup::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+
+}
+
+void APickup::Destroyed()
+{
+	Super::Destroyed();
+
+	UGameplayStatics::PlaySoundAtLocation(this, PickSound, GetActorLocation());
+
+	//move from APickup_Health, spawn extra Niagara asset when destroyed(): 
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, NiagaraSystem_SpawnedWhenDestroyed, GetActorLocation()); //autodestroy
+
+	//this part is for working with APickupSpawnPoint (if any):
+	//this pickup will die in a momenet, but as long as APickupSpawnPoint::StartTimer_SpawnPickup() dont use any DATA of this Pickup, then it should work fine!
+	APickupSpawnPoint* PickupSpawnPoint = Cast<APickupSpawnPoint>(GetOwner());
+	if (PickupSpawnPoint) PickupSpawnPoint->StartTimer_SpawnPickup();
 }

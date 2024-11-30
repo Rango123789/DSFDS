@@ -167,9 +167,9 @@ private:
 	bool bIsFiring{};
 
 	UPROPERTY(EditAnywhere)
-	float MaxWalkSpeed_Backup; //backup for initial MaxWalkSpeed, set its value in constructor!
+	float MaxWalkSpeed_Backup; //backup for initial MaxWalkSpeed, set its value in beginplay, constructor is surely too soon!
 	UPROPERTY(EditAnywhere)
-	float AimWalkSpeed; //to change MaxWalkSpeed = AimWalkSpeed when we aim
+	float AimWalkSpeed = 300.f; //to change MaxWalkSpeed = AimWalkSpeed when we aim
 
 	//UPROPERTY(Replicated)  didn't work
 	FVector HitTarget;

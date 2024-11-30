@@ -3,6 +3,7 @@
 
 #include "CharacterComponents/BuffComponent.h"
 #include "Characters/BlasterCharacter.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 UBuffComponent::UBuffComponent()
 {
@@ -22,7 +23,18 @@ void UBuffComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	
+	if (Character && Character->GetCharacterMovement())
+	{
+		MaxWalkSpeed_Backup = Character->GetCharacterMovement()->MaxWalkSpeed;
+		MaxWalkSpeedCrouched_Backup = Character->GetCharacterMovement()->MaxWalkSpeedCrouched;
+		JumpVelocity_Backup = Character->GetCharacterMovement()->JumpZVelocity;
+	}
+}
+
+void UBuffComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (bIsHealing) RampUpHealth(DeltaTime);
 }
 
 void UBuffComponent::PickHealth(float InHealthAmount, float InHealingTime)
@@ -60,23 +72,69 @@ void UBuffComponent::RampUpHealth(float DeltaTime)
 	// And consequencely 'PlayReactMontage()' - need to fix this side effect: 
 	// simply add 'if ( Health < Health_LastFrame) PlayReactMontage()' will fix it!
 	Character->SetHealth( 
-		FMath::ClampAngle(Character->GetHealth() + HealThisFrame,
+		FMath::Clamp(Character->GetHealth() + HealThisFrame,
 		0, Character->GetMaxHealth())
 	); 
 
 	AmountToHeal -= HealThisFrame;
-
 	//you can use "one-sec" technique to avoid it update HUD per frame! - WORK TO DO1 (anyway stephen didn't bother to do it)
 	//the other idea is to reduce the HealingTime, but it will increase the level of incurracy to heal in last frame LOL, so be careful
 	Character->CheckAndUpdateHUD_Health();
 }
 
-void UBuffComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UBuffComponent::PickShield(float InShieldAmount)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (Character == nullptr) return;
 
-	if (bIsHealing)
+	Character->SetShield(
+		FMath::Clamp(Character->GetShield() + InShieldAmount,
+			0, Character->GetMaxShield() )); //this trigger OnRep_Shiled for client parts
+	Character->CheckAndUpdateHUD_Shield(); 
+}
+
+//Apickup_Speed::OnSphereOverlap ~> UBuffComponent::PickSpeed only trigger in the server:
+void UBuffComponent::PickSpeed(float InWalkSpeed, float InCrouchSpeed, float InSpeedingTime)
+{
+	//change Char::MoveComp::Speeds to new one
+	MulticastSetMovementSpeed(InWalkSpeed, InCrouchSpeed);
+	//Reset it back via timer:
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle_Speed, this, &ThisClass::TimerCallback_Speed, InSpeedingTime);
+}
+
+void UBuffComponent::TimerCallback_Speed()
+{
+	MulticastSetMovementSpeed(MaxWalkSpeed_Backup, MaxWalkSpeedCrouched_Backup);
+}
+
+void UBuffComponent::PickJump(float InJumpVelocity, float InJumpingTime)
+{
+	MulticastSetJumpVelocity(InJumpVelocity);
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle_Jump, this, &ThisClass::TimerCallback_Jump, InJumpingTime);
+}
+
+void UBuffComponent::MulticastSetJumpVelocity_Implementation(float InJumpVelocity)
+{
+	if (Character && Character->GetCharacterMovement())
 	{
-		RampUpHealth(DeltaTime);
+		Character->GetCharacterMovement()->JumpZVelocity = InJumpVelocity;
 	}
 }
+
+void UBuffComponent::TimerCallback_Jump()
+{
+	MulticastSetJumpVelocity(JumpVelocity_Backup);
+}
+
+//interesting isn't it? we create an RPC helper LOL , first time:
+void UBuffComponent::MulticastSetMovementSpeed_Implementation(float InWalkSpeed, float InCrouchSpeed)
+{
+	if (Character && Character->GetCharacterMovement())
+	{
+		  Character->GetCharacterMovement()->MaxWalkSpeed = InWalkSpeed;
+		  Character->GetCharacterMovement()->MaxWalkSpeedCrouched = InCrouchSpeed;
+	}
+}
+
+
+
+
