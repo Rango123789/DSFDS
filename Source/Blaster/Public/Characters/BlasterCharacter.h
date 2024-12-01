@@ -35,8 +35,6 @@ public:
 	 /**</X>*/
 
 
-
-
 //category3: callbacks and RPC
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
@@ -97,6 +95,10 @@ public:
 
 	void ShowGrenadeMesh();
 	void HideGrenadeMesh();
+
+	//call this in Char::BeginPlay(), checking if current gamemode is BlasterGameMode before spawn it:
+	void SpawnDefaultWeapon();
+
 protected:
 	/***functions***/
 //category1: auto-generated functions:
@@ -145,6 +147,8 @@ protected:
 	//arrays:
 
 	//class type:
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class AWeapon> DefaultWeaponClass;
 
 //category2: UActorComponents   
 	UPROPERTY(VisibleAnywhere)

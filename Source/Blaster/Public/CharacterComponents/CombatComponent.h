@@ -26,6 +26,8 @@ public:
 
 	void AttachEquippedWeaponToLeftHandSocket();
 
+	void AttachSecondWeaponToSecondWeaponSocket();
+
 	void ExtractCarriedAmmoFromMap_UpdateHUDAmmos_ReloadIfEmpty();
 
 	void DropCurrentWeaponIfAny();
@@ -131,6 +133,9 @@ private:
 	void OnRep_EquippedWeapon();
 
 	UFUNCTION()
+	void OnRep_SecondWeapon();
+
+	UFUNCTION()
 	void OnRep_ThrowGrenade();
 
 //***data member***
@@ -159,6 +164,8 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon) //just upgrade it to 'Using' for fixing a client can't change bOrient on itself :D :D
 	class AWeapon* EquippedWeapon = nullptr;      //and more
 
+	UPROPERTY(ReplicatedUsing = OnRep_SecondWeapon) 
+		class AWeapon* SecondWeapon = nullptr;    
 	
 	UPROPERTY(Replicated)
 	bool bIsAiming{};

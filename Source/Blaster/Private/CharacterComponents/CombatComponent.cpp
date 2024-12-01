@@ -54,6 +54,8 @@ UCombatComponent::UCombatComponent()
 void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
+	DOREPLIFETIME(UCombatComponent, SecondWeapon);
+
 	DOREPLIFETIME(UCombatComponent, bIsAiming);
 	//DOREPLIFETIME(UCombatComponent, bIsFiring); //just added, BUT didn't affect anyway
 	//DOREPLIFETIME(UCombatComponent, CarriedAmmo); //will still work but redudant for non-owning clients to receive it - they dont need it in this game
@@ -486,7 +488,8 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const
 
 void UCombatComponent::Start_FireTimer()
 {
-	GetWorld()->GetTimerManager().SetTimer(TimeHandle, this, &ThisClass::FireTimer_Callback, FireDelay);
+	if (EquippedWeapon == nullptr) return;
+	GetWorld()->GetTimerManager().SetTimer(TimeHandle, this, &ThisClass::FireTimer_Callback, EquippedWeapon->GetFireDelay());
 }
 
 void UCombatComponent::FireTimer_Callback()
@@ -494,7 +497,8 @@ void UCombatComponent::FireTimer_Callback()
 	//We must do this before (*), as we need it to be true in case we actually release the fire button
 	bCanFire = true;
 
-	if (!bIsFiring || !bIsAutomatic) return; //(*)
+	if (EquippedWeapon == nullptr) return;
+	if (!bIsFiring || !EquippedWeapon->GetIsAutomatic()) return; //(*)
 
 	//I move it up here, shouldn't put any code below a RECURSIVE code:
 	//this is the best place to reload, Stephen said, as this reach after DelayTime and eveything has been settle correctly! it is true I didn't have side effect as I release the Fire button and lose one more button without playing FireSound lol
@@ -502,7 +506,7 @@ void UCombatComponent::FireTimer_Callback()
 	//Option2 to fix Fire intterupt Reload back when timer reach:
 	if(CharacterState == ECharacterState::ECS_Unoccupied) Input_Fire(bIsFiring);
 
-	if (EquippedWeapon && EquippedWeapon->IsEmpty() && CarriedAmmo > 0)
+	if (EquippedWeapon->IsEmpty() && CarriedAmmo > 0)
 	{
 		Input_Reload();
 	}
@@ -541,69 +545,78 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 	//I decide to not let it equip if we're currenting do whatever (say Reloading/Throwing)
 	if (CharacterState != ECharacterState::ECS_Unoccupied) return;
     
-	DropCurrentWeaponIfAny();
-
-	//this is new weapon:
-	EquippedWeapon = InWeapon;  // -->trigger OnRep_EquippedWeapon, why my OnRep_ didn't trigger?
-
-	if (EquippedWeapon == nullptr) return;
-
-	EquippedWeapon->PlayEquipSound(Character); //just for cosmetic
-
-	//I move this on top with the hope that it is replicated before OnRep_WeaponState
-	EquippedWeapon->SetOwner(Character);
-
-	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped) ;
-
-	//this better after SetOwner:
-	ExtractCarriedAmmoFromMap_UpdateHUDAmmos_ReloadIfEmpty();
-
-	//these 2 lines are optional, so I will remove it anyway
-	bIsAutomatic = EquippedWeapon->GetIsAutomatic();
-	FireDelay = EquippedWeapon->GetFireDelay();
-
-//factorize this into 'Ready Collision and physics setup before Attachment or Simulation' function:
-	//Our SMG dont need these to locally similated, move it out fix the bug:
-	EquippedWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
-	EquippedWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
-
-	if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
+	//ONLY when we already have a weapon amd SecondWeapon is empty should we attach it to backpack instead:
+	//can factorize it into EquipSecondWeapon()
+	if (EquippedWeapon != nullptr && SecondWeapon == nullptr)
 	{
-		EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		//there are a lot of code that we dont need for SecondWeapon, there is only what we need for it:
+		SecondWeapon = InWeapon;
+		SecondWeapon->PlayEquipSound(Character); //just for cosmetic
+
+		SecondWeapon->SetOwner(Character);
+
+		//new state, go to SetWeaponState and OnRep_WeaponState to UPDATE and adapt them:
+		SecondWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecond); //WORK1
+
+		//physics part:
+		SecondWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
+		SecondWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+			//I feel like I want SMG simulate even if it is on the backack:
+		if (SecondWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
+		{
+			SecondWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		}
+		else
+		{
+			SecondWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+
+		//Adapt this into 'ToSecondWeaponSocket/Backpack' instead
+		AttachSecondWeaponToSecondWeaponSocket(); //WORK2 = done
 	}
+	//otherwise: In case we dont have any weapon (equip to hand) or have both weapon (drop from hand and equip to hand) we handle like in the last lesson:
+	//can factorize it into EquipPrimaryWeapon
 	else
 	{
-		EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
+		DropCurrentWeaponIfAny();
 
-	AttachEquippedWeaponToRightHandSocket();
+		//this is new weapon:
+		EquippedWeapon = InWeapon;  // -->trigger OnRep_EquippedWeapon, why my OnRep_ didn't trigger?
+		                            // since we already check on InWeapon above so it can't be nullptr after this line
+		EquippedWeapon->PlayEquipSound(Character); //just for cosmetic
 
-//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
-	Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
-	Character->bUseControllerRotationYaw = true; //at first it is false
-}
+		//I move this on top with the hope that it is replicated before OnRep_WeaponState
+		EquippedWeapon->SetOwner(Character);
 
-//Pickup::Overlap trigger in server -->this Combat::PickupAmmo also trigger in the server first
-void UCombatComponent::PickupAmmo(EWeaponType InWeaponType, uint32 InAmmoAmmount)
-{
-	//Increase Ammo: both of them are self-replicated if called in the server, yes currently is
-	if (CarriedAmmoMap.Contains(InWeaponType))
-	{
-		//this only update the map (to be retrieved later) but doesn't in fact update the CarriedAmmo in case it match the current EquippedWeapon's Type at all:
-		CarriedAmmoMap[InWeaponType] = FMath::Clamp(CarriedAmmoMap[InWeaponType] + InAmmoAmmount, 0, MaxCarriedAmmo);
-		//This will actually change the Carried Ammo in worst case:
-		if (EquippedWeapon && InWeaponType == EquippedWeapon->GetWeaponType())
+		EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped) ;
+
+		//this better after SetOwner:
+		ExtractCarriedAmmoFromMap_UpdateHUDAmmos_ReloadIfEmpty();
+
+		//these 2 lines are optional, so I will remove it anyway
+		//bIsAutomatic = EquippedWeapon->GetIsAutomatic();
+		//FireDelay = EquippedWeapon->GetFireDelay();
+
+	//factorize this into 'Ready Collision and physics setup before Attachment or Simulation' function:
+		//Our SMG dont need these to locally similated, move it out fix the bug:
+		EquippedWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
+		EquippedWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+
+		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
 		{
-			CarriedAmmo = CarriedAmmoMap[InWeaponType]; //OnRep_CarriedAmmo will trigger for client part
+			EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		}
-		//it check on current CarriedAmmo and update HUD, if the WeaponType's Pickup doesn't match WeaponType's EquippedWeapon then this wont cause any visual effect :D :D
-		CheckAndSetHUD_CarriedAmmo(); //this for the server part ONLY
-	}
+		else
+		{
+			EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
 
-	//If it matches the type of EquippedWeapon and EquippedWeapon::Ammo = 0 then auto-reload it;
-	if (EquippedWeapon  && EquippedWeapon->IsEmpty() && InWeaponType == EquippedWeapon->GetWeaponType())
-	{
-		Input_Reload(); //this is self-handled, no matter where you call it
+		AttachEquippedWeaponToRightHandSocket();
+
+	//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
+	//this need only to be set ONCE, so we dont need to repeat this in EquipSecondWeapon(), so I only need it be here:
+		Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
+		Character->bUseControllerRotationYaw = true; //at first it is false
 	}
 }
 
@@ -632,6 +645,14 @@ void UCombatComponent::AttachEquippedWeaponToLeftHandSocket()
 
 	const USkeletalMeshSocket* LeftHandSocket = Character->GetMesh()->GetSocketByName(SocketName);
 	if (LeftHandSocket) LeftHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
+}
+
+//This is for SecondWeapon: go and add 'SecondWeaponSocket' in SKM_inChar
+void UCombatComponent::AttachSecondWeaponToSecondWeaponSocket()
+{
+	if (SecondWeapon == nullptr || Character == nullptr || Character->GetMesh() == nullptr) return;
+	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("SecondWeaponSocket"));
+	if (RightHandSocket) RightHandSocket->AttachActor(SecondWeapon, Character->GetMesh());
 }
 
 void UCombatComponent::ExtractCarriedAmmoFromMap_UpdateHUDAmmos_ReloadIfEmpty()
@@ -696,12 +717,12 @@ void UCombatComponent::OnRep_EquippedWeapon()
 		EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
 
+	//even if Attachment action is replicated we call it here to make sure it works
 	const USkeletalMeshSocket* RightHandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
 	if (RightHandSocket) RightHandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
 
-	//even if Attachment action is replicated we call it here to make sure it works
-
-
+	//Why only owning device? well because Stephen want controlling device to have AimOffset and Simulated proxy to have 'TurnInPlace' behaviour remember?
+	//however the AUTHO proxy should be the same too, hence we should go back to Equip() and NOT let it to be these value if not controlling. Anyway it is auto-fixed anway in Tick so dont worry LOL
 	if (Character->IsLocallyControlled())
 	{
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
@@ -711,6 +732,55 @@ void UCombatComponent::OnRep_EquippedWeapon()
 
 }
 
+//we only need to repeat whatever needed for secondweapon:
+void UCombatComponent::OnRep_SecondWeapon()
+{
+	if (SecondWeapon == nullptr || SecondWeapon->GetWeaponMesh() == nullptr || Character == nullptr) return;
+
+	SecondWeapon->PlayEquipSound(Character);
+	
+	SecondWeapon->SetWeaponState_Only(EWeaponState::EWS_EquippedSecond); 
+
+	//Our SMG dont need these to locally similated, move it out fix the bug:
+	SecondWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
+	SecondWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+	if (SecondWeapon->GetWeaponType() != EWeaponType::EWT_SMG)
+	{
+		SecondWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (SecondWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
+	{
+		SecondWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+
+	//even if Attachment action is replicated we call it here to make sure it works
+	AttachSecondWeaponToSecondWeaponSocket();
+}
+
+
+//Pickup::Overlap trigger in server -->this Combat::PickupAmmo also trigger in the server first
+void UCombatComponent::PickupAmmo(EWeaponType InWeaponType, uint32 InAmmoAmmount)
+{
+	//Increase Ammo: both of them are self-replicated if called in the server, yes currently is
+	if (CarriedAmmoMap.Contains(InWeaponType))
+	{
+		//this only update the map (to be retrieved later) but doesn't in fact update the CarriedAmmo in case it match the current EquippedWeapon's Type at all:
+		CarriedAmmoMap[InWeaponType] = FMath::Clamp(CarriedAmmoMap[InWeaponType] + InAmmoAmmount, 0, MaxCarriedAmmo);
+		//This will actually change the Carried Ammo in worst case:
+		if (EquippedWeapon && InWeaponType == EquippedWeapon->GetWeaponType())
+		{
+			CarriedAmmo = CarriedAmmoMap[InWeaponType]; //OnRep_CarriedAmmo will trigger for client part
+		}
+		//it check on current CarriedAmmo and update HUD, if the WeaponType's Pickup doesn't match WeaponType's EquippedWeapon then this wont cause any visual effect :D :D
+		CheckAndSetHUD_CarriedAmmo(); //this for the server part ONLY
+	}
+
+	//If it matches the type of EquippedWeapon and EquippedWeapon::Ammo = 0 then auto-reload it;
+	if (EquippedWeapon  && EquippedWeapon->IsEmpty() && InWeaponType == EquippedWeapon->GetWeaponType())
+	{
+		Input_Reload(); //this is self-handled, no matter where you call it
+	}
+}
 
 //currently this could only call in IsLocallyControlled() /autonompus proxy - hence 'if(IsLocallyControlled()' become redudant!
 void UCombatComponent::SetIsAiming(bool InIsAiming)

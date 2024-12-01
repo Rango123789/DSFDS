@@ -52,6 +52,8 @@ void APickup::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	//with option2, You need to set a Timer to wrap around this block, to stop it happen to quick and call destroy() this Pickup too quick that OnDestroyed.AddDynamic dont even have a chance to be effective and we get stuck lol:
+	//However I eventually turn back to option1, so I wont do it!
 	if (Sphere && HasAuthority())
 	{
 		Sphere->OnComponentBeginOverlap.AddDynamic(this, &APickup::OnSphereOverlap); //&ThisClass::OnSphereOverlap
@@ -86,8 +88,8 @@ void APickup::Destroyed()
 	//move from APickup_Health, spawn extra Niagara asset when destroyed(): 
 	UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, NiagaraSystem_SpawnedWhenDestroyed, GetActorLocation()); //autodestroy
 
-	//this part is for working with APickupSpawnPoint (if any):
+	//option1: this part is for working with APickupSpawnPoint (if any):
 	//this pickup will die in a momenet, but as long as APickupSpawnPoint::StartTimer_SpawnPickup() dont use any DATA of this Pickup, then it should work fine!
-	APickupSpawnPoint* PickupSpawnPoint = Cast<APickupSpawnPoint>(GetOwner());
-	if (PickupSpawnPoint) PickupSpawnPoint->StartTimer_SpawnPickup();
+	APickupSpawnPoint* PickupSpawnPoint = Cast<APickupSpawnPoint>(GetOwner()); 
+	if (PickupSpawnPoint) PickupSpawnPoint->StartTimer_SpawnPickup(); 
 }

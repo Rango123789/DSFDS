@@ -89,6 +89,7 @@ void ABlasterCharacter::BeginPlay()
 	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("Character,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
 
 	Super::BeginPlay();
+
 //stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
 	BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
@@ -116,7 +117,6 @@ void ABlasterCharacter::BeginPlay()
 		CombatComponent->CheckAndSetHUD_ThrowGrenade();
 	}
 
-	
 	////Only the server device can get a valid reference to GameMode as it is only created in the server device, not sure it is a good idea to create a member of this where this is only meaningful to the server device
 	//BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
 
@@ -143,6 +143,9 @@ void ABlasterCharacter::BeginPlay()
 	{
 		OnTakeAnyDamage.AddDynamic(this, &ThisClass::ReceiveDamage);
 	}
+
+	//spawn a default weapon: so reason why I do it here because I think after PC and so on already has chance to initilize above:
+	SpawnDefaultWeapon();
 }
 
 //this is meant to be called from BP::OnPosses, avoiding cluding all input-relevant types from there
@@ -170,6 +173,26 @@ void ABlasterCharacter::ShowGrenadeMesh()
 void ABlasterCharacter::HideGrenadeMesh()
 {
 	if (TempGrenadeMesh) TempGrenadeMesh->SetVisibility(false);
+}
+
+void ABlasterCharacter::SpawnDefaultWeapon()
+{
+	if (GetWorld() == nullptr || CombatComponent == nullptr) return;
+	
+	//to make sure we only spawn for the Char when in GameMap, not in LobbyMap, anyway this is optional:
+	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>( GetWorld()->GetAuthGameMode() );
+
+	if (BlasterGameMode)
+	{
+		//I dont specify its transform because we're gonna call combat::Equip() and attach it in the same frame!
+		AWeapon* DefaultWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+
+		if (DefaultWeapon == nullptr) return;
+
+		DefaultWeapon->SetIsDefaultWeapon(true);
+
+		CombatComponent->Equip(DefaultWeapon); //default weapon will become FIRST EquippedWeapon, this is self-handled already, including setting HUD and so on. But let's see if it work when we equip too early like this
+	}
 }
 
 //Stephen way, for now I use my way already
@@ -364,9 +387,17 @@ void ABlasterCharacter::Elim()
 
            //you can simply create AWeapon::Dropped to contain these code, and then call a single code, you access through so many tires for the same local destination LOL :d :d
 	       //drop the weapon && so on:
-	if (GetCombatComponent() && GetCombatComponent()->EquippedWeapon)
+	if (CombatComponent && CombatComponent->EquippedWeapon)
 	{
-		GetCombatComponent()->EquippedWeapon->Drop();
+		//in case it is defaultweapon, we destroy it, avoiding it accumilating, otherwise we simply Drop it as usual:
+		if (CombatComponent->EquippedWeapon->GetIsDefaultWeapon())
+		{
+			CombatComponent->EquippedWeapon->Destroy();
+		}
+		else
+		{
+			CombatComponent->EquippedWeapon->Drop();
+		}
 	}
 }
 

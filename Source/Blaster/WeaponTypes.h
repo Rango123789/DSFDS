@@ -18,3 +18,15 @@ enum class EWeaponType : uint8
 
 	EWT_MAX UMETA(DisplayName = "DefaultMAX")
 };
+
+UENUM(BlueprintType)
+enum class EWeaponState : uint8
+{
+	EWS_Initial UMETA(DisplayName = "Initial"), //Stephen add "Initial State"
+	EWS_Equipped UMETA(DisplayName = "Equipped"),      //for active weapon
+	EWS_EquippedSecond UMETA(DisplayName = "EquippedSecond"), //for weapon on backpack
+
+	EWS_Droppped UMETA(DisplayName = "Dropped"),
+
+	EWP_MAX UMETA(DisplayName = "DefaultMAX"), //for the sake of knowing now many sematic values of this enum
+};

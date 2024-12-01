@@ -7,16 +7,6 @@
 #include "Blaster/WeaponTypes.h"
 #include "Weapon.generated.h"
 
-UENUM(BlueprintType)
-enum class EWeaponState : uint8
-{
-    EWS_Initial UMETA(DisplayName = "Initial"), //Stephen add "Initial State"
-    EWS_Equipped UMETA(DisplayName = "Equipped"),   //stephen: equipped - sound too violent to me
-    EWS_Droppped UMETA(DisplayName = "Dropped"),
-
-    EWP_MAX UMETA(DisplayName = "DefaultMAX"), //for the sake of knowing now many sematic values of this enum
-};
-
 
 UCLASS()
 class BLASTER_API AWeapon : public AActor
@@ -160,6 +150,7 @@ protected: //base
     UPROPERTY()
     class ABlasterPlayerController* BlasterPlayerController;
 
+    bool bIsDefaultWeapon = false; //only DefaultWeapon spawn with Char::BeginPlay should have this 'true'
 
 private: //FINAL child
 /***functions***/
@@ -210,9 +201,11 @@ public:
     //void SetMagCapacity(int32 InMagCapacity) { MagCapacity = InMagCapacity; }
 
     EWeaponType GetWeaponType() { return WeaponType; }
-
     USoundBase* GetEquipSound() { return EquipSound; }
 
     bool IsFull() { return Ammo >= MagCapacity; }
     bool IsEmpty() { return Ammo <= 0; }
+
+    bool GetIsDefaultWeapon() { return bIsDefaultWeapon; }
+    void SetIsDefaultWeapon(bool InIsDefaultWeapon) { bIsDefaultWeapon = InIsDefaultWeapon; }
 };
