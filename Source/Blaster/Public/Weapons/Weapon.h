@@ -186,6 +186,14 @@ public:
 
     void SetWeaponState(EWeaponState InState);
 
+    void OnWeaponStateSet();
+
+    void OnDropped();
+
+    void OnEquippedSecond();
+
+    void OnEquipped();
+
     void SetWeaponState_Only(EWeaponState InState);
 
     float GetPOV() { return FOV; }

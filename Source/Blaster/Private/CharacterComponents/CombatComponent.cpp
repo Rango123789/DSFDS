@@ -314,6 +314,8 @@ void UCombatComponent::OnRep_CharacterState()
 	}
 }
 
+
+
 void UCombatComponent::SetPOVForCamera(float DeltaTime)
 {
 	if (EquippedWeapon == nullptr) return;
@@ -403,11 +405,10 @@ void UCombatComponent::Input_Fire(bool InIsFiring)
 		FHitResult HitResult;
 		DoLineTrace_UnderCrosshairs(HitResult);
 
-		ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //rather than member HitPoint
+		ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //~>MultiRPC~>All devices:: Weapon::Fire + ...
 
 		Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
 	}
-
 }
 bool UCombatComponent::CanFire()
 {
@@ -549,30 +550,7 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 	//can factorize it into EquipSecondWeapon()
 	if (EquippedWeapon != nullptr && SecondWeapon == nullptr)
 	{
-		//there are a lot of code that we dont need for SecondWeapon, there is only what we need for it:
-		SecondWeapon = InWeapon;
-		SecondWeapon->PlayEquipSound(Character); //just for cosmetic
-
-		SecondWeapon->SetOwner(Character);
-
-		//new state, go to SetWeaponState and OnRep_WeaponState to UPDATE and adapt them:
-		SecondWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecond); //WORK1
-
-		//physics part:
-		SecondWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
-		SecondWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
-			//I feel like I want SMG simulate even if it is on the backack:
-		if (SecondWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
-		{
-			SecondWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		}
-		else
-		{
-			SecondWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		}
-
-		//Adapt this into 'ToSecondWeaponSocket/Backpack' instead
-		AttachSecondWeaponToSecondWeaponSocket(); //WORK2 = done
+		EquipSecondWeaponToBackpack(InWeapon);
 	}
 	//otherwise: In case we dont have any weapon (equip to hand) or have both weapon (drop from hand and equip to hand) we handle like in the last lesson:
 	//can factorize it into EquipPrimaryWeapon
@@ -619,6 +597,68 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 		Character->bUseControllerRotationYaw = true; //at first it is false
 	}
 }
+
+void UCombatComponent::EquipSecondWeaponToBackpack(AWeapon* InWeapon)
+{
+	if (InWeapon == nullptr) return;
+
+	//there are a lot of code that we dont need for SecondWeapon, there is only what we need for it:
+	SecondWeapon = InWeapon; //trigger OnRep_SecondWeapon
+	SecondWeapon->PlayEquipSound(Character); //just for cosmetic
+
+	SecondWeapon->SetOwner(Character);
+
+	//new state, go to SetWeaponState and OnRep_WeaponState to UPDATE and adapt them:
+	SecondWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecond); //WORK1
+
+	//physics part:
+	SecondWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
+	SecondWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+	//I feel like I want SMG simulate even if it is on the backack:
+	if (SecondWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
+	{
+		SecondWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	else
+	{
+		SecondWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	//Adapt this into 'ToSecondWeaponSocket/Backpack' instead
+	AttachSecondWeaponToSecondWeaponSocket(); //WORK2 = done
+}
+
+//not work like i expect lol, 'LATE' replication should be the only reason LOL
+void UCombatComponent::SwapWeapons()
+{
+	AWeapon* TempWeapon = EquippedWeapon;
+
+	//this make  EquippedWeapon = SecondWeapon, because the 'else' kicks in
+	//but after this SecondWeapon = itself still, it still have value value!
+	Equip(SecondWeapon); 
+
+	//OPTION1: this work like a charm (but Equip(TempWeapon) wont work, because 'LATE' replication):
+	EquipSecondWeaponToBackpack(TempWeapon);
+
+	//OPTION2: this also work too, AT LEAST in the server, I believe:
+	//if you forget this line, you can't get the 'if' and it keep drop and then attach back the same weapon LOL, because it need SecondWeapon to be nullptr, where currently SecondWeapon and EquippedWeapon are shared the same weapon address
+		//SecondWeapon = nullptr;
+		//Equip(TempWeapon);
+
+
+	//TempWeapon->GetSphere()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	//TempWeapon->GetWeaponMesh()->SetSimulatePhysics(false);
+	//TempWeapon->GetWeaponMesh()->SetEnableGravity(false);
+	////try set a Timer
+	//GetWorld()->GetTimerManager().SetTimer(TimerHandle_Swap, this, &ThisClass::TimerCallback_Swap, 0.1f );
+	//Equip(TempWeapon); //it wont override HUD dont worry, because it equip into the backpack!
+}
+
+//void UCombatComponent::TimerCallback_Swap()
+//{
+//	Equip(TempWeapon);
+//}
+
 
 //call this specialized function with ThrowEnd():
 void UCombatComponent::AttachEquippedWeaponToRightHandSocket()

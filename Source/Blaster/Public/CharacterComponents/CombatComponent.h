@@ -18,7 +18,12 @@ public:
 	UCombatComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	//We use the same key for them:
 	void Equip(class AWeapon* InWeapon);
+	void EquipSecondWeaponToBackpack(AWeapon* InWeapon);
+	void SwapWeapons();
+
+
 	void PickupAmmo(EWeaponType InWeaponType, uint32 InAmmoAmmount);
 
 
@@ -165,7 +170,14 @@ private:
 	class AWeapon* EquippedWeapon = nullptr;      //and more
 
 	UPROPERTY(ReplicatedUsing = OnRep_SecondWeapon) 
-		class AWeapon* SecondWeapon = nullptr;    
+	class AWeapon* SecondWeapon = nullptr;    
+
+	//UPROPERTY()
+	//AWeapon* TempWeapon; //for purpose of swapping weapon
+
+	//FTimerHandle TimerHandle_Swap;
+	//UFUNCTION()
+	//void TimerCallback_Swap();
 	
 	UPROPERTY(Replicated)
 	bool bIsAiming{};
@@ -251,7 +263,7 @@ public:
 	void SetCrosshairsColor(const FLinearColor& InColor) { CrosshairsColor = InColor; }
 
 	int32 GetCarriedAmmo() { return CarriedAmmo; }
-	
+	bool CanSwapWeapon() { return EquippedWeapon && SecondWeapon ; }
 };
 
 

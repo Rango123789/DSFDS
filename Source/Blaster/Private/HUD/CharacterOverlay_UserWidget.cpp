@@ -4,6 +4,8 @@
 #include "HUD/CharacterOverlay_UserWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
+#include "Components/Image.h"
+#include "Animation/WidgetAnimation.h"
 
 void UCharacterOverlay_UserWidget::SetHealthPercent(float InPercent)
 {
@@ -61,3 +63,42 @@ void UCharacterOverlay_UserWidget::SetThrowGrenadeText(const int& InThrowGrenade
 	if (TextBlock_ThrowGrenade) TextBlock_ThrowGrenade->SetText(FText::FromString(InString));
 }
 
+void UCharacterOverlay_UserWidget::PlayWBPAnimation_PingWarning()
+{
+	if (WBPAnimation_PingWarning && Image_PingWarning)
+	{
+		//it will play from the start so I dont think Image_PingWarning->SetOpacity(1.f); is needed? Unless it is different RenderOpacity? 
+		// yep they're 2 different TIREs of the Opacity:
+		//UImage : UWidget
+		//UWidget::RenderOpacity (of parent part)  vs UImage::SetOpacity ( OpacityAndColor.A )
+		//the reason why we need this is that we did use Image_PingWarning->SetOpacity(0.f); below
+		//Also if we let WBPAnim work on top of ColorAndOpacity.A then only in this case we dont need it here, but still we need it in Stop___()
+		//UPDATE: You dont need this any more, use bRestoreState = true so that it will reset back to previous state
+
+		Image_PingWarning->SetOpacity(1.f);
+		PlayAnimation(WBPAnimation_PingWarning , 0.f, 8, EUMGSequencePlayMode::Forward, 1.f);
+	}
+}
+
+void UCharacterOverlay_UserWidget::StopWBPAnimation_PingWarning()
+{
+	if (WBPAnimation_PingWarning && Image_PingWarning)
+	{
+		//Stephen add this if check, but I dont think we need it right LOL? We can simply stop it no matter it is playing or not right?
+		if (IsAnimationPlaying(WBPAnimation_PingWarning))
+		{
+			//UPDATE: You dont need this any more, use bRestoreState = true so that it will reset back to previous state
+			//NO! it doesn't work well with "StopAnimation()" LOL, it work when it is stop naturally :D
+
+			//I make a change on the same var! no it didn't work well neither!
+			//Image_PingWarning->RenderOpacity=0.f;
+			Image_PingWarning->SetOpacity(0.f);
+
+			StopAnimation(WBPAnimation_PingWarning);
+
+		}
+
+		//this will fix it stop when RenderOpacity doesn't fall at '0'
+		//if you do 'Image_PingWarning->RenderOpacity = 0;' instead, then you need to add Image_PingWarning->SetOpacity(1.f); above!
+	}
+}

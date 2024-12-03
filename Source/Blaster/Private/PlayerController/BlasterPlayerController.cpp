@@ -47,6 +47,41 @@ void ABlasterPlayerController::Tick(float DeltaTime)
 	//update Delta_ServerMinusClient every 5s. factorize this into 'CheckTimeSync()'
 	UpdateServerClient_Delta_Periodically(DeltaTime);
 
+	//if you want to start to count again aftter it finish PingAnimation, then add this If()
+	//; otherwise you can remove it and follow stephen!
+	//you can access check on UserWidget::IsAnimationPlaying(WBPAnimation_PingWarning) instead so that you dont need to create an extra bHighPingAnimationPlaying. 
+	//; the reward isn't very attactive for effort nor performance
+	//; so I simply create an extra one LOL
+	//if(bHighPingAnimationPlaying == false) 
+	RunningTime_HighPing += DeltaTime;
+
+	if (RunningTime_HighPing >= CheckPingFrequency)
+	{
+		//PlayerState is public member of PC, or you can use GetPlayerState<T>() if you want:
+		//GetPing() return ping/4 is OBSOLETE, so I dont use it
+		//if(PlayerState) UE_LOG(LogTemp, Warning, TEXT("Ping: %f"), PlayerState->GetPingInMilliseconds())
+
+		//if(true) //test for now
+		if (PlayerState && PlayerState->GetPingInMilliseconds() >= HighPingThreshold )
+		{
+			bHighPingAnimationPlaying = true;
+			RunningTime_HighPing = 0; //you can let it here, mean you continue to check until Ping get high, or put it just outside to really test it in the next CheckPingFrequency
+
+			StartHighPingWarning();
+		}
+	}
+
+	if (bHighPingAnimationPlaying == true)
+	{
+		RunningTime_HighPingAnimation += DeltaTime;
+		if (RunningTime_HighPingAnimation > PingWarningDuration)
+		{
+			bHighPingAnimationPlaying = false;
+			RunningTime_HighPingAnimation = 0; 
+
+			StopHighPingWarning();
+		}
+	}
 }
 
 void ABlasterPlayerController::OnPossess(APawn* InPawn)
@@ -205,7 +240,6 @@ void ABlasterPlayerController::HandleCoolDown()
 	SetHUDAnnounceAndInfo();
 }
 
-
 /*****GOLDEN4 group*****/
 //this is executed on server, which is the only place GetGameMode() return valid
 void ABlasterPlayerController::ServerCheckMatchState_Implementation()
@@ -258,6 +292,8 @@ void ABlasterPlayerController::Server_RequestServerTime_Implementation(float Tim
 //but anyway it doesn't matter as when GetServerTime_Synched we will take it into account for this case too
 void ABlasterPlayerController::Client_ReportRequestBackToRequestingClient_Implementation(float TimeOfClientWhenRequesting, float TimeOfServerWhenReceivedRequest)
 {
+	//you can store this RoundTripTime if you want, or you can use 'PC::PlaterState::GetPing() * 4'
+	//this will be updated every 5s as setup outside:
 	float RoundTripTime = GetWorld()->GetTimeSeconds() - TimeOfClientWhenRequesting;
 
 	//This Delta already consider RRT/2: 
@@ -537,4 +573,30 @@ void ABlasterPlayerController::UpdateHUDTime()
 
 	}
 	TimeLeftInt_LastSecond = SecondsLeft;
+}
+
+void ABlasterPlayerController::StartHighPingWarning()
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+
+	//Back to main business:
+	CharacterOverlay_UserWidget->PlayWBPAnimation_PingWarning();
+	UE_LOG(LogTemp, Warning, TEXT("pass PC::StartHighPingWarning "))
+}
+
+void ABlasterPlayerController::StopHighPingWarning()
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+	//Back to main business:
+	CharacterOverlay_UserWidget->StopWBPAnimation_PingWarning();
 }

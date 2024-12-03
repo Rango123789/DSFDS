@@ -240,187 +240,215 @@ void AWeapon::SetWeaponState_Only(EWeaponState InState)
 
 void AWeapon::SetWeaponState(EWeaponState InState)
 {
-	if (WeaponMesh == nullptr) return;
-
 	 WeaponState = InState; 
-	 
-	 switch (WeaponState)
-	 {
-	 case EWeaponState::EWS_Equipped : 
-		 ShowPickupWidget(false); 
-		 //Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
-		 //if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
-		 if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
-		
-		 //Our SMG dont need these to locally similated, move it out fix the bug:
-		WeaponMesh->SetSimulatePhysics(false); //TIRE1
-		WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
 
-		 if (WeaponType != EWeaponType::EWT_SMG)
-		 {
-			 WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
-		 }
-		 if (WeaponType == EWeaponType::EWT_SMG)
-		 {
-			 //this is the require of 'locally simulated bones in PA'
-			 WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-				 //WeaponMesh->SetSimulatePhysics(true);  //no need
-				 //WeaponMesh->SetEnableGravity(true); //no need
-			//GLOBALLY we turn it off all collision responses, hence this become 'PURE locally Simualted', but this has consequence steps:
-			 WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		 }
-		 //turn off CustomDepth
-		 WeaponMesh->MarkRenderStateDirty();
-		 WeaponMesh->SetRenderCustomDepth(false);
-
-		 break;
-
-	 case EWeaponState::EWS_EquippedSecond: //copy the Equipped and adapt it! well they're identical LOL:
-		 ShowPickupWidget(false);
-		 //Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
-		 //if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
-		 if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
-
-		 //Our SMG dont need these to locally similated, move it out fix the bug:
-		 WeaponMesh->SetSimulatePhysics(false); //TIRE1
-		 WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
-
-		 if (WeaponType != EWeaponType::EWT_SMG)
-		 {
-			 WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
-		 }
-		 if (WeaponType == EWeaponType::EWT_SMG)
-		 {
-			 //this is the require of 'locally simulated bones in PA'
-			 WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-			 WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		 }
-
-		 //turn off CustomDepth: stephen turn on CustomDepth for second weapon, but I dont like it, so this is my decision:
-		 WeaponMesh->MarkRenderStateDirty();
-		 WeaponMesh->SetRenderCustomDepth(false);
-
-		 break;
-	 case EWeaponState::EWS_Droppped :
-		 //detach this weapon from CHAR::GetMesh();, detachment is replicated itself so yeah! no need to do in OnRep_ -here is currently OnRep_ lol
-		 //DetachFromActor(FDetachmentTransformRules::KeepWorldTransform); // WeaponMesh->DetachFromComponent(); - stephen
-		 //SetOwner(nullptr);
-
-		 //Only server need to touch this
-		 if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		 //physics group: (let it happen to both SMG and non-SMG)
-		 WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
-		 WeaponMesh->SetSimulatePhysics(true); //TIRE1
-		 WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
-
-		 //since the consequence only happen to SMG weapon as did above, so need to 'restore' it for SMG weapon
-		 if (WeaponType == EWeaponType::EWT_SMG)
-		 {
-			 //collision setup: default beviour: block all except pawn, INACTIVE by default - we enable it later
-			 WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
-			 WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-			 WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore); //NEW
-			 //WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //remove this contradiction line
-
-		 }
-
-		 //turn ON CustomDepth:
-		 WeaponMesh->SetCustomDepthStencilValue(251);
-		 WeaponMesh->SetRenderCustomDepth(true);
-
-		 break;
-	 }
+	 OnWeaponStateSet(); //follow GameMode::OnMatchStateSet() pattern!
 }
 
-void AWeapon::OnRep_WeaponState()
+void AWeapon::OnWeaponStateSet()
 {
-	if (WeaponMesh == nullptr) return;
+	if (WeaponMesh == nullptr) return; //this is odd line, but give convenience for code inside OnWeaponStateSet()
 
-	ABlasterCharacter* Character = Cast<ABlasterCharacter>(GetOwner());
 	switch (WeaponState)
 	{
 	case EWeaponState::EWS_Equipped:
-		//May NOT need as PrimativeComp->SetVisibility() can be replicated by UE5 itself even if comp::Replicates = false!
-		//ShowPickupWidget(false);
-		//Surely redudant TIRE2 lol, COLLISION is only in the server so far
-		// //if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		OnEquipped();
 
-		//SMG dont need these turn on to locally simulated at all, move it out fix the bug "try to move a fully simulated mesh:
-		WeaponMesh->SetSimulatePhysics(false); //TIRE1
-		WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+		break;
 
-		if (WeaponType != EWeaponType::EWT_SMG)
-		{
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
-		}
-
-		if (WeaponType == EWeaponType::EWT_SMG)
-		{
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-				//WeaponMesh->SetSimulatePhysics(true); //no need
-				//WeaponMesh->SetEnableGravity(true);	//no need
-			//GLOBALLY we turn it off all collision responses, hence this become 'PURE locally Simualted', but this has consequence steps:
-			WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		}
-
-		//we do this with the hop that Combat::Equip()~>SetOwner(Char) will be replicated on clients before we reach this OnRep_WeaponState
-		//so there is no gaurantee but double-kill does 'INCREASE' the chance of success:
-		if (Character) AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, FName("RightHandSocket"));
-
-		//turn OFF CustomDepth:
-		//WeaponMesh->MarkRenderStateDirty(); //doesn't really help LOL
-		WeaponMesh->SetRenderCustomDepth(false);
-		UE_LOG(LogTemp, Warning, TEXT("OnRep_WeaponState~>Equipped"));
-
-	case EWeaponState::EWS_EquippedSecond:
-		//SMG dont need these turn on to locally simulated at all, move it out fix the bug "try to move a fully simulated mesh:
-		WeaponMesh->SetSimulatePhysics(false); //TIRE1
-		WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
-
-		if (WeaponType != EWeaponType::EWT_SMG)
-		{
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		}
-		if (WeaponType == EWeaponType::EWT_SMG)
-		{
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-			WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		}
-
-		if (Character) AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, FName("SecondWeaponSocket"));
-
-		//turn OFF CustomDepth:
-		WeaponMesh->MarkRenderStateDirty(); //doesn't really help LOL
-		WeaponMesh->SetRenderCustomDepth(false);
+	case EWeaponState::EWS_EquippedSecond: //copy the Equipped and adapt it! well they're identical LOL:
+		OnEquippedSecond();
 
 		break;
 	case EWeaponState::EWS_Droppped:
-		//NOR need we enable it back for Clients
-		// //if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		
-		//physics group: (let it happen to both SMG and non-SMG)
-		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
-		WeaponMesh->SetSimulatePhysics(true); //TIRE1
-		WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
+		OnDropped();
 
-		//since the consequence only happen to SMG weapon as did above, so need to 'restore' it for SMG weapon
-		if (WeaponType == EWeaponType::EWT_SMG)
-		{
-			//collision setup: default beviour: block all except pawn, INACTIVE by default - we enable it later
-			WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
-			WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-			WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore); //NEW
-			//WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //remove this contradiction line
-		}
-
-		//turn ON CustomDepth:
-		//WeaponMesh->MarkRenderStateDirty(); //doesn't really help lol 
-		WeaponMesh->SetCustomDepthStencilValue(251);
-		WeaponMesh->SetRenderCustomDepth(true);
-		UE_LOG(LogTemp, Warning, TEXT("OnRep_WeaponState~>Dropped"));
 		break;
-	};
+	}
 }
+
+void AWeapon::OnDropped()
+{
+	//detach this weapon from CHAR::GetMesh();, detachment is replicated itself so yeah! no need to do in OnRep_ -here is currently OnRep_ lol
+	//DetachFromActor(FDetachmentTransformRules::KeepWorldTransform); // WeaponMesh->DetachFromComponent(); - stephen
+	//SetOwner(nullptr);
+
+	//Only server need to touch this
+	if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	//physics group: (let it happen to both SMG and non-SMG)
+	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
+	WeaponMesh->SetSimulatePhysics(true); //TIRE1
+	WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
+
+	//since the consequence only happen to SMG weapon as did above, so need to 'restore' it for SMG weapon
+	if (WeaponType == EWeaponType::EWT_SMG)
+	{
+		//collision setup: default beviour: block all except pawn, INACTIVE by default - we enable it later
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+		WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+		WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore); //NEW
+		//WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //remove this contradiction line
+
+	}
+
+	//turn ON CustomDepth:
+	WeaponMesh->SetCustomDepthStencilValue(251);
+	WeaponMesh->SetRenderCustomDepth(true);
+}
+
+void AWeapon::OnEquippedSecond()
+{
+	ShowPickupWidget(false);
+	//Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
+	//if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
+	if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
+
+	//Our SMG dont need these to locally similated, move it out fix the bug:
+	WeaponMesh->SetSimulatePhysics(false); //TIRE1
+	WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+
+	if (WeaponType != EWeaponType::EWT_SMG)
+	{
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
+	}
+	if (WeaponType == EWeaponType::EWT_SMG)
+	{
+		//this is the require of 'locally simulated bones in PA'
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	}
+
+	//turn off CustomDepth: stephen turn on CustomDepth for second weapon, but I dont like it, so this is my decision:
+	WeaponMesh->MarkRenderStateDirty();
+	WeaponMesh->SetRenderCustomDepth(false);
+}
+
+void AWeapon::OnEquipped()
+{
+	ShowPickupWidget(false);
+	//Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
+	//if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
+	if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
+
+	//Our SMG dont need these to locally similated, move it out fix the bug:
+	WeaponMesh->SetSimulatePhysics(false); //TIRE1
+	WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+
+	if (WeaponType != EWeaponType::EWT_SMG)
+	{
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
+	}
+	if (WeaponType == EWeaponType::EWT_SMG)
+	{
+		//this is the require of 'locally simulated bones in PA'
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		//WeaponMesh->SetSimulatePhysics(true);  //no need
+		//WeaponMesh->SetEnableGravity(true); //no need
+		//GLOBALLY we turn it off all collision responses, hence this become 'PURE locally Simualted', but this has consequence steps:
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	}
+	//turn off CustomDepth
+	WeaponMesh->MarkRenderStateDirty();
+	WeaponMesh->SetRenderCustomDepth(false);
+}
+
+//this is the NEW , redudant version but good for organization:
+void AWeapon::OnRep_WeaponState()
+{
+	OnWeaponStateSet();
+}
+
+//THIS is the ORIGINAL, NOT-redudant code/backup:
+//void AWeapon::OnRep_WeaponState()
+//{
+//	if (WeaponMesh == nullptr) return;
+//
+//	ABlasterCharacter* Character = Cast<ABlasterCharacter>(GetOwner());
+//	switch (WeaponState)
+//	{
+//	case EWeaponState::EWS_Equipped:
+//		//May NOT need as PrimativeComp->SetVisibility() can be replicated by UE5 itself even if comp::Replicates = false!
+//		//ShowPickupWidget(false);
+//		//Surely redudant TIRE2 lol, COLLISION is only in the server so far
+//		// //if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+//
+//		//SMG dont need these turn on to locally simulated at all, move it out fix the bug "try to move a fully simulated mesh:
+//		WeaponMesh->SetSimulatePhysics(false); //TIRE1
+//		WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+//
+//		if (WeaponType != EWeaponType::EWT_SMG)
+//		{
+//			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
+//		}
+//
+//		if (WeaponType == EWeaponType::EWT_SMG)
+//		{
+//			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+//				//WeaponMesh->SetSimulatePhysics(true); //no need
+//				//WeaponMesh->SetEnableGravity(true);	//no need
+//			//GLOBALLY we turn it off all collision responses, hence this become 'PURE locally Simualted', but this has consequence steps:
+//			WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+//		}
+//
+//		//we do this with the hop that Combat::Equip()~>SetOwner(Char) will be replicated on clients before we reach this OnRep_WeaponState
+//		//so there is no gaurantee but double-kill does 'INCREASE' the chance of success:
+//		if (Character) AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, FName("RightHandSocket"));
+//
+//		//turn OFF CustomDepth:
+//		//WeaponMesh->MarkRenderStateDirty(); //doesn't really help LOL
+//		WeaponMesh->SetRenderCustomDepth(false);
+//		UE_LOG(LogTemp, Warning, TEXT("OnRep_WeaponState~>Equipped"));
+//
+//	case EWeaponState::EWS_EquippedSecond:
+//		//SMG dont need these turn on to locally simulated at all, move it out fix the bug "try to move a fully simulated mesh:
+//		WeaponMesh->SetSimulatePhysics(false); //TIRE1
+//		WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+//
+//		if (WeaponType != EWeaponType::EWT_SMG)
+//		{
+//			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+//		}
+//		if (WeaponType == EWeaponType::EWT_SMG)
+//		{
+//			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+//			WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+//		}
+//
+//		if (Character) AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, FName("SecondWeaponSocket"));
+//
+//		//turn OFF CustomDepth:
+//		WeaponMesh->MarkRenderStateDirty(); //doesn't really help LOL
+//		WeaponMesh->SetRenderCustomDepth(false);
+//
+//		break;
+//	case EWeaponState::EWS_Droppped:
+//		//NOR need we enable it back for Clients
+//		// //if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+//		
+//		//physics group: (let it happen to both SMG and non-SMG)
+//		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //TIRE2
+//		WeaponMesh->SetSimulatePhysics(true); //TIRE1
+//		WeaponMesh->SetEnableGravity(true);   //TIRE3 - dont care what the default, better double-kill
+//
+//		//since the consequence only happen to SMG weapon as did above, so need to 'restore' it for SMG weapon
+//		if (WeaponType == EWeaponType::EWT_SMG)
+//		{
+//			//collision setup: default beviour: block all except pawn, INACTIVE by default - we enable it later
+//			WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+//			WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+//			WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore); //NEW
+//			//WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //remove this contradiction line
+//		}
+//
+//		//turn ON CustomDepth:
+//		//WeaponMesh->MarkRenderStateDirty(); //doesn't really help lol 
+//		WeaponMesh->SetCustomDepthStencilValue(251);
+//		WeaponMesh->SetRenderCustomDepth(true);
+//		UE_LOG(LogTemp, Warning, TEXT("OnRep_WeaponState~>Dropped"));
+//		break;
+//	};
+//}
+
 
 void AWeapon::Fire(const FVector& HitTarget)
 {

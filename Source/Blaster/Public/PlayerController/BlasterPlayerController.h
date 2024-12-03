@@ -43,13 +43,32 @@ public:
 	virtual void OnPossess(APawn* InPawn) override;
 
 	virtual void ReceivedPlayer() override; //Synched with server clock as soon as possible
+
 	float GetServerTime_Synched(); //Synched with server world clock
-	
 	float Delta_ServerMinusServer = 0; //it will be different soon
 	float AccumilatingTime = 0; //when reach 5s, call 
 	UPROPERTY(EditAnywhere)
 	float TimeSynchFrequency = 5.f;
 
+	//HighPingWarning:
+	void StartHighPingWarning();
+	void StopHighPingWarning();
+
+	float RunningTime_HighPing = 0.f;
+	
+	UPROPERTY(EditAnywhere)
+	float PingWarningDuration = 5.f;
+
+	UPROPERTY(EditAnywhere)
+	float HighPingThreshold = 50.f; //in miliseconds
+
+	UPROPERTY(EditAnywhere)
+	float CheckPingFrequency = 20.f;
+
+		//this is to stop the WBP if it is playing enough PingWarningDuration:
+	float RunningTime_HighPingAnimation = 0.f;
+
+	bool bHighPingAnimationPlaying = false;
 
 protected:
 	virtual void BeginPlay() override;

@@ -25,6 +25,12 @@ public:
 	void SetCarriedAmmoText(const int& InCarriedAmmo);
 	void SetMatchTimeLeftText(const FString& InString);
 	void SetThrowGrenadeText(const int& InThrowGrenade);
+	
+	void PlayWBPAnimation_PingWarning();
+	void StopWBPAnimation_PingWarning();
+
+
+
 protected:
 
 	UPROPERTY(meta = (BindWidget))
@@ -57,8 +63,13 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_ThrowGrenade;
-private:
 
+	//for play WBPAnim_PingWarning
+	UPROPERTY(meta = (BindWidgetAnim) , Transient)
+	UWidgetAnimation* WBPAnimation_PingWarning;
 
+		//not sure this is needed:
+	UPROPERTY(meta = (BindWidget))
+	class UImage* Image_PingWarning;
 
 };

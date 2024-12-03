@@ -387,6 +387,7 @@ void ABlasterCharacter::Elim()
 
            //you can simply create AWeapon::Dropped to contain these code, and then call a single code, you access through so many tires for the same local destination LOL :d :d
 	       //drop the weapon && so on:
+//You can create a shared function with InWeapon param and re-use it, and then can factorize them both into yet another wrapper DropOrDestroyWeapons() lol:
 	if (CombatComponent && CombatComponent->EquippedWeapon)
 	{
 		//in case it is defaultweapon, we destroy it, avoiding it accumilating, otherwise we simply Drop it as usual:
@@ -397,6 +398,19 @@ void ABlasterCharacter::Elim()
 		else
 		{
 			CombatComponent->EquippedWeapon->Drop();
+		}
+	}
+	//now you also have 'SecondWeapon, so we need to handle the same thing for it too:
+	if (CombatComponent && CombatComponent->SecondWeapon)
+	{
+		//in case it is defaultweapon, we destroy it, avoiding it accumilating, otherwise we simply Drop it as usual:
+		if (CombatComponent->SecondWeapon->GetIsDefaultWeapon())
+		{
+			CombatComponent->SecondWeapon->Destroy();
+		}
+		else
+		{
+			CombatComponent->SecondWeapon->Drop();
 		}
 	}
 }
@@ -899,32 +913,30 @@ void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 	Jump();
 }
 
+//we use the same key for Equip and Swap weapon contextually, so you can't return when OverlappingWeapon == nullpt any more
 void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 {
 	if (bDisableMostInput) return;
-	if (CombatComponent == nullptr || OverlappingWeapon == nullptr) return;
-	//Without "HasAuthority()" both server add clients can pick. Server pick, clients see it. 
-	// where clients pick the server dont see it - but WHY? 
-	// where one client pick, other client dont see it as well - by WHY?
-	// Because the COLLISION in clients doesn't exist? well but they has reference to OverlappingWeapon decently right? 
-	// Because replication only from Server to Clients, or because ReplicatedUsing?
-	// Because CombatComponent->SetIsReplicated() indirectly here in this hosting class? But We didn't mark CombatComponent with 'Replicated' from hosting class perspective yet right? So this is NOT yet relevant! it is only self-replicated so far.
-	//With "Hasauthority()" only server can pick, clients see it - but HOW? because "Aweapon && Char::OverlappingWeapon" are set to replicated? 
-	// where Clients can't even pick - make sense
-	if (HasAuthority())
-	{
-		CombatComponent->Equip(OverlappingWeapon); // (*)
-	}
-	else
-	{
-		ServerEKeyPressed(); //its body is purposely indeptical with (*), for clear reason 
-	}
+	//if ( OverlappingWeapon == nullptr) return; //this line is no more appropriate
+
+	ServerEKeyPressed(); //its body is purposely indeptical with (*), for clear reason 
 }
 
+//we use the same key for Equip and Swap weapon contextually:
 void ABlasterCharacter::ServerEKeyPressed_Implementation()
 {
-	if (bDisableMostInput) return;
-	if (CombatComponent) CombatComponent->Equip(OverlappingWeapon);
+	if (CombatComponent == nullptr) return;
+
+	//if there is an overlaping weapon and you press E key, then you would call Equip in any sub cases:
+	if (OverlappingWeapon)
+	{
+		CombatComponent->Equip(OverlappingWeapon);
+	}
+	//otherwise there is no overlapping weapon and you have enough 2 weapons, you can swap it:
+	else if (CombatComponent->CanSwapWeapon())
+	{
+		CombatComponent->SwapWeapons();
+	}
 }
 
 void ABlasterCharacter::Input_Crouch(const FInputActionValue& Value)
