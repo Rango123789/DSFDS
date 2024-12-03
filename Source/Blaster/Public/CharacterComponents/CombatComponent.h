@@ -264,6 +264,7 @@ public:
 
 	int32 GetCarriedAmmo() { return CarriedAmmo; }
 	bool CanSwapWeapon() { return EquippedWeapon && SecondWeapon ; }
+	void DoAction_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
 };
 
 

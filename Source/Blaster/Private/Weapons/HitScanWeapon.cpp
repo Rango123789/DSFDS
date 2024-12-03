@@ -20,21 +20,13 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 	FVector Start = MuzzleFlashSocketTransform.GetLocation();
 	FVector End{};
 
-	if (bUseScatter)
-	{
-		End = RandomEndWithScatter(Start, HitTarget);
-	}
+	if (bUseScatter) End = RandomEndWithScatter(Start, HitTarget);
 	else 
 	{
-		End = Start + (HitTarget - Start) * 1.25f; //1.25 to make sure it hit the target, rather than just hit the surface that 50/50 you will fail!
+		End = Start + (HitTarget - Start) * 1.25f; //1.25 to to hit the target, rather than just hit the surface that 50/50 you will fail!
 	}
 
-	GetWorld()->LineTraceSingleByChannel(
-		HitResult,
-		Start,
-		End,
-		ECollisionChannel::ECC_Visibility	
-	);
+	GetWorld()->LineTraceSingleByChannel( HitResult, Start, End, ECollisionChannel::ECC_Visibility );
 //STAGE2: check if it hit any ABasterCharacter_instance and apply damage on him
 
 	FVector BeamEnd = End; //if hit something we change it inside the next if
@@ -72,10 +64,7 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 		  //Apply HitSound + HitParticle on Whatever it hit (henc no need if(Char) )
 		  UGameplayStatics::PlaySoundAtLocation(this, HitSound, HitResult.ImpactPoint);
 				//our particl isn't symetric, hence this ImpactNormal.Rotation() rather than ZeroRotator is much better LOL:
-		  UGameplayStatics::SpawnEmitterAtLocation(
-			  this,
-			  HitParticle,
-			  HitResult.ImpactPoint,
+		  UGameplayStatics::SpawnEmitterAtLocation( this, HitParticle, HitResult.ImpactPoint,
 			  HitResult.ImpactNormal.Rotation(), //rather than ZeroRotator
 			  true
 		  );
@@ -99,6 +88,7 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 }
 
 //review, in case it didn't hit anything in first DOlineTrace it return end = 80.000, So dont worry
+//this expect you to pass in 'HitTarget_DoLineTrace_CrossHairs' to work expected
 FVector AHitScanWeapon::RandomEndWithScatter(const FVector& Start, const FVector& HitTarget)
 {
 	//this is where sphere center should be, from which we + RandomUnitVector * (0->R)

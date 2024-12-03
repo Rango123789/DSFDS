@@ -747,6 +747,7 @@ void ABlasterCharacter::SetOverlappingWeapon(AWeapon* InWeapon)
 	{
 		OverlappingWeapon->ShowPickupWidget(true);
 	}
+	//note: we didn't handle the case when we overlap 2 weapons at the same time? yes we didn't take it into account nor will we put them near together in real game?
 }
 
 AWeapon* ABlasterCharacter::GetEquippedWeapon()

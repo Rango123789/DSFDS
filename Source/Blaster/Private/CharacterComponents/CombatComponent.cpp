@@ -405,6 +405,8 @@ void UCombatComponent::Input_Fire(bool InIsFiring)
 		FHitResult HitResult;
 		DoLineTrace_UnderCrosshairs(HitResult);
 
+		DoAction_Fire(InIsFiring, HitResult.ImpactPoint); //GOOD SPOT! the DC will have it locally first
+
 		ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //~>MultiRPC~>All devices:: Weapon::Fire + ...
 
 		Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
@@ -451,6 +453,15 @@ void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FV
 //when it reaches this TIRE it must pass CanFire() and have Ammo > 0, So we dont need to check it again I suppose:
 void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
 {
+	//exclude the CD, as it is done locally in TIRE already!
+	if (Character && !Character->IsLocallyControlled())
+	{
+		DoAction_Fire(InIsFiring, Target);
+	}
+}
+
+void UCombatComponent::DoAction_Fire(bool InIsFiring, const FVector_NetQuantize& Target)
+{
 	//note that because the machine to be called is different, so put this line here or in the HOSTING function 'could' make a difference generally lol:
 	if (Character == nullptr || EquippedWeapon == nullptr) return;
 
@@ -460,20 +471,21 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const
 	//Option1 to fix Fire intterupt Reload back when timer reach:
 	//when it reaches this TIRE it must pass TIRE1::CanFire() and have Ammo > 0, So we dont need to check it again I suppose:
 	if (
-		( bIsFiring && 
-		//this make Fire can't interrupt any montage generally:
-		  CharacterState == ECharacterState::ECS_Unoccupied)
+		(bIsFiring &&
+			//this make Fire can't interrupt any montage generally:
+			CharacterState == ECharacterState::ECS_Unoccupied)
 		||
-		( bIsFiring && 
-		  //this is an exception for Shotgun, even if it is Reloading:
-		  EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun &&
-		  CharacterState == ECharacterState::ECS_Reloading) )
+		(bIsFiring &&
+			//this is an exception for Shotgun, even if it is Reloading:
+			EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun &&
+			CharacterState == ECharacterState::ECS_Reloading))
 	{
 		Character->PlayFireMontage();
 
 		EquippedWeapon->Fire(Target); //instead of member HitTarget, now you can remove it!
 
-		//it should be here:
+		//it should be here: well stephen even call it in Weapon::Fire instead, i think it make more sense if we subtract the ammo after we see the FireSound+Effect in Weapon::Fire right (in fact Fire via FireAnimation_InWeapon)?
+		// /So optionally you can move it into the Weapon::Fire() , put it at bottom if you want.
 		if (Character->HasAuthority()) EquippedWeapon->UpdateHUD_Ammo();
 
 		/*
@@ -483,7 +495,7 @@ void UCombatComponent::MulticastInput_Fire_Implementation(bool InIsFiring, const
 		(2) "Combat::MulticastInput_Fire" is the ONLY play trigger the PlayFireMontage()
 		=hell yeah!
 		*/
-		CharacterState = ECharacterState::ECS_Unoccupied;
+		if (Character->HasAuthority()) CharacterState = ECharacterState::ECS_Unoccupied;
 	}
 }
 
@@ -631,6 +643,8 @@ void UCombatComponent::EquipSecondWeaponToBackpack(AWeapon* InWeapon)
 //not work like i expect lol, 'LATE' replication should be the only reason LOL
 void UCombatComponent::SwapWeapons()
 {
+	if (CharacterState != ECharacterState::ECS_Unoccupied) return;
+
 	AWeapon* TempWeapon = EquippedWeapon;
 
 	//this make  EquippedWeapon = SecondWeapon, because the 'else' kicks in
@@ -658,7 +672,6 @@ void UCombatComponent::SwapWeapons()
 //{
 //	Equip(TempWeapon);
 //}
-
 
 //call this specialized function with ThrowEnd():
 void UCombatComponent::AttachEquippedWeaponToRightHandSocket()

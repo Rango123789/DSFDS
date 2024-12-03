@@ -7,16 +7,9 @@
 void AProjectileWeapon::Fire(const FVector& HitTarget)
 {
 	Super::Fire(HitTarget);
-
-	//this block spawns ACasing for costmetic effeft
-	{
-
-	}
-
 	//this HOSTING function is called in all machine, but we only let the server spawn the Projectile, this block only run in the server
 	if (HasAuthority()) 
 	{
-
 		FTransform MuzzleFlashSocket_Transform_InWeapon = WeaponMesh->GetSocketTransform(FName("MuzzleFlash"));
 
 		FVector SpawnLocation = MuzzleFlashSocket_Transform_InWeapon.GetLocation();
@@ -33,9 +26,6 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 		//GetOwnwer() of this weapon is the Character holding it.
 		SpawnParams.Instigator = Cast<APawn>(GetOwner()); //this is downcast, but is needed as GetOwner() return AActor*
 
-		GetWorld()->SpawnActor<AProjectile>(
-			ProjectileClass,
-			SpawnLocation,SpawnRotation,SpawnParams
-		);
+		GetWorld()->SpawnActor<AProjectile>(ProjectileClass,SpawnLocation,SpawnRotation,SpawnParams);
 	}
 }

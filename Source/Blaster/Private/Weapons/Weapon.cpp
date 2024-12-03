@@ -96,8 +96,9 @@ void AWeapon::BeginPlay()
 	ENetRole Local = GetLocalRole();
 	ENetRole Remote = GetRemoteRole();
 	//if (Local == ENetRole::ROLE_AutonomousProxy || Remote == ENetRole::ROLE_AutonomousProxy)
-	if (HasAuthority())
-	{
+
+	//if (HasAuthority())  -->remove this so that clients can see widget show/hide immediately
+	//{
 		if (Sphere) 
 		{
 			Sphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
@@ -106,7 +107,7 @@ void AWeapon::BeginPlay()
 			Sphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnSphereOverlap);
 			Sphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnSphereEndOverlap);
 		}
-	}
+	//}
 
 	//for testing:
 	if (Overhead_WidgetComponent)
