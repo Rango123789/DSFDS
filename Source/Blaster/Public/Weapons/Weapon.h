@@ -46,6 +46,14 @@ public:
     //montages:
     virtual void Fire(const FVector& HitTarget);
 
+    //MOVE from HitScanWeapon:
+    FVector RandomEndWithScatter(const FVector& HitTarget);
+    UPROPERTY(EditAnywhere)
+    float DistanceToSphere = 800.f;
+    UPROPERTY(EditAnywhere)
+    float SphereRadius = 75.f;
+    UPROPERTY(EditAnywhere)
+    bool bUseScatter = false;
 
     //sound and effects:
     void PlayEquipSound(AActor* InActor);
@@ -92,6 +100,9 @@ protected: //base
 
     UPROPERTY(EditAnywhere)
     EWeaponType WeaponType = EWeaponType::EWT_AssaultRifle;
+    //optional:
+    UPROPERTY(EditAnywhere)
+    EFireType FireType = EFireType::EFT_Projectile;
 
     //pointer to external classes:
 
@@ -216,4 +227,6 @@ public:
 
     bool GetIsDefaultWeapon() { return bIsDefaultWeapon; }
     void SetIsDefaultWeapon(bool InIsDefaultWeapon) { bIsDefaultWeapon = InIsDefaultWeapon; }
+    EFireType GetFireType() { return FireType; }
+    bool GetUseScatter() { return bUseScatter; }
 };

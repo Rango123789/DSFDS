@@ -16,6 +16,10 @@ class BLASTER_API AHitScanWeapon_Shotgun : public AHitScanWeapon
 public:
 	virtual void Fire(const FVector& HitTarget) override;
 
+	void ShotgunFire(const TArray<FVector_NetQuantize>& HitTargets);
+
+	void RandomEndsWithScatter_Shotgun(const FVector& HitTarget, TArray<FVector_NetQuantize>& HitTargets);
+
 protected:
 	UPROPERTY(EditAnywhere)
 	int32 NumOfPellets = 10;

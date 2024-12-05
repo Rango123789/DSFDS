@@ -3,6 +3,7 @@
 
 #include "CharacterComponents/CombatComponent.h"
 #include "Weapons/Weapon.h"
+#include "Weapons/HitScanWeapon_Shotgun.h"
 #include "Characters/BlasterCharacter.h"
 #include "PlayerController/BlasterPlayerController.h"
 #include "HUD/BlasterHUD.h"
@@ -316,6 +317,7 @@ void UCombatComponent::OnRep_CharacterState()
 
 
 
+
 void UCombatComponent::SetPOVForCamera(float DeltaTime)
 {
 	if (EquippedWeapon == nullptr) return;
@@ -394,49 +396,77 @@ void UCombatComponent::SetHUDPackageForHUD(float DeltaTime)
 
 void UCombatComponent::Input_Fire(bool InIsFiring)
 {
-
 	bIsFiring = InIsFiring;
 
 	if (CanFire())
 	{
-		//set it back to false as a part of preventing we spam the fire button during WaitTime to reach Timer callback
 		bCanFire = false;
 
-		FHitResult HitResult;
-		DoLineTrace_UnderCrosshairs(HitResult);
+		//no need to check EquippedWeapon, you just check it in Canfire() LOL:
+		switch (EquippedWeapon->GetFireType()) 
+		{
+		case EFireType::EFT_Projectile:
+			FireProjectileWeapon(InIsFiring);
+			break;
 
-		DoAction_Fire(InIsFiring, HitResult.ImpactPoint); //GOOD SPOT! the DC will have it locally first
+		case EFireType::EFT_HitScan:
+			FireHitScanWeapon(InIsFiring);
+			break;
 
-		ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //~>MultiRPC~>All devices:: Weapon::Fire + ...
+		case EFireType::EFT_Shotgun:
+			FireShotgunWeapon(InIsFiring);
+			break;
+		}
 
+	//RecursiveTimer for automatic fire:
 		Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
 	}
 }
-bool UCombatComponent::CanFire()
-{
-	//{
-	//	//this is a part of stopping Gun can't stop firing:
-	//	if (bCanFire == false) return;
-	//	//extra condition about ammo: || EquippedWeapon->GetAmmo() <= 0 - no need because we check it above also
-	//	if (
-	//		(EquippedWeapon == nullptr || CharacterState != ECharacterState::ECS_Unoccupied || EquippedWeapon->GetAmmo() <= 0))
-	//	{
-	//		return;
-	//	}
-	//}
 
-	return
-	  ( bCanFire &&
-		EquippedWeapon && EquippedWeapon->GetAmmo() > 0 &&
-		//this make Fire can't interrupt any montage generally:
-		CharacterState == ECharacterState::ECS_Unoccupied )
-		||
-	  ( bCanFire &&
-		EquippedWeapon && EquippedWeapon && EquippedWeapon->GetAmmo() > 0 &&
-		//this is an exception for Shotgun, even if it is Reloading:
-		EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun  &&
-		CharacterState == ECharacterState::ECS_Reloading
-			);
+void UCombatComponent::FireProjectileWeapon(bool InIsFiring)
+{
+	if (EquippedWeapon == nullptr) return;
+
+	//ready the correct HitTarget
+	FHitResult HitResult;
+	DoLineTrace_UnderCrosshairs(HitResult);
+	//GOLDEN2X:
+	DoAction_Fire(InIsFiring, HitResult.ImpactPoint); //GOOD SPOT! the DC will have it locally first
+	ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //~>MultiRPC~>All devices:: Weapon::Fire + ...
+}
+
+void UCombatComponent::FireHitScanWeapon(bool InIsFiring)
+{
+	if (EquippedWeapon == nullptr) return; 
+
+	//ready the correct HitTarget
+	FHitResult HitResult;
+	DoLineTrace_UnderCrosshairs(HitResult);
+
+	//this is the only different between Projectile and HitScan (except shotgun)
+	FVector FinalHitTarget = EquippedWeapon->GetUseScatter() ? EquippedWeapon->RandomEndWithScatter(HitResult.ImpactPoint) : HitResult.ImpactPoint;
+
+	//GOLDEN2X:
+	DoAction_Fire(InIsFiring, FinalHitTarget); //GOOD SPOT! the DC will have it locally first
+	ServerInput_Fire(InIsFiring, FinalHitTarget); //~>MultiRPC~>All devices:: Weapon::Fire + ...
+}
+
+void UCombatComponent::FireShotgunWeapon(bool InIsFiring)
+{
+	if (EquippedWeapon == nullptr) return;
+	AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun = Cast<AHitScanWeapon_Shotgun>(EquippedWeapon);
+	if (HitScanWeapon_Shotgun == nullptr) return;
+
+	//ready the correct HitTarget1
+	FHitResult HitResult;
+	DoLineTrace_UnderCrosshairs(HitResult);
+	//ready an array of HitTarget2 (specialized for shotgun):
+	TArray<FVector_NetQuantize> HitTargets;
+	HitScanWeapon_Shotgun->RandomEndsWithScatter_Shotgun(HitResult.ImpactPoint, HitTargets);
+
+	//GOLDEN2X: call version for shotgun:
+	DoAction_Fire_Shotgun(InIsFiring, HitTargets, HitScanWeapon_Shotgun); //GOOD SPOT! the DC will have it locally first
+	ServerInput_Fire_Shotgun(InIsFiring, HitTargets, HitScanWeapon_Shotgun); //~>MultiRPC~>All devices:: Weapon::Fire + ...
 }
 
 void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
@@ -486,7 +516,8 @@ void UCombatComponent::DoAction_Fire(bool InIsFiring, const FVector_NetQuantize&
 
 		//it should be here: well stephen even call it in Weapon::Fire instead, i think it make more sense if we subtract the ammo after we see the FireSound+Effect in Weapon::Fire right (in fact Fire via FireAnimation_InWeapon)?
 		// /So optionally you can move it into the Weapon::Fire() , put it at bottom if you want.
-		if (Character->HasAuthority()) EquippedWeapon->UpdateHUD_Ammo();
+		//UPDATE: this has been move into Weapon::Fire, also run in all devices at this TIRE to match stephen
+			//if (Character->HasAuthority()) EquippedWeapon->UpdateHUD_Ammo();
 
 		/*
 		Stepehen directly set it back to Unoccupied right in "Combat::MulticastInput_Fire"
@@ -498,6 +529,62 @@ void UCombatComponent::DoAction_Fire(bool InIsFiring, const FVector_NetQuantize&
 		if (Character->HasAuthority()) CharacterState = ECharacterState::ECS_Unoccupied;
 	}
 }
+
+//for shotgun:
+void UCombatComponent::ServerInput_Fire_Shotgun_Implementation(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun)
+{
+	MulticastInput_Fire_Shotgun(InIsFiring, HitTargets, HitScanWeapon_Shotgun);
+}
+
+void UCombatComponent::MulticastInput_Fire_Shotgun_Implementation(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun)
+{
+	//exclude the CD, as it is done locally in TIRE already!
+	if (Character && !Character->IsLocallyControlled())
+	{
+		DoAction_Fire_Shotgun(InIsFiring, HitTargets, HitScanWeapon_Shotgun);
+	}
+}
+
+void UCombatComponent::DoAction_Fire_Shotgun(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun)
+{
+	//note that because the machine to be called is different, so put this line here or in the HOSTING function 'could' make a difference generally lol:
+	if (Character == nullptr || HitScanWeapon_Shotgun == nullptr) return;
+
+	//move up to serverRPC
+	bIsFiring = InIsFiring; //We can't remove it here as this is for replication perupose :)
+
+	//Option1 to fix Fire intterupt Reload back when timer reach:
+	//when it reaches this TIRE it must pass TIRE1::CanFire() and have Ammo > 0, So we dont need to check it again I suppose:
+	if (
+		(bIsFiring &&
+			//this make Fire can't interrupt any montage generally:
+			CharacterState == ECharacterState::ECS_Unoccupied)
+		||
+		(bIsFiring &&
+			//this is an exception for Shotgun, even if it is Reloading:
+			HitScanWeapon_Shotgun->GetWeaponType() == EWeaponType::EWT_Shotgun &&
+			CharacterState == ECharacterState::ECS_Reloading))
+	{
+		Character->PlayFireMontage();
+
+		//This is the KEY different lines:
+		HitScanWeapon_Shotgun->ShotgunFire(HitTargets); //instead of member HitTarget, now you can remove it!
+
+		//it should be here: well stephen even call it in Weapon::Fire instead, i think it make more sense if we subtract the ammo after we see the FireSound+Effect in Weapon::Fire right (in fact Fire via FireAnimation_InWeapon)?
+		// /So optionally you can move it into the Weapon::Fire() , put it at bottom if you want.
+		if (Character->HasAuthority()) HitScanWeapon_Shotgun->UpdateHUD_Ammo();
+		/*
+		Stepehen directly set it back to Unoccupied right in "Combat::MulticastInput_Fire"
+		, this is the reason:
+		(1) the fire montage is "TOO short"
+		(2) "Combat::MulticastInput_Fire" is the ONLY play trigger the PlayFireMontage()
+		=hell yeah!
+		*/
+		if (Character->HasAuthority()) CharacterState = ECharacterState::ECS_Unoccupied;
+	}
+}
+
+
 
 void UCombatComponent::Start_FireTimer()
 {
@@ -523,6 +610,33 @@ void UCombatComponent::FireTimer_Callback()
 	{
 		Input_Reload();
 	}
+}
+
+bool UCombatComponent::CanFire()
+{
+	//{
+	//	//this is a part of stopping Gun can't stop firing:
+	//	if (bCanFire == false) return;
+	//	//extra condition about ammo: || EquippedWeapon->GetAmmo() <= 0 - no need because we check it above also
+	//	if (
+	//		(EquippedWeapon == nullptr || CharacterState != ECharacterState::ECS_Unoccupied || EquippedWeapon->GetAmmo() <= 0))
+	//	{
+	//		return;
+	//	}
+	//}
+
+	return
+	  ( bCanFire &&
+		EquippedWeapon && EquippedWeapon->GetAmmo() > 0 &&
+		//this make Fire can't interrupt any montage generally:
+		CharacterState == ECharacterState::ECS_Unoccupied )
+		||
+	  ( bCanFire &&
+		EquippedWeapon && EquippedWeapon && EquippedWeapon->GetAmmo() > 0 &&
+		//this is an exception for Shotgun, even if it is Reloading:
+		EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun  &&
+		CharacterState == ECharacterState::ECS_Reloading
+			);
 }
 
 void UCombatComponent::Input_Fire_WithoutAssingmentLine()

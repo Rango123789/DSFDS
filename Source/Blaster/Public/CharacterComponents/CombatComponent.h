@@ -97,17 +97,29 @@ private:
 
 	//fire
 	void Input_Fire(bool InIsFiring);
-
 	bool CanFire();
 
+	void FireProjectileWeapon(bool InIsFiring);
+	void FireHitScanWeapon(bool InIsFiring);
+	void FireShotgunWeapon(bool InIsFiring);
+
+	//for all weapons except shotgun:
 	UFUNCTION(Server, Reliable)
 	void ServerInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
+	//you can name this 'LocalInput_Fire()' next time, it make more sense for our purpose (GOLDEN2_DC):
+	void DoAction_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
 
+	//for shotgun:
+	UFUNCTION(Server, Reliable)
+	void ServerInput_Fire_Shotgun(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, class AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun);
 
-
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastInput_Fire_Shotgun(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun);
+	//you can name this 'LocalInput_Fire()' next time, it make more sense for our purpose (GOLDEN2_DC):
+	void DoAction_Fire_Shotgun(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun);
 
 	void SetPOVForCamera(float DeltaTime);
 
@@ -264,7 +276,7 @@ public:
 
 	int32 GetCarriedAmmo() { return CarriedAmmo; }
 	bool CanSwapWeapon() { return EquippedWeapon && SecondWeapon ; }
-	void DoAction_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
+
 };
 
 

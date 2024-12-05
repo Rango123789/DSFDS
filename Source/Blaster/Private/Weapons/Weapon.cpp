@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Weapons/Weapon.h"
-#include "Weapons/Casing.h" //to be spawned here 
+#include "Weapons/Casing.h"			 //to be spawned here 
 #include "Characters/BlasterCharacter.h"
 #include "PlayerController/BlasterPlayerController.h"
 #include "CharacterComponents/CombatComponent.h"
@@ -14,6 +14,7 @@
 #include "Animation/AnimationAsset.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include <Kismet/GameplayStatics.h>
+#include "Kismet/KismetMathLibrary.h" //RandomUnitVector
 
 // Sets default values
 AWeapon::AWeapon()
@@ -97,8 +98,9 @@ void AWeapon::BeginPlay()
 	ENetRole Remote = GetRemoteRole();
 	//if (Local == ENetRole::ROLE_AutonomousProxy || Remote == ENetRole::ROLE_AutonomousProxy)
 
-	//if (HasAuthority())  -->remove this so that clients can see widget show/hide immediately
-	//{
+	//for now I use it LOL, since I'm lazy go around and fix it LOL:
+	if (HasAuthority())  // -->remove this so that clients can see widget show/hide immediately
+	{
 		if (Sphere) 
 		{
 			Sphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
@@ -107,7 +109,7 @@ void AWeapon::BeginPlay()
 			Sphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnSphereOverlap);
 			Sphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::OnSphereEndOverlap);
 		}
-	//}
+	}
 
 	//for testing:
 	if (Overhead_WidgetComponent)
@@ -217,6 +219,7 @@ void AWeapon::OnRep_Owner()
 
 	//if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
 }
+
 
 void AWeapon::CheckAndSetHUD_Ammo()
 {
@@ -469,7 +472,8 @@ void AWeapon::Fire(const FVector& HitTarget)
 
 	}
 
-	//Option2: stephen call UpdateHUD_Ammo() here, and say this is called from the server. yes it is, but it is inside a multicast and also called from the clients at the same time too :D :D
+	//Option2: stephen call UpdateHUD_Ammo() here, and say this is called from the server. yes it is, but it is inside a multicast and also called from the clients at the same time too :D :D:
+	if (HasAuthority()) UpdateHUD_Ammo();
 }
 
 void AWeapon::PlayEquipSound(AActor* InActor)
@@ -478,6 +482,29 @@ void AWeapon::PlayEquipSound(AActor* InActor)
 	UGameplayStatics::PlaySoundAtLocation(this, EquipSound, InActor->GetActorLocation());
 }
 
+//this expect you to pass in 'HitTarget_DoLineTrace_CrossHairs' to work expected
+FVector AWeapon::RandomEndWithScatter(const FVector& HitTarget)
+{
+	//can find 'Start' itself, so now you can remove the parameter:
+	FTransform MuzzleFlashSocketTransform = WeaponMesh->GetSocketTransform(FName("MuzzleFlash"));
+	FVector Start = MuzzleFlashSocketTransform.GetLocation();
+
+	//this is where sphere center should be, from which we + RandomUnitVector * (0->R)
+	FVector SphereCenterEnd = Start + (HitTarget - Start).GetSafeNormal() * DistanceToSphere;
+
+	float RandomRadius = FMath::RandRange(0.f, SphereRadius);
+	FVector RandomPointWithinSphere = SphereCenterEnd + UKismetMathLibrary::RandomUnitVector() * RandomRadius;
+
+	//we dont stop at RandomPointWithinSphere that is 800.f = 8m only, we extend it so that it makes more sense
+	//Because this will be used for SMG (not just Shotgun, So stephen and I temporary trace it as far as End point in DoLineTrace_Crosshairs LOL, I JUST define TRACE_LENGTH 80000 in WeaponTypes.h:
+	FVector ActualEnd = Start + (RandomPointWithinSphere - Start).GetSafeNormal() * TRACE_LENGTH;
+
+	DrawDebugSphere(GetWorld(), SphereCenterEnd, SphereRadius, 12, FColor::Red, true);
+	DrawDebugSphere(GetWorld(), RandomPointWithinSphere, 4.f, 12, FColor::Blue, true); //you can draw point instead if you want, but I think snall sphere look more cool, and we will remove it anyway so It will save me sometime not drawing point lol!
+	DrawDebugLine(GetWorld(), Start, ActualEnd, FColor::Cyan, true);
+
+	return ActualEnd;
+}
 
 
 

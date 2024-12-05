@@ -30,3 +30,17 @@ enum class EWeaponState : uint8
 
 	EWP_MAX UMETA(DisplayName = "DefaultMAX"), //for the sake of knowing now many sematic values of this enum
 };
+
+//this is OPTIONAL:
+UENUM(BlueprintType)
+enum class EFireType : uint8
+{
+	EFT_Projectile UMETA(DisplayName = "Projectile Firing"),
+	EFT_HitScan UMETA(DisplayName = "HitScan Firing"), //NEW3
+	EFT_Shotgun UMETA(DisplayName = "Shotgun Firing"), //NEW4
+
+	EFT_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
+
+
