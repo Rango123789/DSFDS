@@ -77,7 +77,7 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AWeapon, WeaponState);
-	DOREPLIFETIME(AWeapon, Ammo);
+	//DOREPLIFETIME(AWeapon, Ammo);
 }
 
 // Called when the game starts or when spawned
@@ -168,30 +168,99 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 }
 
 //this is called from the server, so does whatever inside it!
+//UPDATE: now this is called in all machines by GOLDEN2_CD:
 void AWeapon::UpdateHUD_Ammo()
 {
-	if (OwnerCharacter == nullptr || OwnerCharacter->GetCombatComponent() == nullptr) return;
+	if (OwnerCharacter == nullptr || OwnerCharacter->GetCombatComponent() == nullptr || Ammo <= 0) return;
 
-	if (Ammo <= 0) return;
-//NOT the idea to call it here, it need to check Ammo >=0 before it fire outside :)
-	//if (Ammo <= 0 && OwnerCharacter->GetCombatComponent()->GetCarriedAmmo() <= 0) return;
-	//if (Ammo <= 0 && OwnerCharacter->GetCombatComponent()->GetCarriedAmmo() > 0)
-	//{
-	//	OwnerCharacter->GetCombatComponent()->Input_Reload();
-	//}
-	Ammo--;
+//this part is for all devices, however you must understand that current we apply GOLDEN2_CD, the owning client will have it UPDATED first even before the server and other clients by ping+ping. Meaming owning clients has EquippedWeapon::Ammo being subtracted first and has it SMALLER value than the server and other clients during the project:
+
+	Ammo--; //no more relicated nor trigger OnRep_Ammo
 
 	CheckAndSetHUD_Ammo();
 
+	//if it is current the server, at which time it is still SLOWER than the owning clients (not SLOWER than other clients), then try to replicate back to the owning client, the reconciliation part will be done in the client there so dont worry:
+	if (HasAuthority())
+	{
+		//you can put if(!IslocallyControlled()) to avoid the case it server is the CD itself, that it re-excecute the code
+		//that is the reason why stephen put 'if(HasAuthority()) return; as alternative
+		
+		//pass in CurrentServerAmmo = Ammo
+		ClientUpdateHUD_Ammo(Ammo); //only the owning client receive this
+	}
+
+	//if it is current the owning client, then let it know that its has some one more UNPROCESSED UpdateAmmo when it execute this hosting function:
+	else if (OwnerCharacter->IsLocallyControlled())
+	{
+		NumOfUnprocessedUpdateAmmo += 1;
+	}
+
+	//if it is NON-controlling clients (other clients), then by GOLDEN2_CD it will naturally update locally in the end, so set NumOfUnprocessedUpdateAmmo doesn't make any sense. Not to mention we increase their NumOfUnprocessedUpdateAmmo but can never decrease them LOL, because only the owning client receive an execute ClientUpdateHUD_Ammo(), other clients have no change to touch it nor did they need to touch it LOL:
+	//For example what if you change it in second device that is not currently the owner of the weapon, but then he picks it and become owner of the weapon and he start with NumOfUnprocessedUpdateAmmo = x > 0, which is stupid and incorrect then!
+	else
+	{
+		//DO NOTHING
+	}
 }
 
+void AWeapon::ClientUpdateHUD_Ammo_Implementation(int32 CurrentServerAmmo)
+{
+	//if it reach this body and is still HasAuthority() then it the server is the DC itself, we should return
+	if (HasAuthority()) return;
+
+	//when it reaches this ClientRPC, let the owning Char::EquippedWeapon know that it just 'process'PROCESS' one more UNPROCESSED UpdateAmmo:
+	NumOfUnprocessedUpdateAmmo -= 1;
+
+	//First update it into whatever the value of the Server is:
+	Ammo = CurrentServerAmmo;
+	
+	//Second, client-side predict it for incoming unprocessed updates, it has ammo subtracted first hence its Ammo should even smaller then the currentServerAmmo :
+	Ammo -= NumOfUnprocessedUpdateAmmo;
+	
+	//now you can CheckAndSetAmmo locally for the owning client:
+	CheckAndSetHUD_Ammo();
+}
+
+//this is currently called in UpdateHUD_CarriedAmmo &&  UpdateHUD_CarriedAmmo_Shotgun (that is currently called in the server only)
+void AWeapon::SetAmmo(int32 InAmmo)
+{
+	Ammo = InAmmo;
+	//this is no need, I did it outside wherever I call SetAmmo already:
+	CheckAndSetHUD_Ammo();
+
+	//you can put if(!IslocallyControlled()) to avoid the case it server is the CD itself, that it re-excecute the code
+	//that is the reason why stephen put 'if(HasAuthority()) return; inside ClientSetAmmo(Ammo)! I got it! - OPTION2
+	ClientSetAmmo(Ammo);
+
+}
+
+void AWeapon::ClientSetAmmo_Implementation(int32 CurrentServerAmmo)
+{
+	//if it reach this body and is still HasAuthority() then it the server is the DC itself, we should return
+	if (HasAuthority()) return;
+
+	Ammo = CurrentServerAmmo;
+	CheckAndSetHUD_Ammo();
+
+//these code is just for shotgun:
+	//any weapon can trigger this hosting function should have owner, so dont worry:
+	if (OwnerCharacter == nullptr || OwnerCharacter->GetCombatComponent() == nullptr) return;
+	if (WeaponType != EWeaponType::EWT_Shotgun) return; //I add this
+	if (IsFull() || OwnerCharacter->GetCombatComponent()->GetCarriedAmmo() == 0)
+	{
+		if (OwnerCharacter) OwnerCharacter->JumpToShotgunEndSection();//helper from Character
+	}
+}
+
+//this function wont be triggered again, so keep or remove it is up to you
 void AWeapon::OnRep_Ammo()
 {
 	CheckAndSetHUD_Ammo();
 
+//these code is just for shotgun:
 	//any weapon can trigger this hosting function should have owner, so dont worry:
 	if (OwnerCharacter == nullptr || OwnerCharacter->GetCombatComponent() == nullptr) return;
-
+	if (WeaponType != EWeaponType::EWT_Shotgun) return; //I add this
 	if (IsFull() || OwnerCharacter->GetCombatComponent()->GetCarriedAmmo() == 0)
 	{
 		if (OwnerCharacter) OwnerCharacter->JumpToShotgunEndSection();//helper from Character
@@ -231,6 +300,8 @@ void AWeapon::CheckAndSetHUD_Ammo()
 
 	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
 }
+
+
 
 void AWeapon::ShowPickupWidget(bool bShowWdiget)
 {
@@ -472,8 +543,10 @@ void AWeapon::Fire(const FVector& HitTarget)
 
 	}
 
-	//Option2: stephen call UpdateHUD_Ammo() here, and say this is called from the server. yes it is, but it is inside a multicast and also called from the clients at the same time too :D :D:
-	if (HasAuthority()) UpdateHUD_Ammo();
+	//Option2: stephen call UpdateHUD_Ammo() here, and say this is called from the server. yes it is, but it is inside a multicast and also called from the clients at the same time too :D :D
+	//this is exactly equivalent to SpendRound() of stephen!
+	//if (HasAuthority()) - comment out for Client-side prediction, this will be run in all devices by GOLDEN2_CD:
+	UpdateHUD_Ammo();
 }
 
 void AWeapon::PlayEquipSound(AActor* InActor)
@@ -505,6 +578,5 @@ FVector AWeapon::RandomEndWithScatter(const FVector& HitTarget)
 
 	return ActualEnd;
 }
-
 
 

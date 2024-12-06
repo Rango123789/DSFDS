@@ -147,11 +147,19 @@ protected: //base
     float FireDelay = 0.25;
 
     //Ammo - HUD relevant:
-    UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
+    uint32 NumOfUnprocessedUpdateAmmo = 0 ;
+
+    //UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
+    UPROPERTY(EditAnywhere)
     int32 Ammo = 30 ;
     
-    UFUNCTION()
+    //UFUNCTION()
     virtual void OnRep_Ammo();
+
+    UFUNCTION(Client, Reliable)
+    void ClientUpdateHUD_Ammo(int32 CurrentServerAmmo);
+    UFUNCTION(Client, Reliable)
+    void ClientSetAmmo(int32 CurrentServerAmmo);
 
     UPROPERTY(EditAnywhere)
     int32 MagCapacity = 30; //not use yet
@@ -162,6 +170,7 @@ protected: //base
     class ABlasterPlayerController* BlasterPlayerController;
 
     bool bIsDefaultWeapon = false; //only DefaultWeapon spawn with Char::BeginPlay should have this 'true'
+
 
 private: //FINAL child
 /***functions***/
@@ -214,7 +223,7 @@ public:
     float GetFireDelay() { return FireDelay; }
     
     int32 GetAmmo() { return Ammo; }
-    void SetAmmo(int32 InAmmo) { Ammo = InAmmo; }
+    void SetAmmo(int32 InAmmo);
     
     int32 GetMagCapacity() { return MagCapacity; }
     //void SetMagCapacity(int32 InMagCapacity) { MagCapacity = InMagCapacity; }

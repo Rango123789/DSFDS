@@ -316,8 +316,6 @@ void UCombatComponent::OnRep_CharacterState()
 }
 
 
-
-
 void UCombatComponent::SetPOVForCamera(float DeltaTime)
 {
 	if (EquippedWeapon == nullptr) return;
@@ -953,12 +951,9 @@ void UCombatComponent::PickupAmmo(EWeaponType InWeaponType, uint32 InAmmoAmmount
 void UCombatComponent::SetIsAiming(bool InIsAiming)
 {
 	if (Character == nullptr || EquippedWeapon == nullptr) return;
-	if (Character->HasAuthority())
-	{
-		bIsAiming = InIsAiming;
-		if (Character->GetCharacterMovement()) Character->GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
-	}
-	else ServerSetIsAiming(InIsAiming);
+
+	ServerSetIsAiming(InIsAiming);
+
 	//option2: call BP_function(InIsAiming) here
 	if (Character->IsLocallyControlled() && EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SniperRifle)
 	{
@@ -971,6 +966,11 @@ void UCombatComponent::ServerSetIsAiming_Implementation(bool InIsAiming) //REPLA
 	if (Character)
 	{
 		bIsAiming = InIsAiming;
+		//UCharacterMovemenComponent::MaxWalkSpeed is self-replicated by UE5?
+		//well if we change MaxWalkSpeed in local machines and it is being corrected back by UE5
+		//, then it suggest that MaxWalkSpeed is self- replicated
+		//, meaning calling 'MaxWalkSpeed = new value' in server will update it back to client proxies as well!
+		//also this is the ONLY place I find this code, so the evidence proves it LOL:
 		if (Character->GetCharacterMovement()) Character->GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
 	}
 }
