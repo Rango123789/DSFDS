@@ -111,52 +111,11 @@ void UCombatComponent::Input_Reload()
 	//the GOLDEN1 is reduced to this, also no point to reload if you dont have any CarriedAmmo left:
 	//we only reload if it is Unoccupied and currently not already Readling (avoiding Spam) -- && CharacterState != ECS_Reloading  is redudant
 	if (CarriedAmmo > 0 &&
-		EquippedWeapon &&
-	    !EquippedWeapon->IsFull() &&
+		EquippedWeapon && !EquippedWeapon->IsFull() &&
 		CharacterState == ECharacterState::ECS_Unoccupied)
 	{
 		ServerInput_Reload();
 	}
-}
-
-void UCombatComponent::Input_Throw()
-{
-	if (Character == nullptr) return;
-	//so that it wont spam itself and any other montages:
-	if (CharacterState != ECharacterState::ECS_Unoccupied) return;
-	if (ThrowGrenade <= 0) return;
-
-//i start to feel this STUPID lol, if you bother to make it happen in server first, why still bother to restrict it to be called in the server and then give up and make it work in the controlling device first?
-	//Stephen said, that he want to play Montage in controlling device immediately to see it immediatly, and then send RPC to the server and other clients later:  FIRST TIME!
-	// However in OnRep_CharState we will include the IsLocallycontroll case to avoid playing twice LOL: FIRST TIME!
-	//Consequencely you must change the state for it to (even before it receive LEGAL value from server later)
-	CharacterState = ECharacterState::ECS_Throwing; // I forget this line LOL
-
-	Character->PlayThrowMontage(); //too see immediate effect in controlling device
-	AttachEquippedWeaponToLeftHandSocket();
-
-	UpdateHUD_ThrowGrenade(); //in case it is already the server and can't pass next check
-
-	//the second consequence, because you do the 2 line above, so you can in fact OPTIONALLY put the 'ServerInput_Throw()' inside if(!HasAuthority())), because in worst case it is called in the server it skip this RPC it still has the 2 line above back it up! :D :D
-	    //usual option:
-	//ServerInput_Throw(); //this solve server part, CharacterState_will solve in OnRep_CharState
-		//better option: as we already have 2 line above back up in worst case
-	if (Character->HasAuthority() == false)
-	{
-		ServerInput_Throw();
-	}
-}
-
-void UCombatComponent::ServerInput_Throw_Implementation()
-{
-	if (Character == nullptr) return;
-
-	CharacterState = ECharacterState::ECS_Throwing; //trigger OnRep_ -->paste code for clients
-
-	Character->PlayThrowMontage();
-	AttachEquippedWeaponToLeftHandSocket(); //this is self-replicated, no need to call it in OnRep_CharacterState::Throwing at all _VERFIED - I test it!
-
-	UpdateHUD_ThrowGrenade();
 }
 
 void UCombatComponent::ServerInput_Reload_Implementation()
@@ -254,7 +213,6 @@ void UCombatComponent::UpdateHUD_ThrowGrenade()
 	CheckAndSetHUD_ThrowGrenade();
 }
 
-
 //It first change when Equipped, this is auto-triggered
 void UCombatComponent::OnRep_CarriedAmmo()
 {
@@ -280,6 +238,47 @@ void UCombatComponent::InitializeCarriedAmmo()
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_SniperRifle, StartCarriedAmmo_SniperRifle);
 	CarriedAmmoMap.Emplace(EWeaponType::EWT_GrenadeLauncher, StartCarriedAmmo_GrenadeLauncher);
 }
+
+void UCombatComponent::Input_Throw()
+{
+	if (Character == nullptr) return;
+	//so that it wont spam itself and any other montages:
+	if (CharacterState != ECharacterState::ECS_Unoccupied) return;
+	if (ThrowGrenade <= 0) return;
+
+//i start to feel this STUPID lol, if you bother to make it happen in server first, why still bother to restrict it to be called in the server and then give up and make it work in the controlling device first?
+	//Stephen said, that he want to play Montage in controlling device immediately to see it immediatly, and then send RPC to the server and other clients later:  FIRST TIME!
+	// However in OnRep_CharState we will include the IsLocallycontroll case to avoid playing twice LOL: FIRST TIME!
+	//Consequencely you must change the state for it to (even before it receive LEGAL value from server later)
+	CharacterState = ECharacterState::ECS_Throwing; // I forget this line LOL
+
+	Character->PlayThrowMontage(); //too see immediate effect in controlling device
+	AttachEquippedWeaponToLeftHandSocket();
+
+	UpdateHUD_ThrowGrenade(); //in case it is already the server and can't pass next check
+
+	//the second consequence, because you do the 2 line above, so you can in fact OPTIONALLY put the 'ServerInput_Throw()' inside if(!HasAuthority())), because in worst case it is called in the server it skip this RPC it still has the 2 line above back it up! :D :D
+	    //usual option:
+	//ServerInput_Throw(); //this solve server part, CharacterState_will solve in OnRep_CharState
+		//better option: as we already have 2 line above back up in worst case
+	if (Character->HasAuthority() == false)
+	{
+		ServerInput_Throw();
+	}
+}
+
+void UCombatComponent::ServerInput_Throw_Implementation()
+{
+	if (Character == nullptr) return;
+
+	CharacterState = ECharacterState::ECS_Throwing; //trigger OnRep_ -->paste code for clients
+
+	Character->PlayThrowMontage();
+	AttachEquippedWeaponToLeftHandSocket(); //this is self-replicated, no need to call it in OnRep_CharacterState::Throwing at all _VERFIED - I test it!
+
+	UpdateHUD_ThrowGrenade();
+}
+
 
 void UCombatComponent::OnRep_ThrowGrenade()
 {
@@ -312,6 +311,18 @@ void UCombatComponent::OnRep_CharacterState()
 		//	Input_Fire(bIsFiring); 
 		//}
 		break;
+	}
+}
+
+
+void UCombatComponent::OnRep_IsAiming()
+{
+	////UPDATE: because 'bLocalIsAiming = InIsAming' is done in Locally controlled device ONLY, so you must add IsLocallyControlled in OnRep_ too, otherwise other clients will experience weird behaviour :D :D that is always false
+	//Meaning we accept the fact that other-client will have DOUBLE zoom-in/out ; even so, they wouldn't know when the CD is the one controlling the character right? hell yeah!
+	//i TEST it, it is true!
+	if (Character && Character->IsLocallyControlled())
+	{
+		bIsAiming = bLocalIsAiming;
 	}
 }
 
@@ -952,9 +963,17 @@ void UCombatComponent::SetIsAiming(bool InIsAiming)
 {
 	if (Character == nullptr || EquippedWeapon == nullptr) return;
 
+	//for client-side prediction purpose:
+		//this OFFICAL value subject to replication and lag:
+	bIsAiming = InIsAiming;
+		//this LOCAL value subject ONLY to 'local input', indepently from replication and never being corrected, it is responsive and change when you press and release key and nothing more:
+		//UPDATE: because this is done in Locally controlled device, so you must add IsLocallyControlled in OnRep_ too, otherwise other clients will experience weird behaviour :D :D that is always false
+	bLocalIsAiming = InIsAiming; //extra bPressed for CD to use locally
+
 	ServerSetIsAiming(InIsAiming);
 
-	//option2: call BP_function(InIsAiming) here
+	//need ONLY for locally controlled proxy:
+		//option2: call BP_function(InIsAiming) here
 	if (Character->IsLocallyControlled() && EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SniperRifle)
 	{
 		Character->ShowScopeWidget(InIsAiming);
@@ -966,12 +985,15 @@ void UCombatComponent::ServerSetIsAiming_Implementation(bool InIsAiming) //REPLA
 	if (Character)
 	{
 		bIsAiming = InIsAiming;
+	//self-replicated code 
 		//UCharacterMovemenComponent::MaxWalkSpeed is self-replicated by UE5?
 		//well if we change MaxWalkSpeed in local machines and it is being corrected back by UE5
 		//, then it suggest that MaxWalkSpeed is self- replicated
 		//, meaning calling 'MaxWalkSpeed = new value' in server will update it back to client proxies as well!
 		//also this is the ONLY place I find this code, so the evidence proves it LOL:
 		if (Character->GetCharacterMovement()) Character->GetCharacterMovement()->MaxWalkSpeed = InIsAiming ? AimWalkSpeed : MaxWalkSpeed_Backup;
+	//non-replicated code must be put inside extra MulticastRPC - if any:
+		//no code
 	}
 }
 

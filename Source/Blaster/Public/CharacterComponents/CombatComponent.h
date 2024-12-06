@@ -191,8 +191,13 @@ private:
 	//UFUNCTION()
 	//void TimerCallback_Swap();
 	
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_IsAiming) //from 'Replicated'
 	bool bIsAiming{};
+	//extra bPressed for CD to use locally for client-side prediction purpose
+	bool bLocalIsAiming{};
+
+	UFUNCTION()
+	void OnRep_IsAiming();
 
 	//UPROPERTY(Replicated)
 	bool bIsFiring{};
