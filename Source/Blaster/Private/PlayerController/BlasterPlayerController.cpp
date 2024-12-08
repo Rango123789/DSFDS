@@ -35,7 +35,6 @@ void ABlasterPlayerController::BeginPlay()
 
 	//get DATA from GameMode for clients_PC + server_PC accidentally:
 	ServerCheckMatchState(); //GOLDEN4 to propogated DATA from GM to clients
-
 }
   
 void ABlasterPlayerController::Tick(float DeltaTime)
@@ -549,9 +548,10 @@ void ABlasterPlayerController::UpdateHUDTime()
 	//FMath::CeilToInt() = OPTIONAL, so that you see the MAX number longer a bit, if you dont do this line so change the type o TimeLeft above to uint32 instead for auto-conversion: 
 	uint32 SecondsLeft = FMath::CeilToInt(TimeLeft);
 
-	//this is optional, as Server::PC::GetServerTime() subject to [send RPC to itself - execute RPC on itself, and subject to correction RTT/2, that may cause a little 'UNNECESSARY' inaccuracy]
+	//this is OPTIONAL (can even REDUDANT), Stephen say: as Server::PC::GetServerTime() subject to [send RPC to itself - execute RPC on itself, and subject to correction RTT/2, that may cause a little 'UNNECESSARY' inaccuracy] 
 	//Hence stephen decide to directly get the TimeLeft = GM::CountingDownTime, directly from GM.
 	//However I see that 'GetServerTime()' does to the If (HasAuthority()) check to avoid sending RPC already, so i'm not sure this is necessary any more, NOR did I see anything wrong if I dont do this at all, anyway just follow stephen HERE :)
+	//UNLESS: LevelStartingTime are not const from clients? = this is incorrect, it is propogated from GM, unless the propogate is late per first frame, but anyway i dont think this is the case.
 	if (HasAuthority())
 	{
 		//the hosting function is called per Second so we should cast this GameMode!

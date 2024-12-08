@@ -3,11 +3,12 @@
 
 #include "Characters/BlasterCharacter.h"
 #include "CharacterComponents/CombatComponent.h"
+#include "CharacterComponents/BuffComponent.h"
+#include "CharacterComponents/LagCompensationComponent.h"
 #include "PlayerController/BlasterPlayerController.h"
 #include "GameModes/BlasterGameMode.h"
 #include "Weapons/Weapon.h"
 #include "Components/CapsuleComponent.h"
-#include "CharacterComponents/BuffComponent.h"
 
 //#include "Curves/CurveFloat.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -24,6 +25,7 @@
 #include <PlayerStates/PlayerState_Blaster.h>
 #include <HUD/BlasterHUD.h>
 #include "HUD/CharacterOverlay_UserWidget.h"
+#include "Components/BoxComponent.h"
 //#include "HUD/BlasterHUD.h"
 //#include "HUD/CharacterOverlay_UserWidget.h"
 
@@ -55,10 +57,13 @@ ABlasterCharacter::ABlasterCharacter()
 	//Setup UCombatComponent: We will replicate this Component[/pointer object] ; it is not SceneComponent so...
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	CombatComponent->SetIsReplicated(true); // || ->SetIsReplicatedByDefault(true) || ->bReplicates = true || directly set it from the local class AWeapon is also fine - I refer to do it where the local class is LOL. But it may set back false if it is within the other class?, It could be LOL.
-
 	//Setup UBuffComponent:
 	BuffComponent = CreateDefaultSubobject<UBuffComponent>(TEXT("BuffComponent"));
 	BuffComponent->SetIsReplicated(true);
+	//Setup ULagComponent:
+	LagComponent = CreateDefaultSubobject<ULagCompensationComponent>(TEXT("LagComponent"));
+	//stephen say : we only plan to use it in the server, so no need to make it a replicated component at all
+		//LagComponent->SetIsReplicated(true);
 
 	//make sure you can
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
@@ -82,6 +87,99 @@ ABlasterCharacter::ABlasterCharacter()
 		//it should be NOT visble until some point during ThrowMontage, for now i temporarily let it be for testing purposes:
 		// Stephen say hide it in constructor is too early, should do it BeginPlay instead, but I dont think so :)
 	TempGrenadeMesh->SetVisibility(false);
+
+	//boxes for server-rewind technique:
+	head = CreateDefaultSubobject<UBoxComponent>(TEXT("head"));
+	head->SetupAttachment(GetMesh(), FName("head"));
+	head->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("head"), head);
+
+	pelvis = CreateDefaultSubobject<UBoxComponent>(TEXT("pelvis"));
+	pelvis->SetupAttachment(GetMesh(), FName("pelvis"));
+	pelvis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("pelvis"), pelvis);
+
+	spine_02 = CreateDefaultSubobject<UBoxComponent>(TEXT("spine_02"));
+	spine_02->SetupAttachment(GetMesh(), FName("spine_02"));
+	spine_02->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("spine_02"), spine_02);
+
+	spine_03 = CreateDefaultSubobject<UBoxComponent>(TEXT("spine_03"));
+	spine_03->SetupAttachment(GetMesh(), FName("spine_03"));
+	spine_03->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("spine_03"), spine_03);
+
+	backpack = CreateDefaultSubobject<UBoxComponent>(TEXT("backpack"));
+	backpack->SetupAttachment(GetMesh(), FName("backpack"));
+	backpack->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("backpack"), backpack);
+
+	blanket_l = CreateDefaultSubobject<UBoxComponent>(TEXT("blanket_l"));
+	blanket_l->SetupAttachment(GetMesh(), FName("blanket_l"));
+	blanket_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("blanket_l"), blanket_l);
+
+	upperarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("upperarm_l"));
+	upperarm_l->SetupAttachment(GetMesh(), FName("upperarm_l"));
+	upperarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("upperarm_l"), upperarm_l);
+
+	lowerarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("lowerarm_l"));
+	lowerarm_l->SetupAttachment(GetMesh(), FName("lowerarm_l"));
+	lowerarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("lowerarm_l"), lowerarm_l);
+
+	hand_l = CreateDefaultSubobject<UBoxComponent>(TEXT("hand_l"));
+	hand_l->SetupAttachment(GetMesh(), FName("hand_l"));
+	hand_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("hand_l"), hand_l);
+
+	upperarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("upperarm_r"));
+	upperarm_r->SetupAttachment(GetMesh(), FName("upperarm_r"));
+	upperarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("upperarm_r"), upperarm_r);
+
+	lowerarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("lowerarm_r"));
+	lowerarm_r->SetupAttachment(GetMesh(), FName("lowerarm_r"));
+	lowerarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("lowerarm_r"), lowerarm_r);
+
+	hand_r = CreateDefaultSubobject<UBoxComponent>(TEXT("hand_r"));
+	hand_r->SetupAttachment(GetMesh(), FName("hand_r"));
+	hand_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("hand_r"), hand_r);
+
+	thigh_l = CreateDefaultSubobject<UBoxComponent>(TEXT("thigh_l"));
+	thigh_l->SetupAttachment(GetMesh(), FName("thigh_l"));
+	thigh_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("thigh_l"), thigh_l);
+
+	calf_l = CreateDefaultSubobject<UBoxComponent>(TEXT("calf_l"));
+	calf_l->SetupAttachment(GetMesh(), FName("calf_l"));
+	calf_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("calf_l"), calf_l);
+
+	foot_l = CreateDefaultSubobject<UBoxComponent>(TEXT("foot_l"));
+	foot_l->SetupAttachment(GetMesh(), FName("foot_l"));
+	foot_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("foot_l"), foot_l);
+
+	thigh_r = CreateDefaultSubobject<UBoxComponent>(TEXT("thigh_r"));
+	thigh_r->SetupAttachment(GetMesh(), FName("thigh_r"));
+	thigh_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("thigh_r"), thigh_r);
+
+	calf_r = CreateDefaultSubobject<UBoxComponent>(TEXT("calf_r"));
+	calf_r->SetupAttachment(GetMesh(), FName("calf_r"));
+	calf_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("calf_r"), calf_r);
+
+	foot_r = CreateDefaultSubobject<UBoxComponent>(TEXT("foot_r"));
+	foot_r->SetupAttachment(GetMesh(), FName("foot_r"));
+	foot_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BoxComponentMap.Add(FName("foot_r"), foot_r);
+
+
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -246,6 +344,17 @@ void ABlasterCharacter::PostInitializeComponents()
 	Super::PostInitializeComponents();
 	if (CombatComponent) CombatComponent->Character = this; //make ABlasterCharater friend of it
 	if (BuffComponent) BuffComponent->Character = this; //to access even private member withou getter
+	if (LagComponent)
+	{
+		LagComponent->Character = this;
+
+		//stephen does this, But I dont think this gonna make any difference?
+		//because this could be too soon, sometime even after Char finish initializing, PC is still not assigned yet.
+		if (LagComponent)
+		{
+			LagComponent->Controller = Cast<ABlasterPlayerController>(Controller); //Apawn::Controller is a public member
+		}
+	}
 }
 
 void ABlasterCharacter::Destroyed()
@@ -1046,6 +1155,11 @@ ABlasterPlayerController* ABlasterCharacter::GetBlasterPlayerController()
 ECharacterState ABlasterCharacter::GetCharacterState() {
 	if (CombatComponent == nullptr)  return ECharacterState::ECS_MAX; //return whatever LOL
 	return CombatComponent->CharacterState;
+}
+
+bool ABlasterCharacter::GetIsLocalReloading()
+{
+	return CombatComponent && CombatComponent->bLocalReloading; 
 }
 
 ////Stephen create this in UActorComponent instead.

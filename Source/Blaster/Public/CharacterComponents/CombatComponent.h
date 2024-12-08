@@ -193,8 +193,11 @@ private:
 	
 	UPROPERTY(ReplicatedUsing = OnRep_IsAiming) //from 'Replicated'
 	bool bIsAiming{};
-	//extra bPressed for CD to use locally for client-side prediction purpose
+	//extra bPressed for CD to use locally for client-side prediction purpose:
 	bool bLocalIsAiming{};
+
+	//extra bState for CD to use locally for client-side prediction purpose: Reloading && use FRABRIK back immediately:
+	bool bLocalReloading = false;
 
 	UFUNCTION()
 	void OnRep_IsAiming();

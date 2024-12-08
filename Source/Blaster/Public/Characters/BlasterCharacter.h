@@ -99,6 +99,10 @@ public:
 	//call this in Char::BeginPlay(), checking if current gamemode is BlasterGameMode before spawn it:
 	void SpawnDefaultWeapon();
 
+	//exceptional public DATA:
+	UPROPERTY()
+	TMap<FName, class UBoxComponent*> BoxComponentMap;
+
 protected:
 	/***functions***/
 //category1: auto-generated functions:
@@ -164,6 +168,70 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	class UBuffComponent* BuffComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class ULagCompensationComponent* LagComponent;
+
+
+	//boxes for server-rewind technique:
+	UPROPERTY(VisibleAnywhere)
+	class UBoxComponent* head;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* pelvis;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* spine_02;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* spine_03;
+
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* backpack;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* blanket_l;
+
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* upperarm_l;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* lowerarm_l;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* hand_l;
+
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* upperarm_r;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* lowerarm_r;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* hand_r;
+
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* thigh_l;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* calf_l;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* foot_l;
+
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* thigh_r;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* calf_r;
+
+	UPROPERTY(VisibleAnywhere)
+	UBoxComponent* foot_r;
 
 	//for Timeline: (I move them apart later)
 	UPROPERTY(VisibleAnywhere)
@@ -411,4 +479,5 @@ public:
 	void SetDisableMostInput(bool InBool) { bDisableMostInput = InBool; }
 
 	bool GetIsElimminated() { return bIsEliminated; };
+	bool GetIsLocalReloading();
 };

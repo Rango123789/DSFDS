@@ -107,13 +107,19 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 void UCombatComponent::Input_Reload()
 {
-//impliment things, RPCs(if needed) from here:
-	//the GOLDEN1 is reduced to this, also no point to reload if you dont have any CarriedAmmo left:
 	//we only reload if it is Unoccupied and currently not already Readling (avoiding Spam) -- && CharacterState != ECS_Reloading  is redudant
 	if (CarriedAmmo > 0 &&
 		EquippedWeapon && !EquippedWeapon->IsFull() &&
-		CharacterState == ECharacterState::ECS_Unoccupied)
+		CharacterState == ECharacterState::ECS_Unoccupied &&
+		bLocalReloading == false) //I think this is optional, reason: currently 'bLocalReloading' will turn false even before 'CharacterState' turn Unoccupied when ReloadEnd reach!
 	{
+		//clien-side prediciton part, non-replicated DoAction():
+			//CharacterState = ECharacterState::ECS_Reloading; //remove
+		Character->PlayReloadMontage(); 
+		bLocalReloading = true; //we will go to AnimInstance and make an exception for CD, so that it can use FABRIK back immediately when ReloadEnd without waiting for 'ping'
+
+		//normal replication part: if CD is already the server then we dont need to call this any more, because if so we just DoAction() above in the server already :D :D 
+			//if( Character &&Character->HasAuthority() == false) ServerInput_Reload(); //replaced
 		ServerInput_Reload();
 	}
 }
@@ -122,15 +128,47 @@ void UCombatComponent::ServerInput_Reload_Implementation()
 {
 	if (Character == nullptr) return;
 	//this help trigger OnRep_, if it changes WeaponState from Unoccupied
-	CharacterState = ECharacterState::ECS_Reloading; //self-replicated, and trigger its OnRep_X
+	CharacterState = ECharacterState::ECS_Reloading; //(*)
+	    //called in Reload's AnimNotify
+		//UpdateHUD_CarriedAmmo(); //self-replicated, we have OnRep_CarriedAmmo work already
 
-	//Call this in ReloadEnd() with HasAuthority() if you want it to update HUD that time = everyone like this :)
-	//UpdateHUD_CarriedAmmo(); //self-replicated, we have OnRep_CarriedAmmo work already
-
-//all code bellow will be copied and pasted to OnRep_, STEPHEN factorize all of them into ReloadHandle() so that when we add more stuff to ReloadHandle() we dont need to go and paste to OnRep_ again LOL, BUT I say we way LOL
-	//you must go and use AimNotify to reset it back to UnOccupied, otherwise you get stuck in state :D :D
-	Character->PlayReloadMontage(); //call it in  OnRep_CharacterState too for clients
+	//if it reach this hosting function and it is CD, then the server always did this already, so no need to repeat it. Either case, we still need to exclude !Character->IsLocallyControlled() in OnRep_CharacterState too, I know this is crazy but 2 stages are independent!
+	//the only reason why we dont do it right in TIRE1 but here is because we also need to call (*) above!
+	if( !Character->IsLocallyControlled() ) Character->PlayReloadMontage(); //call it in  OnRep_CharacterState too for clients
 }
+
+//these versions are not used: reason, try to change 'Replicated Enum state var' of out Replication pattern pose a risk.
+//void UCombatComponent::Input_Reload()
+//{
+//	//we only reload if it is Unoccupied and currently not already Readling (avoiding Spam) -- && CharacterState != ECS_Reloading  is redudant
+//	if (CarriedAmmo > 0 &&
+//		EquippedWeapon && !EquippedWeapon->IsFull() &&
+//		CharacterState == ECharacterState::ECS_Unoccupied)
+//	{
+//		//clien-side prediciton part, DoAction():
+//			//not sure we should to this LOL, because we can simply Play ReloadMontage() indepent from setting CharacterState to Reloading LOL, this is onlly helpful if there is other code also rely on Characterstate and need quick responsive too:
+//			//I test it it doesn't hurt so far (nor I see any different it make LOL)
+//			//In fact if you put 'HasAuthority()' below this line is A MUST (unless you remove that condition below)
+//		CharacterState = ECharacterState::ECS_Reloading;
+//		//as always we should add IsLocallycontrolled in OnRep_characterstate to exclude it! 
+//		Character->PlayReloadMontage();
+//
+//		//normal replication part: if CD is already the server then we dont need to call this any more, because if so we just DoAction() above in the server already :D :D 
+//		if (Character && Character->HasAuthority() == false) ServerInput_Reload();
+//	}
+//}
+//void UCombatComponent::ServerInput_Reload_Implementation()
+//{
+//	if (Character == nullptr) return;
+//	//this help trigger OnRep_, if it changes WeaponState from Unoccupied
+//	CharacterState = ECharacterState::ECS_Reloading; //self-replicated, and trigger its OnRep_X
+//	//Call this in ReloadEnd() with HasAuthority() if you want it to update HUD that time = everyone like this :)
+//		//UpdateHUD_CarriedAmmo(); //self-replicated, we have OnRep_CarriedAmmo work already
+//
+////all code bellow will be copied and pasted to OnRep_, STEPHEN factorize all of them into ReloadHandle() so that when we add more stuff to ReloadHandle() we dont need to go and paste to OnRep_ again LOL, BUT I say we way LOL. Anyway HandleReload() didn't include the line 'CharacterState = ECharacterState::ECS_Reloading above - of course, this is only for non-replicated code LOL
+//	//you must go and use AimNotify to reset it back to UnOccupied, otherwise you get stuck in state :D :D
+//	Character->PlayReloadMontage(); //call it in  OnRep_CharacterState too for clients
+//}
 
 //I haven't call this anywhere yet, as this i meant for when Reloading
 //this will be called in RealoadEnd Notify, giving the sense of rewarding after wating for the anim animation to finish, except Shotgun will use the specialized version below this one:
@@ -298,7 +336,11 @@ void UCombatComponent::OnRep_CharacterState()
 	switch (CharacterState)
 	{
 	case ECharacterState::ECS_Reloading :
-		Character->PlayReloadMontage();
+		//We did play it for the DC already so we exclude it avoiding double playing it , start the Reload montage TWICE, you may not notice it because the later play on top of the first and also have 'interpolating' as well:
+		if (Character && Character->IsLocallyControlled() == false)
+		{
+			Character->PlayReloadMontage(); //can put it into 'ReloadHanle()'
+		}
 		break;
 	case ECharacterState::ECS_Throwing :
 		//the controlling device already played from Combat::Input_Throw for seeing immediate effect, so we dont want to double-play it (may cause side effect if any), so we exclude it: FIRST TIME
@@ -621,18 +663,11 @@ void UCombatComponent::FireTimer_Callback()
 	}
 }
 
+//this is currently called CD ONLY:
 bool UCombatComponent::CanFire()
 {
-	//{
-	//	//this is a part of stopping Gun can't stop firing:
-	//	if (bCanFire == false) return;
-	//	//extra condition about ammo: || EquippedWeapon->GetAmmo() <= 0 - no need because we check it above also
-	//	if (
-	//		(EquippedWeapon == nullptr || CharacterState != ECharacterState::ECS_Unoccupied || EquippedWeapon->GetAmmo() <= 0))
-	//	{
-	//		return;
-	//	}
-	//}
+	//bLocalReloading is for client-side prection purpose, we take it into account to, so that we can't fire after we press Reload button, potentially fix relevant bugs:
+	if (bLocalReloading) return false;
 
 	return
 	  ( bCanFire &&
@@ -1065,6 +1100,12 @@ void UCombatComponent::ReloadEnd()
 	if (Character == nullptr) return;
 	//this may cause "LEGENDARYcase", if so, simpl remove 'HasAuthority()' will overcome it LOL = no it's not!
 		//because the inner code is self-replicated, so add HasAuthority is optional. if you wan the server first, then add HasAuthority, if you want all copies run over, then remove it (for cosmetic action) 
+	//for client-side prediction you can remove 'HasAuthority()' and it solve side problem immediately (Unoccupied arrive late for FABRIK to snap the hand back) , but as universal rules, it is not recommended for 'Replicated enum state var' at all! 
+
+	//only CD's bLocalReloading change to true from Input_X, only CD need to make a change back here: (I dont know why stephen didn't add if(CD) :d :d
+	//later on stephen add 'bLocalReloading' to CanFire()
+	if (Character->IsLocallyControlled()) bLocalReloading = false;
+
 	if (Character->HasAuthority())
 	{
 		CharacterState = ECharacterState::ECS_Unoccupied;

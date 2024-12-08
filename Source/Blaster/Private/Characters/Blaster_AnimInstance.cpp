@@ -153,9 +153,20 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	//bShouldRotateRightHand = (CharacterState != ECharacterState::ECS_Reloading) && (!BlasterCharacter->GetDisableMostInput());
 	
 	//History2: change !=Reloading --> ==UnOcupied, so only when it is Unoccupied (either Reloading or Throwing) we dont want to use any FABRIK , rotate right hand, aim offset, so that our hand are 'FREE' to do other things:
-	bShouldUseFABRIK = CharacterState == ECharacterState::ECS_Unoccupied ? true : false; //revert true, false
+	bShouldUseFABRIK = CharacterState == ECharacterState::ECS_Unoccupied;  //
 	//bShouldUseAimOffsets = CharacterState == ECharacterState::ECS_Reloading ? false : true;
 	//bShouldRotateRightHand = CharacterState == ECharacterState::ECS_Reloading ? false : true;
+
+	//when it is CD we can override it, other machinces default to the line above:
+	//we dont consider ECharacterState::Reloading itself, as bLocalRealoding act for it instead
+	//but still we should consider other state that is different than Unoccupied as well
+	//there is only 'Throwing' currently LOL
+	//it is recommended to put && in GLOBAL if, not with the inside!
+	if (BlasterCharacter->IsLocallyControlled() && CharacterState != ECharacterState::ECS_Throwing)
+	{
+		//if is DC, NOT locally reloading (get change to false before ECharacterState::Reloading), not throwing, the allow FABRIK to work back immediately:
+		bShouldUseFABRIK = !BlasterCharacter->GetIsLocalReloading();
+	}
 
 	//this may or may not needed, as we stop counting AO_Yaw from Char::Tick() already
 	bShouldUseAimOffsets = (CharacterState == ECharacterState::ECS_Unoccupied) && (!BlasterCharacter->GetDisableMostInput());
