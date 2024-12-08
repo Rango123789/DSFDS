@@ -93,8 +93,12 @@ protected: //base
 	class ABlasterCharacter* Character;
 	UPROPERTY()
 	class ABlasterPlayerController* Controller;
-	//arrays:
+	//arrays, list, map:
+	TDoubleLinkedList<FFramePackage> FramePackageList;
 
+	//TLinkedList<FFramePackage> TEST1;
+	//TIntrusiveLinkedList<FFramePackage> TEST2;
+	//TList< FFramePackage> TEST3
 	//class type:
 
 //category2: UActorComponents   
@@ -105,6 +109,9 @@ protected: //base
 	//sound and effects:
 
 //category4: basic and primitive types
+	UPROPERTY(EditAnywhere)
+	float MaxRecordTime = 4.f;
+
 
 	friend class ABlasterCharacter;
 private: //FINAL child
