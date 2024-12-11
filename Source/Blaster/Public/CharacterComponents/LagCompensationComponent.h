@@ -45,6 +45,7 @@ public:
 	ULagCompensationComponent();
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	void SaveFramePackageList();
 //category2: virtual functions:
 	/**<Actor>*/
 
@@ -64,6 +65,10 @@ public:
 	//BP-callale functions:
 //category4: callbacks 
 
+//exceptional public member:
+	//arrays, list, map:
+	TDoubleLinkedList<FFramePackage> FramePackageList;
+
 protected: //base	
 /***functions***/
 //category1: auto-generated functions:
@@ -80,7 +85,28 @@ protected: //base
 
 //category3: regular functions 
 	void SaveFramePackage(FFramePackage& FramePackage); //this means to modify input
-	void ShowFramePackage(const FFramePackage& FramePackage, const FColor& Color); //this means to use input to draw things
+	void ShowFramePackage(const FFramePackage& FramePackage, const FColor& Color); //this means to use input to draw things.
+
+	//wrapper ServerRPC for ServerSideRewind, to actually send it into the server (if needed or condition allow):
+	//it will have 'AWeapon* DamageCauser' instead of 'Damage', avoiding client being hacked and send any amount of damage (because we request damage from a client and it is dangerous):
+	UFUNCTION(Server ,  Reliable)
+	void ServerScoreRequest(const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation, class ABlasterCharacter* HitCharacter, const float& HitTime,
+	  AWeapon* DamageCauser);
+
+	//not sure it is HitLocation or HitTarget? I think HitTarget make more sense
+	// first bool = hit or not , second bool = headshot or not
+	TPair<bool, bool> ServerSideRewind(const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation, class ABlasterCharacter* HitCharacter, const float& HitTime);
+
+	TPair<bool, bool> ConfirmHit(ABlasterCharacter* HitCharacter, FFramePackage& FrameToCheck, const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation);
+
+	FFramePackage InterpBetweenFrames(const FFramePackage& OlderFrame, const FFramePackage& YoungerFrame, float const& HitTime );
+	//pass in 'FrameTocheck' to move HitChar::Boxes into
+	void MoveBoxes(const FFramePackage& FrameToMoveTo, ABlasterCharacter* HitCharacter);
+	//pass in 'BackupFrame' to move it back: I also want to set collision to no collision inside it, so I we need to create a separate one rather than re-use 100%:
+	void ResetBoxes(const FFramePackage & FrameToRestoreTo, ABlasterCharacter* HitCharacter);
+
+
+
 //category4: callbacks
 
 /***data members****/
@@ -93,8 +119,7 @@ protected: //base
 	class ABlasterCharacter* Character;
 	UPROPERTY()
 	class ABlasterPlayerController* Controller;
-	//arrays, list, map:
-	TDoubleLinkedList<FFramePackage> FramePackageList;
+
 
 	//TLinkedList<FFramePackage> TEST1;
 	//TIntrusiveLinkedList<FFramePackage> TEST2;

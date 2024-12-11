@@ -276,16 +276,24 @@ void ABlasterPlayerController::ClientCheckMatchState_Implementation(float InLeve
 //I think separate them into 2 cases is 'OPTIONAL', I reckon Delta ~ 0 if the one call Server_RequestServerTime is the server itself! but it is perfect to separate them:
 float ABlasterPlayerController::GetServerTime_Synched()
 {
-	if (HasAuthority()) return GetWorld()->GetTimeSeconds();
-	else return GetWorld()->GetTimeSeconds() + Delta_ServerMinusServer;
+	if (HasAuthority())
+	{
+		return GetWorld()->GetTimeSeconds();
+	}
+	else
+	{
+		return GetWorld()->GetTimeSeconds() + Delta_ServerMinusServer;
+	}
 }
 //We need to call this function some time so that it upates Deltatime (but dont need so often, as Deltatime is BASE-independent and shouldn't change)
 //This only run in the server, GetWorld()->GetTimeSeconds() return TimeOfServer:
 void ABlasterPlayerController::Server_RequestServerTime_Implementation(float TimeOfClientWhenRequesting)
 {
 	float TimeOfServer_WhenReceived = GetWorld()->GetTimeSeconds();
+
 	Client_ReportRequestBackToRequestingClient(TimeOfClientWhenRequesting, TimeOfServer_WhenReceived);
 }
+
 //this only run in the owning client (if called from the server) , GetWorld()->GetTimeSeconds() return TimeOfOwningClient:
 //In case the Server itself is the one call Server_RequestServerTime the DeltaTime naturaly "~ZERO"
 //but anyway it doesn't matter as when GetServerTime_Synched we will take it into account for this case too
@@ -293,10 +301,11 @@ void ABlasterPlayerController::Client_ReportRequestBackToRequestingClient_Implem
 {
 	//you can store this RoundTripTime if you want, or you can use 'PC::PlaterState::GetPing() * 4'
 	//this will be updated every 5s as setup outside:
-	float RoundTripTime = GetWorld()->GetTimeSeconds() - TimeOfClientWhenRequesting;
+	//if it is PC an HasAuthority (either controlling server char or associate with some clients' char ), we expect TimeOfClientWhenRequesting = GetWorld()->GetTimeSeconds(), RTT=0, Delta=0
+	RTT = GetWorld()->GetTimeSeconds() - TimeOfClientWhenRequesting;
 
 	//This Delta already consider RRT/2: 
-	Delta_ServerMinusServer =  (TimeOfServerWhenReceivedRequest + RoundTripTime / 2) - GetWorld()->GetTimeSeconds() ;
+	Delta_ServerMinusServer =  (TimeOfServerWhenReceivedRequest + RTT/ 2) - GetWorld()->GetTimeSeconds() ;
 }
 
 /*SETHUD group:*/

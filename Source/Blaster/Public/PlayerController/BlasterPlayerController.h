@@ -44,13 +44,19 @@ public:
 
 	virtual void ReceivedPlayer() override; //Synched with server clock as soon as possible
 
-	float GetServerTime_Synched(); //Synched with server world clock
-	float Delta_ServerMinusServer = 0; //it will be different soon
-	float AccumilatingTime = 0; //when reach 5s, call 
+//synching time:
 	UPROPERTY(EditAnywhere)
 	float TimeSynchFrequency = 5.f;
+	float AccumilatingTime = 0; //when reach 5s, call 
 
-	//HighPingWarning:
+	float GetServerTime_Synched(); //Synched with server world clock
+		//they will be update every 5s, we expect all PCs in the server have them "ZERO" :
+	float Delta_ServerMinusServer = 0; //it will be different soon in clients
+	float RTT = 0; //it will be different soon in clients
+
+
+
+//HighPingWarning:
 	void StartHighPingWarning();
 	void StopHighPingWarning();
 

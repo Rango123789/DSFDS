@@ -27,8 +27,9 @@ protected:
 		//bool bUseScatter = false;
 
 	//Damage is now with Weapon itself, no projectile can help it any more LOL
-	UPROPERTY(EditAnywhere)
-	float Damage = 15.f;
+	//UPDATE: move it into parent WEAPON, so that you dont Cast when apply damage in Char::LagComp::ServerScoreRequest
+	//UPROPERTY(EditAnywhere)
+	//float Damage = 15.f;
 
 	//HitSound and HitParticle now with Weapon as well:
 	UPROPERTY(EditAnywhere)

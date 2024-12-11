@@ -171,6 +171,11 @@ protected: //base
 
     bool bIsDefaultWeapon = false; //only DefaultWeapon spawn with Char::BeginPlay should have this 'true'
 
+    UPROPERTY(EditAnywhere)
+    float Damage = 15.f; //move from HitScanWeapon
+
+    UPROPERTY(EditAnywhere)
+    bool bUseServerSideRequest = false;
 
 private: //FINAL child
 /***functions***/
@@ -238,4 +243,6 @@ public:
     void SetIsDefaultWeapon(bool InIsDefaultWeapon) { bIsDefaultWeapon = InIsDefaultWeapon; }
     EFireType GetFireType() { return FireType; }
     bool GetUseScatter() { return bUseScatter; }
+    float GetDamge() { return Damage; }
+    bool GetUseServerSideRequest() { return bUseServerSideRequest; }
 };

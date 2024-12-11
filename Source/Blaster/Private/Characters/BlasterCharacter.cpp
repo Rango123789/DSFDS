@@ -92,92 +92,111 @@ ABlasterCharacter::ABlasterCharacter()
 	head = CreateDefaultSubobject<UBoxComponent>(TEXT("head"));
 	head->SetupAttachment(GetMesh(), FName("head"));
 	head->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	head->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("head"), head);
 
 	pelvis = CreateDefaultSubobject<UBoxComponent>(TEXT("pelvis"));
 	pelvis->SetupAttachment(GetMesh(), FName("pelvis"));
 	pelvis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	pelvis->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("pelvis"), pelvis);
 
 	spine_02 = CreateDefaultSubobject<UBoxComponent>(TEXT("spine_02"));
 	spine_02->SetupAttachment(GetMesh(), FName("spine_02"));
 	spine_02->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	spine_02->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("spine_02"), spine_02);
 
 	spine_03 = CreateDefaultSubobject<UBoxComponent>(TEXT("spine_03"));
 	spine_03->SetupAttachment(GetMesh(), FName("spine_03"));
 	spine_03->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	spine_03->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("spine_03"), spine_03);
 
 	backpack = CreateDefaultSubobject<UBoxComponent>(TEXT("backpack"));
 	backpack->SetupAttachment(GetMesh(), FName("backpack"));
 	backpack->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	backpack->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("backpack"), backpack);
 
 	blanket_l = CreateDefaultSubobject<UBoxComponent>(TEXT("blanket_l"));
 	blanket_l->SetupAttachment(GetMesh(), FName("blanket_l"));
 	blanket_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	blanket_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("blanket_l"), blanket_l);
 
 	upperarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("upperarm_l"));
 	upperarm_l->SetupAttachment(GetMesh(), FName("upperarm_l"));
 	upperarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	upperarm_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("upperarm_l"), upperarm_l);
 
 	lowerarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("lowerarm_l"));
 	lowerarm_l->SetupAttachment(GetMesh(), FName("lowerarm_l"));
 	lowerarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	lowerarm_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("lowerarm_l"), lowerarm_l);
 
 	hand_l = CreateDefaultSubobject<UBoxComponent>(TEXT("hand_l"));
 	hand_l->SetupAttachment(GetMesh(), FName("hand_l"));
 	hand_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	hand_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("hand_l"), hand_l);
 
 	upperarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("upperarm_r"));
 	upperarm_r->SetupAttachment(GetMesh(), FName("upperarm_r"));
 	upperarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	upperarm_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("upperarm_r"), upperarm_r);
 
 	lowerarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("lowerarm_r"));
 	lowerarm_r->SetupAttachment(GetMesh(), FName("lowerarm_r"));
 	lowerarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	lowerarm_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("lowerarm_r"), lowerarm_r);
 
 	hand_r = CreateDefaultSubobject<UBoxComponent>(TEXT("hand_r"));
 	hand_r->SetupAttachment(GetMesh(), FName("hand_r"));
 	hand_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	hand_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("hand_r"), hand_r);
 
 	thigh_l = CreateDefaultSubobject<UBoxComponent>(TEXT("thigh_l"));
 	thigh_l->SetupAttachment(GetMesh(), FName("thigh_l"));
 	thigh_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	thigh_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("thigh_l"), thigh_l);
 
 	calf_l = CreateDefaultSubobject<UBoxComponent>(TEXT("calf_l"));
 	calf_l->SetupAttachment(GetMesh(), FName("calf_l"));
 	calf_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	calf_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("calf_l"), calf_l);
 
 	foot_l = CreateDefaultSubobject<UBoxComponent>(TEXT("foot_l"));
 	foot_l->SetupAttachment(GetMesh(), FName("foot_l"));
 	foot_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	foot_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("foot_l"), foot_l);
 
 	thigh_r = CreateDefaultSubobject<UBoxComponent>(TEXT("thigh_r"));
 	thigh_r->SetupAttachment(GetMesh(), FName("thigh_r"));
 	thigh_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	thigh_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("thigh_r"), thigh_r);
 
 	calf_r = CreateDefaultSubobject<UBoxComponent>(TEXT("calf_r"));
 	calf_r->SetupAttachment(GetMesh(), FName("calf_r"));
 	calf_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	calf_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("calf_r"), calf_r);
 
 	foot_r = CreateDefaultSubobject<UBoxComponent>(TEXT("foot_r"));
 	foot_r->SetupAttachment(GetMesh(), FName("foot_r"));
 	foot_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	foot_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("foot_r"), foot_r);
+
 
 
 }

@@ -480,4 +480,6 @@ public:
 
 	bool GetIsElimminated() { return bIsEliminated; };
 	bool GetIsLocalReloading();
+	class ULagCompensationComponent* GetLagComponent() { return LagComponent; }
 };
+ 
