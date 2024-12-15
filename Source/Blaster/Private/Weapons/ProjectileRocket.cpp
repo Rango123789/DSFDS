@@ -19,8 +19,8 @@ AProjectileRocket::AProjectileRocket()
 
 	ProjectileMovementComponent_Rock = CreateDefaultSubobject<UProjectileMovementComponent_Rock>("Projectile Move Comp");
 	ProjectileMovementComponent_Rock->bRotationFollowsVelocity = true;
-	ProjectileMovementComponent_Rock->InitialSpeed = 300;
-	ProjectileMovementComponent_Rock->MaxSpeed = 700;
+	ProjectileMovementComponent_Rock->InitialSpeed = InitalSpeed_ProjectilePath;
+	ProjectileMovementComponent_Rock->MaxSpeed = InitalSpeed_ProjectilePath;
 
 	//Stephen recommend, yes we need this as we did seriously already the default implementation, that we stop HandleImpact() with empty code, even if the built-in version is self-replicated
 	//this is needed here (not not in bullet)
@@ -146,3 +146,30 @@ void AProjectileRocket::Destroyed()
 	//do nothing , dont call Super:: even
 }
 
+#if WITH_EDITOR
+//this function trigger whenever we make a change on UPROPERTY property from UE5:
+void AProjectileRocket::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	//best way: this return the name of UPROPERTY variable that changes its value:
+	FName PropertyName = PropertyChangedEvent.GetPropertyName();
+
+	//long way:
+	//FName PropertyName
+	//	= PropertyChangedEvent.Property != nullptr ? PropertyChangedEvent.Property->GetFName() : NAME_None;
+
+	//this check if that property is the  InitalSpeed variable, if true, make UPMC::InitialSpeed follow it too!
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(AProjectileRocket, InitalSpeed_ProjectilePath))
+	{
+		ProjectileMovementComponent_Rock->InitialSpeed = InitalSpeed_ProjectilePath;
+		ProjectileMovementComponent_Rock->MaxSpeed = InitalSpeed_ProjectilePath;
+	}
+
+	//this return FName(TEXT("MemberName"))
+	FName InitalSpeed_Name = GET_MEMBER_NAME_CHECKED(AProjectileRocket, InitalSpeed_ProjectilePath);
+
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *InitalSpeed_Name.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *PropertyName.ToString());
+}
+#endif

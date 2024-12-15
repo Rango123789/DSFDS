@@ -170,7 +170,7 @@ protected:
 	class UBuffComponent* BuffComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	class ULagCompensationComponent* LagComponent;
+	class ULagCompensationComponent* LagComponent = nullptr;
 
 
 	//boxes for server-rewind technique:

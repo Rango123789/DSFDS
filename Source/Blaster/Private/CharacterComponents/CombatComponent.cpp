@@ -1090,7 +1090,7 @@ FVector UCombatComponent::DoLineTrace_UnderCrosshairs(FHitResult& LineHitResult)
 
 	//HitTarget = LineHitResult.ImpactPoint; //ImpactPoint now can be relied on in either case after the if!
 
-	DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, SphereRadius, 12.f, FColor::Red, bDrawConsistentLine);
+	//DrawDebugSphere(GetWorld(), LineHitResult.ImpactPoint, SphereRadius, 12.f, FColor::Red, bDrawConsistentLine);
 
 	return End;
 }

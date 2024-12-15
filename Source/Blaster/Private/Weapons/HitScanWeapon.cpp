@@ -3,9 +3,11 @@
 
 #include "Weapons/HitScanWeapon.h"
 #include <Kismet/GameplayStatics.h>
-//#include "Kismet/KismetMathLibrary.h" //RandomUnitVector
 #include "Characters/BlasterCharacter.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "CharacterComponents/LagCompensationComponent.h"
+#include "PlayerController/BlasterPlayerController.h"
+
 //HitTarget will be passed from Combat::DoLineTrace():: center screen -> forwards, everything is already setup, we need only to use it:
 //UPDATE: We will pass either 'HitTarget_DoLineTrace1' || f('HitTarget_DoLineTrace1') from outside
 // = this will be handled right in TIRE1, meaning we're gonna to re-organize TIRE1
@@ -17,22 +19,12 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
                             //Spawn ACasing
 //STAGE1: Do Line Trace
 	FHitResult HitResult;
-	FTransform MuzzleFlashSocketTransform = WeaponMesh->GetSocketTransform(FName("MuzzleFlash")); //if you get socket by name instead, you have a chance to check whether it is valid or not, but anyway If it's not valid then I will see it LOL, and I will make sure the name match, so I dont follow Stephen's way
-
+	FTransform MuzzleFlashSocketTransform = WeaponMesh->GetSocketTransform(FName("MuzzleFlash"));
 	FVector Start = MuzzleFlashSocketTransform.GetLocation();
-
-	//we remove all these code, and replace 'End' with HitTarget 
-		//FVector End{};
-		//if (bUseScatter) End = RandomEndWithScatter(Start, HitTarget);
-		//else 
-		//{
-		//	//we can in fact use 'HitTarget' (from DoLineTrace_CrossHairs) directly for HitScanWeapon NOT using Scatter, but unfortunately it is 'LineTrace', not 'ShapeTrace' so we expand it a little it 
-		//	//not by [center screen ->HitTarget] direction, but by [muzzle ->HitTarget Direction]
-		//	End = Start + (HitTarget - Start) * 1.25f; //1.25 to to hit the target, rather than just hit the surface that 50/50 you will fail!
-		//}
+	FVector End = Start + (HitTarget - Start) * 1.25f;
 
 	//GetWorld()->LineTraceSingleByChannel( HitResult, Start, End, ECollisionChannel::ECC_Visibility );
-	GetWorld()->LineTraceSingleByChannel(HitResult, Start, HitTarget, ECollisionChannel::ECC_Visibility);
+	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
 
 //STAGE2: check if it hit any ABasterCharacter_instance and apply damage on him
 
@@ -43,30 +35,81 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 	{
 		if(HitResult.GetActor()) BeamEnd = HitResult.ImpactPoint;
 
-		DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 3.f, 12, FColor::Cyan, true);
+		//DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 3.f, 12, FColor::Cyan, true);
 
 		ABlasterCharacter* HitBlasterCharacter = Cast<ABlasterCharacter>(HitResult.GetActor());
 
 		ABlasterCharacter* AttackBlasterCharacter = Cast<ABlasterCharacter>(GetOwner());
 	       
+		ABlasterPlayerController* AttackController =Cast<ABlasterPlayerController>(AttackBlasterCharacter->GetController()); 
 		//if it hit BlasterCharacter, apply damage on him
-		if (HitBlasterCharacter)
+		if (HitBlasterCharacter && AttackBlasterCharacter && AttackController)
 		{
-			//I think it is okay to pass in a null AttackController LOL, who know when the attacker will after he shoot someone lol:
-			//shocking new: stephen create this outside and check on this, make simulated proxies can't even play their HitSound and HitParticle, well it make sense because all simulated proxies will have their PC = nullptr from ever :D 
-			//so dont check it with the cosmetic group, only check - if needed - with the DoAction requiring an PC as parameter
-			AController* AttackController = AttackBlasterCharacter->GetController(); //it only require AController, no point creating bigger one and include extra header LOL
-
-			//Review, HitScanWeapon::Fire is currently run in all devices -> hence we need to add 'HasAuthority()' for ApplyDamge line, the rest code is cosmetic we leave it as 'FREE'!
-			//Review, Projectile::OnHit is only set to run the server (for bullet) ->ApplyDamage is only in the server naturally - just to compare, not relevant here:
-			if (HasAuthority()){
-				UGameplayStatics::ApplyDamage(
-					HitBlasterCharacter, //this will trigger HitBlasterCharacter::ReceiveDamage()
-					Damage,
-					AttackController,    //this will be important at where you receive it for purpose
-					this,UDamageType::StaticClass());
+		
+		//if not use serverside request, default to old code
+			if (!bUseServerSideRewind)
+			{
+				if (HasAuthority()){
+					UGameplayStatics::ApplyDamage(
+						HitBlasterCharacter, //this will trigger HitBlasterCharacter::ReceiveDamage()
+						Damage,
+						AttackController,    //this will be important at where you receive it for purpose
+						this,UDamageType::StaticClass());
+				}
 			}
-		}
+
+			if (bUseServerSideRewind)
+			{
+				//if using ServerRewind, but the attacking char is controlled by the server, we can simply default back to the old code, no need server rewind:
+				if (HasAuthority() && AttackBlasterCharacter->IsLocallyControlled())
+				{
+					UGameplayStatics::ApplyDamage(
+						HitBlasterCharacter, //this will trigger HitBlasterCharacter::ReceiveDamage()
+						Damage,
+						AttackController,    //this will be important at where you receive it for purpose
+						this, UDamageType::StaticClass());
+				}
+				//if using ServerRewind, shooting char is not controlled by the server, we now use ServerSideRewind:
+				//if (!HasAuthority() && AttackBlasterCharacter->IsLocallyControlled())
+				if (!HasAuthority() && AttackBlasterCharacter->IsLocallyControlled())
+				{
+					//GetServerTime_Synched() call from anywhere are the same anywhere
+					//but AttackController->RTT / 2 should be called from LocallyControlled device, not in the server that it give '0', however look the condition above! we're currently in CD device!:
+					float HitTime = AttackController->GetServerTime_Synched() - ((AttackController->RTT) * RTTFactor);
+					if (AttackBlasterCharacter->GetLagComponent())
+					{
+						AttackBlasterCharacter->GetLagComponent()->ServerScoreRequest(
+							Start, 
+							HitTarget, 
+							HitBlasterCharacter, 
+							HitTime, 
+							this);
+					}
+				}
+
+
+				//EXCEPTIONAL case:  we know it will return early in ServerSideRewind() if it is too laggy so we do this to compenesate, make sure that laggy client at least has some chance to hit any one LOL:
+				//if you reach inside this block, it is in the server, you can access : thisWeapon::AttackBlasterCharacter::LagComponent::PackageList.Tail()->Value.Time = OldestTime
+				//UPDATE: this will FAIL, HitTime in server device is still 0, I dont know how to calculate correct HitTime LOL
+					//if (HasAuthority() && AttackBlasterCharacter->GetLagComponent() && 
+					//	AttackBlasterCharacter->GetLagComponent()->FramePackageList.GetTail())
+					//{
+					//  float OldestTime = AttackBlasterCharacter->GetLagComponent()->FramePackageList.GetTail()->GetValue().Time;
+					//  float HitTime = AttackController->GetServerTime_Synched() - AttackController->RTT / 2;
+					  //if (HitTime < OldestTime)
+					  //{
+						 // UGameplayStatics::ApplyDamage(
+							//  HitBlasterCharacter, //this will trigger HitBlasterCharacter::ReceiveDamage()
+							//  Damage,
+							//  AttackController,    //this will be important at where you receive it for purpose
+							//  this, UDamageType::StaticClass());
+					  //}
+					  //if you use server and shoot other char , they print the same value
+					  //if you client and shot, this message is NOT even printed?
+					//  UE_LOG(LogTemp, Warning, TEXT("%d , %d"), AttackController->GetServerTime_Synched(), HitTime);
+					//}
+				}
+			}
 
 		//Apply HitSound + HitParticle on Whatever it hit (henc no need if(Char) )
 		UGameplayStatics::PlaySoundAtLocation(this, HitSound, HitResult.ImpactPoint);

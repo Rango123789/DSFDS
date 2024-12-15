@@ -37,7 +37,7 @@ AProjectile::AProjectile()
 	   //we need it to block Visibility (not talk about Camera) so that we can do some trace on it I guess?
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	   //we need it to block GetMesh()=Pawn currently to create Hit Even with Chararacter
-	CollisionBox->SetCollisionResponseToChannel(ECC_SkeletalMesh, ECollisionResponse::ECR_Block); //replace block Pawn with blocking custom SkeletalMesh
+	CollisionBox->SetCollisionResponseToChannel(ECC_SkeletalMesh, ECollisionResponse::ECR_Block); //replace block Pawn with blocking custom SkeletalMesh0
 	
 	//Setup ProjectileMovementComp: now create in whatever child need it instead
 	//ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>("Projectile Move Comp");
@@ -56,15 +56,19 @@ void AProjectile::Tick(float DeltaTime)
 
 }
 
+
+
+
 // Called when the game starts or when spawned
 void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	//if asset is ParticleSystem then choose this
+	//you need to store this and destroy it when OnBoxHit/Destroyed, not wait untill it run out timelife!
 	if (Tracer)
 	{
-		//TracerComponent =
+		TracerComponent =
 			UGameplayStatics::SpawnEmitterAttached(
 				Tracer,
 				CollisionBox,
@@ -141,6 +145,12 @@ void AProjectile::TimerCallback_Destroy()
 void AProjectile::Destroyed()
 {
 	Super::Destroyed();
+
+	if (TracerComponent)
+	{
+		TracerComponent->Deactivate();
+		TracerComponent->DestroyComponent();
+	}
 
 	UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());     //Hit.ImpactPoint
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitParticle, GetActorTransform());//Hit.ImpactPoint

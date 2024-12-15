@@ -39,7 +39,8 @@ void AGameState_Blaster::UpdatePlayerStates_TopScore(APlayerState_Blaster* Scori
 	else if (ScoringPlayerState->GetScore() > PlayerStates_TopScore[0]->GetScore())
 	{
 		PlayerStates_TopScore.Empty();
-		PlayerStates_TopScore[0] = ScoringPlayerState;
+		PlayerStates_TopScore.Add(ScoringPlayerState);
+		//PlayerStates_TopScore[0] = ScoringPlayerState;
 		TopScore = ScoringPlayerState->GetScore(); //absolutely need
 	}
 }

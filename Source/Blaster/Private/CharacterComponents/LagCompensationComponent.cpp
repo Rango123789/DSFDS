@@ -17,6 +17,17 @@ ULagCompensationComponent::ULagCompensationComponent()
 
 }
 
+
+void ULagCompensationComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	//FFramePackage FramePackage;
+	//SaveFramePackage(FramePackage);
+	//ShowFramePackage(FramePackage, FColor::Orange);
+
+}
+
 void ULagCompensationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -26,43 +37,52 @@ void ULagCompensationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
 void ULagCompensationComponent::SaveFramePackageList()
 {
+
+	if (Character == nullptr)
+	{
+		Character = Cast<ABlasterCharacter>(GetOwner());
+	}
+
 	//we never get to use the DATA from client, so no point saving it in client!
-	if (Character == nullptr || !Character->HasAuthority()) return;
-
+	if (Character && Character->HasAuthority())
+	{
 	//can factorize these into a sub function:
-	FFramePackage FramePackage;
-	SaveFramePackage(FramePackage);
+		FFramePackage FramePackage;
+		SaveFramePackage(FramePackage);
 
-	//UPDATE: current convention of grow direction: [tail -> head]  (doesn't matter C++ usual order, but match the timelife history and so many other reasons, so I choose to follow stephen)
-	//either one of if,else if, else could be executed per frame; no matter which one is added, we always add
-	//you can in fact merge the first two into into .AddHead() - [tail->head] = STEPHEN
-	//add first tail (0)  when there is no element (or just one element = head = tail)
-	if (FramePackageList.Num() == 0)
-	{
-		FramePackageList.AddTail(FramePackage);
-	}
-	//add first head (1) when there is already one element, meaning we choose this convention: tail (old)-> head (new) ; then continue to remove tail(old) and add head(new) when it goes beyond MaxTimeRecord
-	else if (FramePackageList.Num() == 1)
-	{
-		FramePackageList.AddHead(FramePackage);
-	}
-	else
-	{
-		//our current convention is tail LATER, so Time of HEAD must be bigger!
-		//after we know that we surely have 2+ elements when enter this, stephen dont even check "GetHead() or GetTail() nullptr or not" - not sure this is safe? 
-		float HistoryLength =
-			FramePackageList.GetHead()->GetValue().Time - FramePackageList.GetTail()->GetValue().Time;
-		//we remove head (or a number of them) until HistoryLength <= MaxRecordTime
-		while (HistoryLength > MaxRecordTime)
+		//UPDATE: current convention of grow direction: [tail -> head]  (doesn't matter C++ usual order, but match the timelife history and so many other reasons, so I choose to follow stephen)
+		//either one of if,else if, else could be executed per frame; no matter which one is added, we always add
+		//you can in fact merge the first two into into .AddHead() - [tail->head] = STEPHEN
+		//add first tail (0)  when there is no element (or just one element = head = tail)
+		if (FramePackageList.Num() == 0)
 		{
-			FramePackageList.RemoveNode(FramePackageList.GetTail());
-			//after we remove one head (old), we recount the time to see if we should need to remove more:
-			HistoryLength =
-				FramePackageList.GetHead()->GetValue().Time - FramePackageList.GetTail()->GetValue().Time;
+			FramePackageList.AddTail(FramePackage);
 		}
+		//add first head (1) when there is already one element, meaning we choose this convention: tail (old)-> head (new) ; then continue to remove tail(old) and add head(new) when it goes beyond MaxTimeRecord
+		else if (FramePackageList.Num() == 1)
+		{
+			FramePackageList.AddHead(FramePackage);
+		}
+		else
+		{
+			//our current convention is tail LATER, so Time of HEAD must be bigger!
+			//after we know that we surely have 2+ elements when enter this, stephen dont even check "GetHead() or GetTail() nullptr or not" - not sure this is safe? 
+			float HistoryLength =
+				FramePackageList.GetHead()->GetValue().Time - FramePackageList.GetTail()->GetValue().Time;
+			//we remove head (or a number of them) until HistoryLength <= MaxRecordTime
+			while (HistoryLength > MaxRecordTime)
+			{
+				FramePackageList.RemoveNode(FramePackageList.GetTail());
+				//after we remove one head (old), we recount the time to see if we should need to remove more:
+				HistoryLength =
+					FramePackageList.GetHead()->GetValue().Time - FramePackageList.GetTail()->GetValue().Time;
+			}
 
-		//After that we always add 'the LASTEST FramePackage' of the current frame (could make HistoryLength go beyond MaxRecordTime again, but it doesn't matter, it is just one frame, and it will be removed the tail to compensate in next frame in the while loop above anyway:
-		FramePackageList.AddHead(FramePackage);
+			//After that we always add 'the LASTEST FramePackage' of the current frame (could make HistoryLength go beyond MaxRecordTime again, but it doesn't matter, it is just one frame, and it will be removed the tail to compensate in next frame in the while loop above anyway:
+			FramePackageList.AddHead(FramePackage);
+	}
+
+	
 	}
 
 	//Draw FramePackage per frame
@@ -73,26 +93,6 @@ void ULagCompensationComponent::SaveFramePackageList()
 	//ShowFramePackage(FramePackage, FColor::Orange);
 }
 
-void ULagCompensationComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	//FFramePackage FramePackage;
-	//SaveFramePackage(FramePackage);
-	//ShowFramePackage(FramePackage, FColor::Orange);
-
-
-
-
-
-
-
-
-
-
-
-}
-
 void ULagCompensationComponent::SaveFramePackage(FFramePackage& FramePackage)
 {
 	//Stephen now confirm that owner of UActorComponent is the hosting actor having it as component (created by CreateDefaultSubobject)
@@ -101,9 +101,10 @@ void ULagCompensationComponent::SaveFramePackage(FFramePackage& FramePackage)
 	if (Character == nullptr || GetWorld() == nullptr) return;
 
 	//FramPackage::  Time + TMap<FName, FBoxInfor> ; FBoxInfo = Localtion + Rotation + BoxExtent 
-		//Sub member1: Time
+		//Sub member1: Time, HitCharacter
 			//we only plan to do it from server, so simply do 'GetWorld()->GetTimeSeconds()' will be enough, rather than call PC::GetServerTime() in worst case for any device!
 	FramePackage.Time = GetWorld()->GetTimeSeconds();
+	FramePackage.HitCharacter = Character;
 	//sub member2: TMap<FName, FBoxInfor> , so we need to add elements for the map many times
 
 	FBoxInfo BoxInfo;
@@ -113,7 +114,12 @@ void ULagCompensationComponent::SaveFramePackage(FFramePackage& FramePackage)
 		//this is SUB struct, hence we create a temp to store it before assign it to GLOBAL struct
 		BoxInfo.Location = Pair.Value->GetComponentLocation();
 		BoxInfo.Rotation = Pair.Value->GetComponentRotation();
-		BoxInfo.BoxExtent = Pair.Value->GetScaledBoxExtent();
+
+		//this FTransform::Scale * BoxEntent: this this one didn't make any sense LOL, but save both Scale and BoxExtent make more sense in case boxes need to change its size (but still optional, you can directly make change into Boxtent * scale), however this is not the case in the lesson:
+		//BoxInfo.BoxExtent = Pair.Value->GetScaledBoxExtent(); //stephen - not make any sense
+		//this ignore FTransform::Scale:
+		BoxInfo.BoxExtent = Pair.Value->GetUnscaledBoxExtent();
+
 		//the key is the key of BoxComponentMap from Char itself, hell yeah!
 		FramePackage.BoxInfoMap.Add(Pair.Key, BoxInfo);
 	}
@@ -135,9 +141,9 @@ void ULagCompensationComponent::ServerScoreRequest_Implementation(const FVector_
 {
 	if (HitCharacter == nullptr || DamageCauser == nullptr || Character == nullptr) return;
 	//at this point, except params to be passed from RPCWrapper, any other values inside the function will use values in the server proxies, including 'Char::LagComp::FrameHistory':
-	TPair<bool, bool> Result =  ServerSideRewind(Start, HitLocation, HitCharacter, HitTime);
+	FServerSideRewindResult Result =  ServerSideRewind(Start, HitLocation, HitCharacter, HitTime);
 
-	if (Result.Key == true)
+	if (Result.bHitConfirmed == true)
 	{
 		UGameplayStatics::ApplyDamage(
 			HitCharacter,
@@ -149,33 +155,121 @@ void ULagCompensationComponent::ServerScoreRequest_Implementation(const FVector_
 	}
 }
 
-//this function will be executed in the server, either restrict other devices or by sending ServerRPC
-//remember consider ( - ping/2 or -ping) when you pass in HitTime, so GetServerTime() - ping/2 is perfect!
-TPair<bool, bool>  ULagCompensationComponent::ServerSideRewind(const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation, ABlasterCharacter* HitCharacter, const float& HitTime)
+//STEPHEN idea, possibly better performance: 
+void ULagCompensationComponent::ServerScoreRequest_Shotgun_Implementation(const FVector_NetQuantize& Start, const TArray<FVector_NetQuantize>& HitLocations, const TArray<class ABlasterCharacter*>& HitCharacters, const float& HitTime, AWeapon* DamageCauser)
 {
+	if (DamageCauser == nullptr || Character == nullptr) return;
+
+	FServerSideRewindResult_Shotgun ShotgunResult = ServerSideRewind_Shotgun(Start, HitLocations, HitCharacters, HitTime);
+
+	for (auto HitCharacter : HitCharacters)
+	{
+		if (HitCharacter == nullptr) continue;
+
+	//step1, ready the total damage head * numhit1 +body * numhit2 first:
+		float TotalDamage = 0.f;
+		if (ShotgunResult.HeadShotMap.Contains(HitCharacter))
+		{
+			float TotalHeadDamage = DamageCauser->GetDamge() * ShotgunResult.HeadShotMap[HitCharacter];
+			TotalDamage += TotalHeadDamage;
+		}
+		if (ShotgunResult.BodyShotMap.Contains(HitCharacter))
+		{
+			float TotalBodyDamage = DamageCauser->GetDamge() * ShotgunResult.BodyShotMap[HitCharacter];
+			TotalDamage += TotalBodyDamage;
+		}
+		
+	//step2, apply the total at once per HitCharacter:
+		if (TotalDamage > 0.f)
+		{
+			UGameplayStatics::ApplyDamage(
+				HitCharacter,
+				TotalDamage,
+				Character->GetController(),
+				DamageCauser,
+				UDamageType::StaticClass()
+			);
+		}
+	}
+}
+
+////MY IDEA: This is not good for performance as stephen, anyway it apply 2 per character at the most! so I will satisfy a bit of performance here for easy of use lol: 
+//void ULagCompensationComponent::ServerScoreRequest_Shotgun_Implementation(const FVector_NetQuantize& Start, const TArray<FVector_NetQuantize>& HitLocations, const TArray<class ABlasterCharacter*>& HitCharacters, const float& HitTime, AWeapon* DamageCauser)
+//{
+//	if(DamageCauser == nullptr || Character == nullptr) return;
+//	//for (auto HitCharacter : HitCharacters)
+//	//{
+//	//	if (HitCharacter == nullptr) return;
+//	//}
+//
+//	FServerSideRewindResult_Shotgun ShotgunResult = ServerSideRewind_Shotgun(Start, HitLocations, HitCharacters, HitTime);
+//
+//	for (auto& Pair : ShotgunResult.HeadShotMap)
+//	{
+//		//C++ review, continue will skipp the current iteration but not 'break' out of the loop, hell yeah!
+//		if (Pair.Key == nullptr) continue;
+//
+//		//Review: TMap<HitCharacter, uint32_NumOfHits>
+//		//I almost forgot * NumOfHits for a specific HitCharacter in the map lol
+//		UGameplayStatics::ApplyDamage(
+//			Pair.Key,  //HitCharacter
+//			DamageCauser->GetDamge() * Pair.Value, 
+//			Character->GetController(),
+//			DamageCauser,
+//			UDamageType::StaticClass()
+//		);
+//	}
+//
+//	for (auto& Pair : ShotgunResult.BodyShotMap)
+//	{
+//		if (Pair.Key == nullptr) continue;
+//
+//		UGameplayStatics::ApplyDamage(
+//			Pair.Key,  //HitCharacter
+//			DamageCauser->GetDamge() * Pair.Value,
+//			Character->GetController(),
+//			DamageCauser,
+//			UDamageType::StaticClass()
+//		);
+//	}
+//}
+
+FFramePackage ULagCompensationComponent::GetFrameToCheck(ABlasterCharacter* HitCharacter, float HitTime)
+{
+	FFramePackage FrameToCheck;
+	//at least you dont remove the pass-in HitCharacter from FrameToCheck in worst case:
+	FrameToCheck.HitCharacter = HitCharacter; //no need any more but recommended, so that you dont lose data
+
 	//Overal condition:
-	if ( GetWorld() == nullptr ||
+	if (GetWorld() == nullptr ||
 		HitCharacter == nullptr || HitCharacter->GetLagComponent() == nullptr ||
 		HitCharacter->GetLagComponent()->FramePackageList.GetTail() == nullptr ||
 		HitCharacter->GetLagComponent()->FramePackageList.GetHead() == nullptr)
-		return TPair<bool, bool>(false, false);
+	{
+		//return TPair<bool, bool>(false, false);
+		//return FServeSideRewindResult{ false, false };
+		//return FFramePackage(); // .Map.Num() = 0, that's the equivalent sign
+		
+		return FrameToCheck; 
+	}
 
-//STAGE1: find the WANTED/Interpolated FFramePackage
-		//you need to use the HitCharacter::LagComponent::FramePackageList - not ::FramePackageList of this Attacking Chacter LOL:
-			//didn't work:
-		//TDoubleLinkedList<FFramePackage> HitFramePackageList = HitCharacter->GetLagComponent()->FramePackageList;
-			//this work:
+	//STAGE1: find the WANTED/Interpolated FFramePackage
+			//you need to use the HitCharacter::LagComponent::FramePackageList - not ::FramePackageList of this Attacking Chacter LOL:
+				//didn't work:
+			//TDoubleLinkedList<FFramePackage> HitFramePackageList = HitCharacter->GetLagComponent()->FramePackageList;
+				//this work:
 	const TDoubleLinkedList<FFramePackage>& HitFramePackageList = HitCharacter->GetLagComponent()->FramePackageList;
-
-	FFramePackage FrameToCheck;
 
 	float OldestTime = HitFramePackageList.GetTail()->GetValue().Time;
 	float YoungestTime = HitFramePackageList.GetHead()->GetValue().Time;
-
 	//you can in fact separate them out, however I like to keep it like this for now:
 	if (HitTime < OldestTime)
 	{
-		return TPair<bool, bool>(false, false); //do thing next, you're too lag for the server to consider
+		//do thing next, you're too lag for the server to consider
+		//return TPair<bool, bool>(false, false); 
+		//return FServeSideRewindResult{ false, false };
+		//return FFramePackage();
+		return FrameToCheck;
 	}
 	else if (HitTime == OldestTime)
 	{
@@ -197,10 +291,11 @@ TPair<bool, bool>  ULagCompensationComponent::ServerSideRewind(const FVector_Net
 		while (OlderNode->GetValue().Time > HitTime)
 		{
 			//I forget this rather important line, you want to break; not return, because there is also STAGE2:
-			if (HitFramePackageList.GetHead()->GetNextNode() == nullptr) break;
-
+			//if (HitFramePackageList.GetHead()->GetNextNode() == nullptr) break; //INCORRECT
+			if (OlderNode->GetNextNode() == nullptr) break;
 			//if the 'next to the tail' node is still in bounds, then we can assign it as new node for OlderNode:
-			OlderNode = HitFramePackageList.GetHead()->GetNextNode();
+			//OlderNode = HitFramePackageList.GetHead()->GetNextNode(); //INCORRECT
+			OlderNode = OlderNode->GetNextNode();
 
 			//after receive new value, it has smaller time, but if it 'STILL' greater than HitTime, then move the YoungerNode back with it, ready for the next iteration , otherwise it will escape the loop in a perpect position:
 			if (OlderNode->GetValue().Time > HitTime)
@@ -212,39 +307,74 @@ TPair<bool, bool>  ULagCompensationComponent::ServerSideRewind(const FVector_Net
 		//step2: after escape the while loop, we know what possible of Younger Node and OlderNode could be:
 		if (OlderNode->GetValue().Time == HitTime)
 		{
-			FrameToCheck = OlderNode->GetValue(); 
+			FrameToCheck = OlderNode->GetValue();
 		}
 		//stephen use 'bShouldInterpolate' but it is totally redudant LOL:
 		else if (OlderNode->GetValue().Time < HitTime)
 		{
 			//interpolate between YoungerNode.FramePackage and OlderNode.FramePackage will give you the best FramePackage_ForNextStage: (NEXT LESSON)
-			FrameToCheck = 
+			FrameToCheck =
 				InterpBetweenFrames(YoungerNode->GetValue(), OlderNode->GetValue(), HitTime);
 		}
+	}
+
+	//WITHOUT this line it didn't work, i did set it in Char::lag::Tick <--SaveFramePackage[List] right?
+	//SOLVE it is because ou forget to set it inside the InterpBetweenFrames! anyway this is recommended
+	FrameToCheck.HitCharacter = HitCharacter;
+
+	return FrameToCheck;
+}
+
+//this function will be executed in the server, either restrict other devices or by sending ServerRPC
+//remember consider ( - ping/2 or -ping) when you pass in HitTime, so GetServerTime() - ping/2 is perfect!
+FServerSideRewindResult  ULagCompensationComponent::ServerSideRewind(const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation, ABlasterCharacter* HitCharacter, const float& HitTime)
+{
+
+	FFramePackage FrameToCheck = GetFrameToCheck(HitCharacter, HitTime);
+
+	//this is the equivalent sign that we can return early after refactorizing some return T1 statement with the sub function that return whatever else lol:
+	if (FrameToCheck.BoxInfoMap.Num() == 0)
+	{
+		return FServerSideRewindResult{ false, false };
 	}
 //STAGE2: use the 'FramePackage_ForNextStage', perhaps use it to move Char::Boxes to and then Trace against it, after that move it back:
 	return ConfirmHit(HitCharacter, FrameToCheck, Start, HitLocation);
 
 }
 
-TPair<bool, bool> ULagCompensationComponent::ConfirmHit(ABlasterCharacter* HitCharacter, FFramePackage& FrameToCheck, const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation)
+FServerSideRewindResult_Shotgun ULagCompensationComponent::ServerSideRewind_Shotgun(const FVector_NetQuantize& Start, const TArray<FVector_NetQuantize>& HitLocations, const TArray<class ABlasterCharacter*>& HitCharacters, const float& HitTime)
 {
-	//step1: CacheBoxes() - save their bare-bones information into FFramePackage
+	TArray<FFramePackage> FramesToCheck;
+	for (auto HitCharacter : HitCharacters)
+	{
+		FFramePackage FrameToCheck = GetFrameToCheck(HitCharacter, HitTime);
+
+		FramesToCheck.Add(FrameToCheck);
+	}
+
+	return ConfirmHit_Shotgun(FramesToCheck, Start, HitLocations);
+}
+
+FServerSideRewindResult ULagCompensationComponent::ConfirmHit(ABlasterCharacter* HitCharacter, FFramePackage& FrameToCheck, const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation)
+{
+	if (HitCharacter == nullptr) return FServerSideRewindResult{};
+//step1: CacheBoxes() - save their bare-bones information into FFramePackage
 	FFramePackage CurrentFrame;
 	//You must call it from HitCharacter, not Directly call 'SaveFramePackage(CurrentFrame)' that is of this Attacking Char: 
 	HitCharacter->GetLagComponent()->SaveFramePackage(CurrentFrame);
-	//step2: MoveBoxes, enable HeadBox -> trace, enable the rest -> trace
+
+//step2: MoveBoxes, enable HeadBox -> trace, enable the rest -> trace: because there is only "one bullet" so if it doesn't hit head then leave its collision enabled with the rest wont cause any difference, but if it is a shotgun shoting many pieces that you need to disable HeadBox after checking? but I think as long as they are checked separately it should be okay too? no it is because here we return early if we detect headshot, but in shotgun we didn't do it, the same piece will hit headbox (count as headshot) and then headbox and count as body hit again LOL
 	MoveBoxes(FrameToCheck, HitCharacter);
 
+//step3: enable HeadBox -> trace
 	UBoxComponent* HeadBox = HitCharacter->BoxComponentMap[FName("head")];
-
-	HeadBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	if(HeadBox) HeadBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
 	//MISSING step: the trace is done in the server in REAL time and a lot of chars may move around and block the trace (meant for the past), so you want to avoid it as well!
 	//this will be enabled back in RestoreBoxes as well (hence no need to worry to reset it):
-	if (HitCharacter->GetMesh())
+	if (HitCharacter->GetMesh() )
 	{
-		Character->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		//Character->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		HitCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
@@ -253,17 +383,21 @@ TPair<bool, bool> ULagCompensationComponent::ConfirmHit(ABlasterCharacter* HitCh
 	//HeadBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 
 	FHitResult HitResult;
-	FVector End = Start + (HitLocation - Start) * 1.25;
+	FVector End = Start + (HitLocation - Start) * 1.25f;
 	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
 
 	//Stephen didn't have && Cast<ABlasterCharacter>(HitResult.GetActor()), but we need it;
+	//well the fact is we cast it from the outside already, in Fire::DoLineTraceSingle, so it is not needed
+	//but anyway it wont hurt!
 	if (HitResult.bBlockingHit && Cast<ABlasterCharacter>(HitResult.GetActor()) )
 	{
 		//resetBoxes to where it was and return early:
 		ResetBoxes(CurrentFrame, HitCharacter);
-		return TPair<bool, bool>(true, true); //hit, headshot
+		//return TPair<bool, bool>(true, true); //hit, headshot
+		return FServerSideRewindResult{ true, true };
 	}
 
+//Step4:  enable the rest -> trace
 	//if it reach this line, we doesn't have head shot:
 	//turn on Collision for the rest box (not that it is set to block Visibility in Char already:
 	for (auto& Pair : HitCharacter->BoxComponentMap)
@@ -278,11 +412,155 @@ TPair<bool, bool> ULagCompensationComponent::ConfirmHit(ABlasterCharacter* HitCh
 
 	if (HitResult.bBlockingHit && Cast<ABlasterCharacter>(HitResult.GetActor()))
 	{
-		return TPair<bool, bool>(true, false); //hit, not headshot
+		//return TPair<bool, bool>(true, false); //hit, not headshot
+		return FServerSideRewindResult{ true, false };
 	}
 
-	return TPair<bool, bool>(false, false); //not hit, not headshot
+	//return TPair<bool, bool>(false, false); //not hit, not headshot
+	return FServerSideRewindResult{ false, false };
+}
 
+//FramesToCheck will be passed from STAGE, 'non-loop code' because loop code, loop-code become nested loop code :D :D
+FServerSideRewindResult_Shotgun ULagCompensationComponent::ConfirmHit_Shotgun(TArray<FFramePackage>& FramesToCheck, const FVector_NetQuantize& Start, const TArray<FVector_NetQuantize>& HitLocations)
+{
+//step0: 
+	//this is what stephen does to make sure none of .HitCharacter is nullptr before we freely access them bellow
+	for (auto& FrameToCheck : FramesToCheck)
+	{
+		if (FrameToCheck.HitCharacter == nullptr) return FServerSideRewindResult_Shotgun{};
+	}
+
+	FServerSideRewindResult_Shotgun ServerSideRewindResult_Shotgun;
+
+//step1: CacheBoxes(), but this time we have could have many HitCharacters <-> FramesToCheck
+	TArray<FFramePackage> CurrentFrames;
+
+	//SaveFramePackage is meant to invoke from the HitCharacter that we can get their boxes information (you may think that you can do it on the Attacking Char also fine LOL, like you borrow boxes and return it in the same frame! however when you Cast after Dolinetrace it will return the Attacking char to receive damage which is stupid!)
+	//the number of frame to check is the number of HitCharacter according to logic, hence:
+	for (auto& FrameToCheck : FramesToCheck)
+	{
+		if (FrameToCheck.HitCharacter && FrameToCheck.HitCharacter->GetLagComponent())
+		{
+			FFramePackage CurrentFrame;
+			FrameToCheck.HitCharacter->GetLagComponent()->SaveFramePackage(CurrentFrame);
+			CurrentFrames.Add(CurrentFrame);
+		}
+	}
+
+//step2: MoveBoxes, enable HeadBox -> trace, enable the rest -> trace: because there is only "one bullet" so if it doesn't hit head then leave its collision enabled with the rest wont cause any difference, but if it is a shotgun shoting many pieces that you need to disable HeadBox after checking? but I think as long as they are checked separately it should be okay too? no it is because here we return early if we detect headshot, but in shotgun we didn't do it, the same piece will hit headbox (count as headshot) and then headbox and count as body hit again LOL
+	for (auto& FrameToCheck : FramesToCheck)
+	{
+		MoveBoxes(FrameToCheck, FrameToCheck.HitCharacter);
+	}
+	
+
+//step3: enable HeadBox -> trace
+	for (auto& FrameToCheck : FramesToCheck)
+	{
+		UBoxComponent* HeadBox = FrameToCheck.HitCharacter->BoxComponentMap[FName("head")];
+		if(HeadBox) HeadBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+		//MISSING step: the trace is done in the server in REAL time and a lot of chars may move around and block the trace (meant for the past), so you want to avoid it as well!
+		//this will be enabled back in RestoreBoxes as well (hence no need to worry to reset it):
+		if (FrameToCheck.HitCharacter->GetMesh())
+		{
+			//Character->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			FrameToCheck.HitCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+		
+	}
+
+//step3X: do the trace
+	//so the trick we dont need a loop in a loop (HitCharacters~FrameToChecks) is that we can cast it back from the HitResult after doing the traces :D :D :
+	for (auto& HitLocation : HitLocations)
+	{
+		FHitResult HitResult;
+		FVector End = Start + (HitLocation - Start) * 1.25f;
+		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
+
+		//Stephen didn't have && Cast<ABlasterCharacter>(HitResult.GetActor()), but we need it;
+		//well the fact is we cast it from the outside already, in Fire::DoLineTraceSingle, so it is not needed
+		//but anyway it wont hurt!
+		if (HitResult.bBlockingHit && Cast<ABlasterCharacter>(HitResult.GetActor()))
+		{
+			//so now we desparately need to Cast it:
+			ABlasterCharacter* HitCharacter = Cast<ABlasterCharacter>(HitResult.GetActor());
+				//resetBoxes to where it was and return early:
+				//ResetBoxes(CurrentFrame, HitCharacter);
+				//return FServeSideRewindResult{ true, true };
+			//instead of ResetBoxes and return we do this for shotgun:
+			if (ServerSideRewindResult_Shotgun.HeadShotMap.Contains(HitCharacter) )
+			{
+				ServerSideRewindResult_Shotgun.HeadShotMap[HitCharacter] += 1;
+			} 
+			else
+			{
+				ServerSideRewindResult_Shotgun.HeadShotMap.Add(HitCharacter, 1);
+			}
+		}
+	}
+
+
+//Step4:  enable the rest -> trace
+		//if it reach this line, we doesn't have head shot:
+		//turn on Collision for the rest box (not that it is set to block Visibility in Char already:
+
+	//a loop will because nested loop:
+	for (auto& FrameToCheck : FramesToCheck)
+	{
+		for (auto& Pair : FrameToCheck.HitCharacter->BoxComponentMap)
+		{
+			Pair.Value->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		}
+	}
+
+	//this is extra step need to be done for shot gun avoiding registering both headshot and bodyshot
+	//[IMPORTANT] because the nested loop above is meant to enable collision for all including HeadBox
+	//so we must do this code after it to actually make the HeadBox have no collision!
+	for (auto& FrameToCheck : FramesToCheck)
+	{
+		UBoxComponent* HeadBox = FrameToCheck.HitCharacter->BoxComponentMap[FName("head")];
+		if(HeadBox) HeadBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+//Step4X: trace - exactly like step3X, but change the map to be added elements on:
+	for (auto& HitLocation : HitLocations)
+	{
+		FHitResult HitResult;
+		FVector End = Start + (HitLocation - Start) * 1.25f;
+		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
+
+		//Stephen didn't have && Cast<ABlasterCharacter>(HitResult.GetActor()), but we need it;
+		//well the fact is we cast it from the outside already, in Fire::DoLineTraceSingle, so it is not needed
+		//but anyway it wont hurt!
+		if (HitResult.bBlockingHit && Cast<ABlasterCharacter>(HitResult.GetActor()))
+		{
+			//so now we desparately need to Cast it:
+			ABlasterCharacter* HitCharacter = Cast<ABlasterCharacter>(HitResult.GetActor());
+
+			//resetBoxes to where it was and return early:
+			//ResetBoxes(CurrentFrame, HitCharacter);
+			//return FServeSideRewindResult{ true, true };
+		//instead of ResetBoxes and return we do this for shotgun:
+			if (ServerSideRewindResult_Shotgun.BodyShotMap.Contains(HitCharacter))
+			{
+				ServerSideRewindResult_Shotgun.BodyShotMap[HitCharacter] += 1;
+			}
+			else
+			{
+				ServerSideRewindResult_Shotgun.BodyShotMap.Add(HitCharacter, 1);
+			}
+		}
+	}
+
+	//shot need only do one decisive ResetBox, because it didn't return early like other:
+	for (auto CurrentFrame : CurrentFrames)
+	{
+		ResetBoxes(CurrentFrame, CurrentFrame.HitCharacter);
+	}
+
+	//after all the things added to it, we simply return it ONCE in the end:
+	return ServerSideRewindResult_Shotgun;
 }
 
 //enter this function we surely know OlderFrame.Timer < HitTime < YoungerFrame.Time
@@ -292,6 +570,7 @@ FFramePackage ULagCompensationComponent::InterpBetweenFrames(const FFramePackage
 
 //step1: assign the Time for TIRE1
 	InterpFrame.Time = HitTime;
+	InterpFrame.HitCharacter = YoungerFrame.HitCharacter; //this is the answer to the PUZZLE, i just add it
 
 //step2: assign .BoxInfoMap for TIRE1 (each element is Pair<Fname, FBoxInfo>, So we should need create a TemFBoxInfo TIRE3, you may want to create TempBoxInfoMap TIRE2 as well, but no need LOL)
 
@@ -334,11 +613,17 @@ void ULagCompensationComponent::MoveBoxes(const FFramePackage& FrameToMoveTo, AB
 	{
 		const FVector& BoxLocation = FrameToMoveTo.BoxInfoMap[Pair.Key].Location;
 		const FRotator& BoxRotation = FrameToMoveTo.BoxInfoMap[Pair.Key].Rotation;
+
+		//no need if we plan to move it only then no need to access its size nor scale
 		const FVector& BoxExtent = FrameToMoveTo.BoxInfoMap[Pair.Key].BoxExtent;
 
 		Pair.Value->SetWorldLocation(BoxLocation);
 		Pair.Value->SetWorldRotation(BoxRotation);
-		Pair.Value->SetBoxExtent(BoxExtent); //this is absolutely not needed in our case since our box was there and didn't change its size at all, however in the case of Capsule, we may need this
+		
+		//this is absolutely not needed in our case since our box was there and didn't change its size at all, however in the case of Capsule, we may need this
+		//you must use 'BoxExtent' to modify the size of boxes in Char, do not use 'Scale', otherwise this line will be a disater :D :D.
+			//Pair.Value->SetBoxExtent(BoxExtent); 
+		DrawDebugBox(GetWorld(), BoxLocation, BoxExtent, FQuat(BoxRotation), FColor::Red, false, 10.f);
 	}
 }
 
@@ -354,12 +639,12 @@ void ULagCompensationComponent::ResetBoxes(const FFramePackage & FrameToRestoreT
 
 		Pair.Value->SetWorldLocation(BoxLocation);
 		Pair.Value->SetWorldRotation(BoxRotation);
-		Pair.Value->SetBoxExtent(BoxExtent); //this is absolutely not needed in our case since our box was there and didn't change its size at all, however in the case of Capsule, we may need this
+		//Pair.Value->SetBoxExtent(BoxExtent); //this is absolutely not needed in our case since our box was there and didn't change its size at all, however in the case of Capsule, we may need this
 
 		Pair.Value->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
-	Character->GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //QueryOnly?
+	//Character->GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryOnly); //QueryOnly?
 	HitCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); //QueryOnly?
 }
 
@@ -454,4 +739,90 @@ void ULagCompensationComponent::ResetBoxes(const FFramePackage & FrameToRestoreT
 //
 //
 //}
+
+
+
+////ORIGINAL version:
+//FServeSideRewindResult  ULagCompensationComponent::ServerSideRewind(const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation, ABlasterCharacter* HitCharacter, const float& HitTime)
+//{
+//	//Overal condition:
+//	if (GetWorld() == nullptr ||
+//		HitCharacter == nullptr || HitCharacter->GetLagComponent() == nullptr ||
+//		HitCharacter->GetLagComponent()->FramePackageList.GetTail() == nullptr ||
+//		HitCharacter->GetLagComponent()->FramePackageList.GetHead() == nullptr)
+//		//return TPair<bool, bool>(false, false);
+//		return FServeSideRewindResult{ false, false };
+//
+//
+//	//STAGE1: find the WANTED/Interpolated FFramePackage
+//			//you need to use the HitCharacter::LagComponent::FramePackageList - not ::FramePackageList of this Attacking Chacter LOL:
+//				//didn't work:
+//			//TDoubleLinkedList<FFramePackage> HitFramePackageList = HitCharacter->GetLagComponent()->FramePackageList;
+//				//this work:
+//	const TDoubleLinkedList<FFramePackage>& HitFramePackageList = HitCharacter->GetLagComponent()->FramePackageList;
+//
+//	FFramePackage FrameToCheck;
+//
+//	float OldestTime = HitFramePackageList.GetTail()->GetValue().Time;
+//	float YoungestTime = HitFramePackageList.GetHead()->GetValue().Time;
+//
+//	//you can in fact separate them out, however I like to keep it like this for now:
+//	if (HitTime < OldestTime)
+//	{
+//		//do thing next, you're too lag for the server to consider
+//		//return TPair<bool, bool>(false, false); 
+//		return FServeSideRewindResult{ false, false };
+//	}
+//	else if (HitTime == OldestTime)
+//	{
+//		FrameToCheck = HitFramePackageList.GetTail()->GetValue();
+//	}
+//	//should be the server (> is recommended, because who know the time the server record laste frame package and the time server hit other char can be slight later (even more clear if it is projectile weapon - irrelevant)
+//	else if (YoungestTime <= HitTime)
+//	{
+//		FrameToCheck = HitFramePackageList.GetHead()->GetValue();
+//	}
+//	//use 'else' is anought, but I want to make it clear:
+//	else if (OldestTime < HitTime && HitTime < YoungestTime)
+//	{
+//		//because 'HitFramePackageList.GetHead()' not null (check at first place) so other = it can't be null, so no need to check according to universal rule:
+//		TDoubleLinkedList<FFramePackage>::TDoubleLinkedListNode* YoungerNode = HitFramePackageList.GetHead();
+//		TDoubleLinkedList<FFramePackage>::TDoubleLinkedListNode* OlderNode = YoungerNode;
+//
+//		//step1: after this step you got a perfect position if Younger and Older for step2:
+//		while (OlderNode->GetValue().Time > HitTime)
+//		{
+//			//I forget this rather important line, you want to break; not return, because there is also STAGE2:
+//			//if (HitFramePackageList.GetHead()->GetNextNode() == nullptr) break; //INCORRECT
+//			if (OlderNode->GetNextNode() == nullptr) break;
+//			//if the 'next to the tail' node is still in bounds, then we can assign it as new node for OlderNode:
+//			//OlderNode = HitFramePackageList.GetHead()->GetNextNode(); //INCORRECT
+//			OlderNode = OlderNode->GetNextNode();
+//
+//			//after receive new value, it has smaller time, but if it 'STILL' greater than HitTime, then move the YoungerNode back with it, ready for the next iteration , otherwise it will escape the loop in a perpect position:
+//			if (OlderNode->GetValue().Time > HitTime)
+//			{
+//				YoungerNode = OlderNode;
+//			}
+//		}
+//
+//		//step2: after escape the while loop, we know what possible of Younger Node and OlderNode could be:
+//		if (OlderNode->GetValue().Time == HitTime)
+//		{
+//			FrameToCheck = OlderNode->GetValue();
+//		}
+//		//stephen use 'bShouldInterpolate' but it is totally redudant LOL:
+//		else if (OlderNode->GetValue().Time < HitTime)
+//		{
+//			//interpolate between YoungerNode.FramePackage and OlderNode.FramePackage will give you the best FramePackage_ForNextStage: (NEXT LESSON)
+//			FrameToCheck =
+//				InterpBetweenFrames(YoungerNode->GetValue(), OlderNode->GetValue(), HitTime);
+//		}
+//	}
+//
+//	//STAGE2: use the 'FramePackage_ForNextStage', perhaps use it to move Char::Boxes to and then Trace against it, after that move it back:
+//	return ConfirmHit(HitCharacter, FrameToCheck, Start, HitLocation);
+//
+//}
+
 

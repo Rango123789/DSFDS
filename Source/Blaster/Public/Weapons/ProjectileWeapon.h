@@ -19,4 +19,7 @@ public:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class AProjectile> ProjectileClass;
 
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class AProjectile> ProjectileClass_Rewind;
+
 };

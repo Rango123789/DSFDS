@@ -6,6 +6,8 @@
 #include "Characters/BlasterCharacter.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Kismet/KismetMathLibrary.h" //RandomUnitVector
+#include "PlayerController/BlasterPlayerController.h"
+#include "CharacterComponents/LagCompensationComponent.h"
 
 //Shotgun dont use this version anymore, just let it be as reference LOL:
 void AHitScanWeapon_Shotgun::Fire(const FVector& HitTarget)
@@ -27,11 +29,11 @@ void AHitScanWeapon_Shotgun::Fire(const FVector& HitTarget)
 
 	//belong to this weapon && its owner=attacker=who shoot this weapon - hence outside of all:
 	ABlasterCharacter* AttackBlasterCharacter = Cast<ABlasterCharacter>(GetOwner());
-	AController* AttackController = AttackBlasterCharacter->GetController();
+	ABlasterPlayerController* AttackController =Cast<ABlasterPlayerController>( AttackBlasterCharacter->GetController());
 
 	FVector End{};
 	
-				//GROUP2: specific to each tim call LineTrace, put them all into for loop, except ApplyDamage will applied ONCE per Hit char:
+				//GROUP2: specific to each time call LineTrace, put them all into for loop, except ApplyDamage will applied ONCE per Hit char:
 	//this map contains all hit chars and its number of being hit after NumOfPellets:
 
 	TMap<ABlasterCharacter*, uint32> HitCharsMap; //hopefully their starting value is 0
@@ -49,7 +51,7 @@ void AHitScanWeapon_Shotgun::Fire(const FVector& HitTarget)
 		//GetWorld()->LineTraceSingleByChannel(HitResult, Start, HitTarget, ECollisionChannel::ECC_Visibility);
 
 //STAGE2: check if it hit any ABasterCharacter_instance and apply damage on him
-
+//they will run in all devices, fine!
 		FVector BeamEnd = End; //if hit something we change it inside the next if, otherwise it will stay this 'End'
 		//FVector BeamEnd = HitTarget;
 
@@ -113,20 +115,21 @@ void AHitScanWeapon_Shotgun::Fire(const FVector& HitTarget)
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(),FireParticle,MuzzleFlashSocketTransform,true);
 
 	//now apply all hits ONCE per hit char:
+
+
 	for (auto& Pair : HitCharsMap)
 	{
 		//Pair.Key =HitCharacter_i
-		//Pair.vlue = num of hit of that  HitCharacter_i
-		if (HasAuthority() && Pair.Key) //you can move this out so that the for loop wont even start in clients
-		{
-			UGameplayStatics::ApplyDamage(
-				Pair.Key, //this will trigger HitBlasterCharacter::ReceiveDamage()
-				Damage * Pair.Value,
-				AttackController,    //this will be important at where you receive it for purpose
-				this,
-				UDamageType::StaticClass()
-			);
-		}
+		//Pair.value = num of hit of that  HitCharacter_i
+		if (Pair.Key == nullptr) continue;
+
+		UGameplayStatics::ApplyDamage(
+			Pair.Key, //this will trigger HitBlasterCharacter::ReceiveDamage()
+			Damage * Pair.Value,
+			AttackController,    //this will be important at where you receive it for purpose
+			this,
+			UDamageType::StaticClass()
+		);
 	}
 }
 
@@ -151,7 +154,11 @@ void AHitScanWeapon_Shotgun::ShotgunFire(const TArray<FVector_NetQuantize>& HitT
 
 	//belong to this weapon && its owner=attacker=who shoot this weapon - hence outside of all:
 	ABlasterCharacter* AttackBlasterCharacter = Cast<ABlasterCharacter>(GetOwner());
-	AController* AttackController = AttackBlasterCharacter->GetController();
+	if ( AttackBlasterCharacter == nullptr) return;
+	ABlasterPlayerController* AttackController = Cast<ABlasterPlayerController>(AttackBlasterCharacter->GetController());
+		//Do this mean if the attacking player is elimmed at the time it shot other chars, other chars wont get hurt
+		//i dont typically do this, but just for ease of use in next step:
+	if (AttackController == nullptr) return;
 
 //replace the left of 'End' = ___  with  = 'HitTargets[i]'
 	FVector End{};
@@ -168,7 +175,7 @@ void AHitScanWeapon_Shotgun::ShotgunFire(const TArray<FVector_NetQuantize>& HitT
 
 		//We will replace End by HitTarget and perform RandomEndWithScatter in TIRE1 instead in next lesson , don worry:
 		//End = RandomEndWithScatter(HitTarget); 
-		End = HitTargets[i];
+		End = Start + (HitTargets[i] - Start) * 1.25f;
 
 		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
 		//GetWorld()->LineTraceSingleByChannel(HitResult, Start, HitTarget, ECollisionChannel::ECC_Visibility);
@@ -236,14 +243,25 @@ void AHitScanWeapon_Shotgun::ShotgunFire(const TArray<FVector_NetQuantize>& HitT
 	UGameplayStatics::PlaySoundAtLocation(this, FireSound, MuzzleFlashSocketTransform.GetLocation());
 	//Just try to spawn where the Socket is, i.e use MuzzleFlash Transform,if it is wrong in direction then simply go the SMG mesh and rotate it to match, but I'm sure it matches already, I got that feeling LOL:
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FireParticle, MuzzleFlashSocketTransform, true);
-
-	//now apply all hits ONCE per hit char:
+	
+	//we need to make this because ServerSideRewind_Shotgun need this parameter:
+	//you can directly get its element with the tracing loop above, but anyway we know that the map only contain UNIQUE elements so why dont just extra it back LOL:
+	TArray<ABlasterCharacter*> HitCharacters;
 	for (auto& Pair : HitCharsMap)
 	{
-		//Pair.Key =HitCharacter_i
-		//Pair.vlue = num of hit of that  HitCharacter_i
-		if (HasAuthority() && Pair.Key) //you can move this out so that the for loop wont even start in clients
+		HitCharacters.Add(Pair.Key);
+	}
+
+	uint32 temp = HitCharacters.Num();
+	//now apply all hits ONCE per hit char:
+	if (!bUseServerSideRewind && HasAuthority())
+	{
+		for (auto& Pair : HitCharsMap)
 		{
+			//Pair.Key =HitCharacter_i
+			//Pair.value = num of hit of that  HitCharacter_i
+			if (Pair.Key == nullptr) continue;
+
 			UGameplayStatics::ApplyDamage(
 				Pair.Key, //this will trigger HitBlasterCharacter::ReceiveDamage()
 				Damage * Pair.Value,
@@ -252,6 +270,45 @@ void AHitScanWeapon_Shotgun::ShotgunFire(const TArray<FVector_NetQuantize>& HitT
 				UDamageType::StaticClass()
 			);
 		}
+	}
+
+	if (bUseServerSideRewind)
+	{
+		//if it is the sever controlling the attacking char, we dont need serverside rewind:
+		if (HasAuthority() && AttackBlasterCharacter->IsLocallyControlled())
+		{
+			for (auto& Pair : HitCharsMap)
+			{
+				//Pair.Key =HitCharacter_i
+				//Pair.value = num of hit of that  HitCharacter_i
+				if (Pair.Key == nullptr) continue;
+
+				UGameplayStatics::ApplyDamage(
+					Pair.Key, //this will trigger HitBlasterCharacter::ReceiveDamage()
+					Damage * Pair.Value,
+					AttackController,    //this will be important at where you receive it for purpose
+					this,
+					UDamageType::StaticClass()
+				);
+			}
+		}
+
+		//this is the case we use serverside rewind:
+		if (!HasAuthority() && AttackBlasterCharacter->IsLocallyControlled())
+		{
+			float HitTime = AttackController->GetServerTime_Synched() - ((AttackController->RTT) * RTTFactor);
+
+			if(AttackBlasterCharacter->GetLagComponent())
+
+			AttackBlasterCharacter->GetLagComponent()->ServerScoreRequest_Shotgun(
+				Start,
+				HitTargets,
+				HitCharacters,
+				HitTime,
+				this
+			);
+		}
+
 	}
 }
 

@@ -28,6 +28,8 @@ public:
     UPROPERTY(EditAnywhere)
     UTexture2D* CrosshairsBottom;
 
+    UPROPERTY(EditAnywhere)
+    float RTTFactor = 0.5f;
 
 /***functions***/
 //category1: auto-generated functions:	
@@ -175,7 +177,7 @@ protected: //base
     float Damage = 15.f; //move from HitScanWeapon
 
     UPROPERTY(EditAnywhere)
-    bool bUseServerSideRequest = false;
+    bool bUseServerSideRewind = false;
 
 private: //FINAL child
 /***functions***/
@@ -244,5 +246,5 @@ public:
     EFireType GetFireType() { return FireType; }
     bool GetUseScatter() { return bUseScatter; }
     float GetDamge() { return Damage; }
-    bool GetUseServerSideRequest() { return bUseServerSideRequest; }
+    bool GetUseServerSideRequest() { return bUseServerSideRewind; }
 };
