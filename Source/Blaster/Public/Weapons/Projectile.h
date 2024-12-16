@@ -14,7 +14,7 @@ class BLASTER_API AProjectile : public AActor
 public:
     //for server-side rewind:
     UPROPERTY(EditAnywhere)
-    bool bUseServerSideRewind = false;
+    bool bUseServerSideRewind_TIRE2 = false;
     
     FVector_NetQuantize TraceStart;
     FVector_NetQuantize100 InitialVelocity; //we need it more accurate because not only it contain value but also direction! I even think we should use FVector!
@@ -22,6 +22,10 @@ public:
     //This is meant to __ = UPMC::InitalSpeed and vice versa, otherwise the path is in one way and the actual projectile fly in other way :D :D :
     UPROPERTY(EditAnywhere)
     float InitalSpeed_ProjectilePath = 1300.f;
+
+    //Move it up here for ease of use:    
+    UPROPERTY(EditAnywhere)
+    float Damage = 10.f;
 
 /***functions***/
 //category1: auto-generated functions:
@@ -123,8 +127,7 @@ void SpawnSmokeTrailSystem();
     void TimerCallback_Destroy();
 
 //category4: basic and primitive types
-    UPROPERTY(EditAnywhere)
-    float Damage = 10.f;
+
 
     //Only make sense for childs applying RadialRadisu
     UPROPERTY(EditAnywhere)

@@ -22,4 +22,7 @@ public:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class AProjectile> ProjectileClass_Rewind;
 
+protected:
+	void virtual BeginPlay() override;
+
 };

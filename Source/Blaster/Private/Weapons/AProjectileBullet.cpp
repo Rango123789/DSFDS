@@ -23,6 +23,12 @@ void AAProjectileBullet::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (bReplicates == false)
+	{
+		//UE_LOG(LogTemp, Warning, TEXT("%d"), HasAuthority());
+		UE_LOG(LogTemp, Warning, TEXT("%s"), HasAuthority() ? TEXT("True") : TEXT("False"));
+	}
+
 	FPredictProjectilePathParams PathParams;
 	FPredictProjectilePathResult PathResult;
 
@@ -93,21 +99,32 @@ void AAProjectileBullet::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* Oth
 {
 
 	//now we assume other actor is another BlasterCharacter, not BlasterChacter shooting the weapon :D 
+	//return is stupid, because you still want to play Hitparticle even if it didn't hit any character
+		//ABlasterCharacter* Damaged_BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
+		//if (Damaged_BlasterCharacter == nullptr || GetInstigator() == nullptr ) return;
+		//AController* InstagatorController = GetInstigator()->GetController();
+		//if (InstagatorController == nullptr) return;
+
 	ABlasterCharacter* Damaged_BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
-	if (Damaged_BlasterCharacter == nullptr || GetInstigator() == nullptr ) return;
-	AController* InstagatorController = GetInstigator()->GetController();
-	if (InstagatorController == nullptr) return;
+	AController* InstagatorController = nullptr;
+	if (GetInstigator()) InstagatorController = GetInstigator()->GetController();
 
-	//Review, we did set "AWeapon = Owner of this Projectile" and "ACharacer holding Weapon = Instigator Pawn of this Projectile" since we spawn this Projectile, so now we need only access and use it :D :D
+	if (Damaged_BlasterCharacter && InstagatorController)
+	{
+		//Review, we did set "AWeapon = Owner of this Projectile" and "ACharacer holding Weapon = Instigator Pawn of this Projectile" since we spawn this Projectile, so now we need only access and use it :D :D
 
-	UGameplayStatics::ApplyDamage(
-		Damaged_BlasterCharacter,
-		Damage,
-		GetInstigator()->GetController(), //Instigator of this Projectile, of APawn type, was set to the Character holding the Weapon that this Projectile spawn from
-		this,
-		UDamageType::StaticClass()
-	);
+		UGameplayStatics::ApplyDamage(
+			Damaged_BlasterCharacter,
+			Damage,
+			GetInstigator()->GetController(), //Instigator of this Projectile, of APawn type, was set to the Character holding the Weapon that this Projectile spawn from
+			this,
+			UDamageType::StaticClass()
+		);
+
+	}
+
 
 	//this must be final, because it has the line 'Destroy()', that cause the extra code ineffective
+	//you want to play HitParticle no matter you did hit any char or not:
 	Super::OnBoxHit(HitComponent, OtherActor, OtherComp, NormalImpulse, Hit);
 }

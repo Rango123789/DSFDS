@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Weapons/Weapon.h"
+#include "Blaster/Blaster.h"
 
 ULagCompensationComponent::ULagCompensationComponent()
 {
@@ -16,7 +17,6 @@ ULagCompensationComponent::ULagCompensationComponent()
 
 
 }
-
 
 void ULagCompensationComponent::BeginPlay()
 {
@@ -384,7 +384,7 @@ FServerSideRewindResult ULagCompensationComponent::ConfirmHit(ABlasterCharacter*
 
 	FHitResult HitResult;
 	FVector End = Start + (HitLocation - Start) * 1.25f;
-	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
+	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_HitBox );
 
 	//Stephen didn't have && Cast<ABlasterCharacter>(HitResult.GetActor()), but we need it;
 	//well the fact is we cast it from the outside already, in Fire::DoLineTraceSingle, so it is not needed
@@ -405,7 +405,7 @@ FServerSideRewindResult ULagCompensationComponent::ConfirmHit(ABlasterCharacter*
 		Pair.Value->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
 
-	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
+	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_HitBox);
 
 	//no matter we hit any of the rest or not, we always need to ResetBoxes:
 	ResetBoxes(CurrentFrame, HitCharacter);
@@ -453,7 +453,6 @@ FServerSideRewindResult_Shotgun ULagCompensationComponent::ConfirmHit_Shotgun(TA
 		MoveBoxes(FrameToCheck, FrameToCheck.HitCharacter);
 	}
 	
-
 //step3: enable HeadBox -> trace
 	for (auto& FrameToCheck : FramesToCheck)
 	{
@@ -476,7 +475,7 @@ FServerSideRewindResult_Shotgun ULagCompensationComponent::ConfirmHit_Shotgun(TA
 	{
 		FHitResult HitResult;
 		FVector End = Start + (HitLocation - Start) * 1.25f;
-		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
+		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_HitBox);
 
 		//Stephen didn't have && Cast<ABlasterCharacter>(HitResult.GetActor()), but we need it;
 		//well the fact is we cast it from the outside already, in Fire::DoLineTraceSingle, so it is not needed
@@ -528,7 +527,7 @@ FServerSideRewindResult_Shotgun ULagCompensationComponent::ConfirmHit_Shotgun(TA
 	{
 		FHitResult HitResult;
 		FVector End = Start + (HitLocation - Start) * 1.25f;
-		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
+		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_HitBox);
 
 		//Stephen didn't have && Cast<ABlasterCharacter>(HitResult.GetActor()), but we need it;
 		//well the fact is we cast it from the outside already, in Fire::DoLineTraceSingle, so it is not needed

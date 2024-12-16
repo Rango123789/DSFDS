@@ -9,6 +9,7 @@
 #include "GameModes/BlasterGameMode.h"
 #include "Weapons/Weapon.h"
 #include "Components/CapsuleComponent.h"
+#include "Blaster/Blaster.h"
 
 //#include "Curves/CurveFloat.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -197,7 +198,21 @@ ABlasterCharacter::ABlasterCharacter()
 	foot_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("foot_r"), foot_r);
 
+	//after you .Add all boxes, you can in fact set 'shared properties' here, rather than go to each and change one by one, that is stupid LOL :d :d
+	//whatever you just set above and you dont want to remove it you can override it here lol:
+	for (auto& BoxCompPair : BoxComponentMap)
+	{
+		BoxCompPair.Value->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		//if you go and remove block Visibility above, you dont need to UNDO it here, because the default response of the new custom HitBox is 'ignore' :
+		//consequences: LagComp::ServerSideRewind::LineTraceSingleByChanel is currently on ECC_Visibility now you turn it off so you must go there and fix it. However if you dont turn visibility off you dont have to do so, but anyway I follow stephen:
+		BoxCompPair.Value->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 
+		BoxCompPair.Value->SetCollisionObjectType(ECC_HitBox) ;
+
+		//PUZZLE: i'm not sure why stephen did this for next section or by convention?
+		BoxCompPair.Value->SetCollisionResponseToChannel(ECC_HitBox, ECollisionResponse::ECR_Block);
+
+	}
 
 }
 
