@@ -92,110 +92,74 @@ ABlasterCharacter::ABlasterCharacter()
 	//boxes for server-rewind technique:
 	head = CreateDefaultSubobject<UBoxComponent>(TEXT("head"));
 	head->SetupAttachment(GetMesh(), FName("head"));
-	head->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	head->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("head"), head);
 
 	pelvis = CreateDefaultSubobject<UBoxComponent>(TEXT("pelvis"));
 	pelvis->SetupAttachment(GetMesh(), FName("pelvis"));
-	pelvis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	pelvis->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("pelvis"), pelvis);
 
 	spine_02 = CreateDefaultSubobject<UBoxComponent>(TEXT("spine_02"));
 	spine_02->SetupAttachment(GetMesh(), FName("spine_02"));
-	spine_02->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	spine_02->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("spine_02"), spine_02);
 
 	spine_03 = CreateDefaultSubobject<UBoxComponent>(TEXT("spine_03"));
 	spine_03->SetupAttachment(GetMesh(), FName("spine_03"));
-	spine_03->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	spine_03->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("spine_03"), spine_03);
 
 	backpack = CreateDefaultSubobject<UBoxComponent>(TEXT("backpack"));
 	backpack->SetupAttachment(GetMesh(), FName("backpack"));
-	backpack->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	backpack->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("backpack"), backpack);
 
 	blanket_l = CreateDefaultSubobject<UBoxComponent>(TEXT("blanket_l"));
 	blanket_l->SetupAttachment(GetMesh(), FName("blanket_l"));
-	blanket_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	blanket_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("blanket_l"), blanket_l);
 
 	upperarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("upperarm_l"));
 	upperarm_l->SetupAttachment(GetMesh(), FName("upperarm_l"));
-	upperarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	upperarm_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("upperarm_l"), upperarm_l);
 
 	lowerarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("lowerarm_l"));
 	lowerarm_l->SetupAttachment(GetMesh(), FName("lowerarm_l"));
-	lowerarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	lowerarm_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("lowerarm_l"), lowerarm_l);
 
 	hand_l = CreateDefaultSubobject<UBoxComponent>(TEXT("hand_l"));
 	hand_l->SetupAttachment(GetMesh(), FName("hand_l"));
-	hand_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	hand_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("hand_l"), hand_l);
 
 	upperarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("upperarm_r"));
 	upperarm_r->SetupAttachment(GetMesh(), FName("upperarm_r"));
-	upperarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	upperarm_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("upperarm_r"), upperarm_r);
 
 	lowerarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("lowerarm_r"));
 	lowerarm_r->SetupAttachment(GetMesh(), FName("lowerarm_r"));
-	lowerarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	lowerarm_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("lowerarm_r"), lowerarm_r);
 
 	hand_r = CreateDefaultSubobject<UBoxComponent>(TEXT("hand_r"));
 	hand_r->SetupAttachment(GetMesh(), FName("hand_r"));
-	hand_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	hand_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("hand_r"), hand_r);
 
 	thigh_l = CreateDefaultSubobject<UBoxComponent>(TEXT("thigh_l"));
 	thigh_l->SetupAttachment(GetMesh(), FName("thigh_l"));
-	thigh_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	thigh_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("thigh_l"), thigh_l);
 
 	calf_l = CreateDefaultSubobject<UBoxComponent>(TEXT("calf_l"));
 	calf_l->SetupAttachment(GetMesh(), FName("calf_l"));
-	calf_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	calf_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("calf_l"), calf_l);
 
 	foot_l = CreateDefaultSubobject<UBoxComponent>(TEXT("foot_l"));
 	foot_l->SetupAttachment(GetMesh(), FName("foot_l"));
-	foot_l->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	foot_l->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("foot_l"), foot_l);
 
 	thigh_r = CreateDefaultSubobject<UBoxComponent>(TEXT("thigh_r"));
 	thigh_r->SetupAttachment(GetMesh(), FName("thigh_r"));
-	thigh_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	thigh_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("thigh_r"), thigh_r);
 
 	calf_r = CreateDefaultSubobject<UBoxComponent>(TEXT("calf_r"));
 	calf_r->SetupAttachment(GetMesh(), FName("calf_r"));
-	calf_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	calf_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("calf_r"), calf_r);
 
 	foot_r = CreateDefaultSubobject<UBoxComponent>(TEXT("foot_r"));
 	foot_r->SetupAttachment(GetMesh(), FName("foot_r"));
-	foot_r->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	foot_r->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	BoxComponentMap.Add(FName("foot_r"), foot_r);
 
 	//after you .Add all boxes, you can in fact set 'shared properties' here, rather than go to each and change one by one, that is stupid LOL :d :d
@@ -203,17 +167,12 @@ ABlasterCharacter::ABlasterCharacter()
 	for (auto& BoxCompPair : BoxComponentMap)
 	{
 		BoxCompPair.Value->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		//if you go and remove block Visibility above, you dont need to UNDO it here, because the default response of the new custom HitBox is 'ignore' :
-		//consequences: LagComp::ServerSideRewind::LineTraceSingleByChanel is currently on ECC_Visibility now you turn it off so you must go there and fix it. However if you dont turn visibility off you dont have to do so, but anyway I follow stephen:
 		BoxCompPair.Value->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-
+		//this is now important:
 		BoxCompPair.Value->SetCollisionObjectType(ECC_HitBox) ;
-
 		//PUZZLE: i'm not sure why stephen did this for next section or by convention?
 		BoxCompPair.Value->SetCollisionResponseToChannel(ECC_HitBox, ECollisionResponse::ECR_Block);
-
 	}
-
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -1003,6 +962,11 @@ void ABlasterCharacter::PlayThrowMontage()
 	PlayMontage_SpecificSection(AM_ThrowMontage);
 }
 
+void ABlasterCharacter::PlaySwapMontage()
+{
+	PlayMontage_SpecificSection(AM_SwapMontage);
+}
+
 //not sure this will cause any side effect on currently playing 'Realoading Montage'?
 //I guess as long as it is the same AM_ReloadMontage assset it know how to behave right?
 //[UPDATE] this work like a charm, however if you know that it current playing AM_ReloadMontage (no matter what section is played) you can skip the line "Montage_Play" and directly call "JumpToSection(AM_ , NewSection)" 
@@ -1061,8 +1025,17 @@ void ABlasterCharacter::Input_Jump(const FInputActionValue& Value)
 void ABlasterCharacter::Input_EKeyPressed(const FInputActionValue& Value)
 {
 	if (bDisableMostInput) return;
-	//if ( OverlappingWeapon == nullptr) return; //this line is no more appropriate
 
+	//currently you can spam it before 'ping'
+	//currently it share key with Equip, so you must avoid the case it suppose to run Equip() instead as well:
+	//there must not be an Overlapping weapon
+	//there must be a second weapon as well
+	if (!HasAuthority() && !OverlappingWeapon && CombatComponent && CombatComponent->GetSecondWeapon() && !bIsLocalSwapping)
+	{
+		bIsLocalSwapping = true; //set it back to true in SwapEnd() in at least the client CD:
+		PlaySwapMontage();
+	}
+	//you dont need to put any OFFICAL condition on this, they will be handled locally:
 	ServerEKeyPressed(); //its body is purposely indeptical with (*), for clear reason 
 }
 
@@ -1076,6 +1049,7 @@ void ABlasterCharacter::ServerEKeyPressed_Implementation()
 	{
 		CombatComponent->Equip(OverlappingWeapon);
 	}
+
 	//otherwise there is no overlapping weapon and you have enough 2 weapons, you can swap it:
 	else if (CombatComponent->CanSwapWeapon())
 	{
@@ -1195,6 +1169,12 @@ bool ABlasterCharacter::GetIsLocalReloading()
 {
 	return CombatComponent && CombatComponent->bLocalReloading; 
 }
+
+//bool ABlasterCharacter::GetIsLocalSwapping()
+//{
+//	return CombatComponent && CombatComponent->bLocalSwapping;
+//}
+
 
 ////Stephen create this in UActorComponent instead.
 //void ABlasterCharacter::SetIsAiming(bool InIsAiming) //REPLACE

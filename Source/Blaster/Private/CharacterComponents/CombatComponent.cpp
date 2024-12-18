@@ -337,7 +337,7 @@ void UCombatComponent::OnRep_CharacterState()
 	{
 	case ECharacterState::ECS_Reloading :
 		//We did play it for the DC already so we exclude it avoiding double playing it , start the Reload montage TWICE, you may not notice it because the later play on top of the first and also have 'interpolating' as well:
-		if (Character && Character->IsLocallyControlled() == false)
+		if (!Character->IsLocallyControlled())
 		{
 			Character->PlayReloadMontage(); //can put it into 'ReloadHanle()'
 		}
@@ -347,6 +347,13 @@ void UCombatComponent::OnRep_CharacterState()
 		if( !Character->IsLocallyControlled() ) Character->PlayThrowMontage();
 
 		break;
+
+	case ECharacterState::ECS_Swapping:
+		//Swap(){ Equip(1) + Equip(2) } ear self-handled, hence in client we need only PlayAnimation only
+		//Character->PlaySwapMontage(); //for now
+		if (!Character->IsLocallyControlled()) Character->PlaySwapMontage(); //will change into
+		break;
+
 	case ECharacterState::ECS_Unoccupied : 
 		//if (bIsFiring)
 		//{
@@ -768,6 +775,66 @@ void UCombatComponent::Equip(AWeapon* InWeapon)
 	}
 }
 
+//it is exactly the same Equip_SpecializedforSwap, except we remove 'if (CharacterState != ECharacterState::ECS_Unoccupied) return;' that we already check at first and then change CharacaterState early then the point we actually do the Equip:
+void UCombatComponent::Equip_SpecializedforSwap(AWeapon* InWeapon)
+{
+	if (InWeapon == nullptr || Character == nullptr) return;
+
+	//if (CharacterState != ECharacterState::ECS_Unoccupied) return; //REMOVE!
+
+	//ONLY when we already have a weapon amd SecondWeapon is empty should we attach it to backpack instead:
+	//can factorize it into EquipSecondWeapon()
+	if (EquippedWeapon != nullptr && SecondWeapon == nullptr)
+	{
+		EquipSecondWeaponToBackpack(InWeapon);
+	}
+	//otherwise: In case we dont have any weapon (equip to hand) or have both weapon (drop from hand and equip to hand) we handle like in the last lesson:
+	//can factorize it into EquipPrimaryWeapon
+	else
+	{
+		DropCurrentWeaponIfAny();
+
+		//this is new weapon:
+		EquippedWeapon = InWeapon;  // -->trigger OnRep_EquippedWeapon, why my OnRep_ didn't trigger?
+		// since we already check on InWeapon above so it can't be nullptr after this line
+		EquippedWeapon->PlayEquipSound(Character); //just for cosmetic
+
+		//I move this on top with the hope that it is replicated before OnRep_WeaponState
+		EquippedWeapon->SetOwner(Character);
+
+		EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+
+		//this better after SetOwner:
+		ExtractCarriedAmmoFromMap_UpdateHUDAmmos_ReloadIfEmpty();
+
+		//these 2 lines are optional, so I will remove it anyway
+		//bIsAutomatic = EquippedWeapon->GetIsAutomatic();
+		//FireDelay = EquippedWeapon->GetFireDelay();
+
+	//factorize this into 'Ready Collision and physics setup before Attachment or Simulation' function:
+		//Our SMG dont need these to locally similated, move it out fix the bug:
+		EquippedWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
+		EquippedWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+
+		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
+		{
+			EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		}
+		else
+		{
+			EquippedWeapon->GetWeaponMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+
+		AttachEquippedWeaponToRightHandSocket();
+
+		//we want after we have a weapon on hand, we want Actor facing in the same direction as Camera!
+		//this need only to be set ONCE, so we dont need to repeat this in EquipSecondWeapon(), so I only need it be here:
+		Character->GetCharacterMovement()->bOrientRotationToMovement = false; //at first it is true
+		Character->bUseControllerRotationYaw = true; //at first it is false
+	}
+}
+
+
 void UCombatComponent::EquipSecondWeaponToBackpack(AWeapon* InWeapon)
 {
 	if (InWeapon == nullptr) return;
@@ -783,7 +850,7 @@ void UCombatComponent::EquipSecondWeaponToBackpack(AWeapon* InWeapon)
 
 	//physics part:
 	SecondWeapon->GetWeaponMesh()->SetSimulatePhysics(false); //TIRE1
-	SecondWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+	SecondWeapon->GetWeaponMesh()->SetEnableGravity(false);   //TIRE3 - no need nor should you do this
 	//I feel like I want SMG simulate even if it is on the backack:
 	if (SecondWeapon->GetWeaponType() == EWeaponType::EWT_SMG)
 	{
@@ -798,38 +865,72 @@ void UCombatComponent::EquipSecondWeaponToBackpack(AWeapon* InWeapon)
 	AttachSecondWeaponToSecondWeaponSocket(); //WORK2 = done
 }
 
-//not work like i expect lol, 'LATE' replication should be the only reason LOL
+//like Combat::Equip(), this currently run the server only, OnRep_EquippedWeapon + OnRep_WeaponState handle next for client parts
 void UCombatComponent::SwapWeapons()
 {
 	if (CharacterState != ECharacterState::ECS_Unoccupied) return;
 
+	//Now it has Swapping State, and has animation to be played (as soon as possible):
+	CharacterState = ECharacterState::ECS_Swapping; //WORK1 -> create more case in OnRep_CharacterState and handle it for client parts.
+	Character->PlaySwapMontage();
+
+//these code NOW must be done at some point of the AM_SwapMontage:
+		//AWeapon* TempWeapon = EquippedWeapon;
+	//this make  EquippedWeapon = SecondWeapon, because the 'else' kicks in
+	//but after this SecondWeapon = itself still, it still have value value!
+		//Equip(SecondWeapon); //self-handled
+	//OPTION1: this work like a charm
+		//EquipSecondWeaponToBackpack(TempWeapon); //self-handled
+	//OPTION2: this also work too, AT LEAST in the server, I believe:
+	//if you forget this line, you can't get the 'if' and it keep drop and then attach back the same weapon LOL, because it need SecondWeapon to be nullptr, where currently SecondWeapon and EquippedWeapon are shared the same weapon address
+		//SecondWeapon = nullptr;
+		//Equip(TempWeapon);
+}
+
+//becareful: as long as the montage anim is playing in all devices, all of these code are run in all devices directly, not just in the server like the code above
+//so you may want to put 'if(HasAuthority()) for them:
+void UCombatComponent::StartSwapAttachment()
+{
+	//We dont want it to be delayed for these action so we comment it out, it is fine when the server reach back and does the same thing (these code below are 'double-immue doaction'
+		//if (Character && !Character->HasAuthority()) return; 
+
+	//these code must be done at some point of the AM_SwapMontage:
 	AWeapon* TempWeapon = EquippedWeapon;
 
 	//this make  EquippedWeapon = SecondWeapon, because the 'else' kicks in
 	//but after this SecondWeapon = itself still, it still have value value!
-	Equip(SecondWeapon); 
+	//Equip(SecondWeapon); //self-handled
+	Equip_SpecializedforSwap(SecondWeapon);
 
-	//OPTION1: this work like a charm (but Equip(TempWeapon) wont work, because 'LATE' replication):
-	EquipSecondWeaponToBackpack(TempWeapon);
+	//OPTION1: this work like a charm
+	EquipSecondWeaponToBackpack(TempWeapon); //self-handled
 
 	//OPTION2: this also work too, AT LEAST in the server, I believe:
 	//if you forget this line, you can't get the 'if' and it keep drop and then attach back the same weapon LOL, because it need SecondWeapon to be nullptr, where currently SecondWeapon and EquippedWeapon are shared the same weapon address
 		//SecondWeapon = nullptr;
 		//Equip(TempWeapon);
-
-
-	//TempWeapon->GetSphere()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	//TempWeapon->GetWeaponMesh()->SetSimulatePhysics(false);
-	//TempWeapon->GetWeaponMesh()->SetEnableGravity(false);
-	////try set a Timer
-	//GetWorld()->GetTimerManager().SetTimer(TimerHandle_Swap, this, &ThisClass::TimerCallback_Swap, 0.1f );
-	//Equip(TempWeapon); //it wont override HUD dont worry, because it equip into the backpack!
 }
 
-//void UCombatComponent::TimerCallback_Swap()
-//{
-//	Equip(TempWeapon);
-//}
+//becareful: as long as the montage anim is playing in all devices, all of these code are run in all devices directly, not just in the server like the code above
+//so you may want to put 'if(HasAuthority()) for them:
+void UCombatComponent::SwapEnd()
+{
+	if (Character == nullptr) return;
+
+	//perhaps this will make the CD to use back FRABRIK a little bit late? no I test it, the condition bUseFrabrik in last lesson luckily solve this problem here too!? but HOW LOl?
+	//well it is because currently the 'StartSwapAttachment()' is currently subject to the same delay LOL
+	// So if we remove the HasAuthority(), which we will, we will have that problem back!
+
+	//if it doesn't work simply create yet another extra bool for CD, the step is the same!!!
+	if (Character && Character->HasAuthority())
+	{
+		CharacterState = ECharacterState::ECS_Unoccupied;//self-replicated
+	}
+	//this to be done in all devices or at least in the CD (because only the CD have problem4: FRABRIK working all the time), but anyway overkill is good so LOL:
+	Character->bIsLocalSwapping = false; //go to AnimInstance and add this restriction for bUseFABRIK!
+
+}
+
 
 //call this specialized function with ThrowEnd():
 void UCombatComponent::AttachEquippedWeaponToRightHandSocket()

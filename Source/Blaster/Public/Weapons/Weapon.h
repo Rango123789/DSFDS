@@ -176,8 +176,18 @@ protected: //base
     UPROPERTY(EditAnywhere)
     float Damage = 15.f; //move from HitScanWeapon
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(Replicated, EditAnywhere)
     bool bUseServerSideRewind = false;
+
+    UPROPERTY(Replicated, EditAnywhere)
+    bool bUseServerSideRewind_Initial = false;
+
+    UFUNCTION()
+    void OnReportPingStatus_Callback(bool bHighPing);
+
+#if WITH_EDITOR
+    virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
 private: //FINAL child
 /***functions***/

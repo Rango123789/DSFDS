@@ -106,6 +106,15 @@ public:
 		const float& HitTime,
 		AWeapon* DamageCauser ); //I add this
 
+	//in fact this is only for projectile bullet:
+	UFUNCTION(Server, Reliable)
+	void ServerScoreRequest_Projectile(
+		const FVector_NetQuantize& Start,
+		const FVector_NetQuantize100& InitialVelocity,
+		class ABlasterCharacter* HitCharacter,
+		const float& HitTime,
+		AWeapon* DamageCauser //stephen didn't add this, but I try to do it to see why we couldn't LOL
+ 	);
 
 //category4: callbacks 
 
@@ -150,6 +159,14 @@ protected: //base
 		const TArray<class ABlasterCharacter*> & HitCharacters, 
 		const float& HitTime);
 
+	//not sure it is HitLocation or HitTarget? I think HitTarget make more sense
+// first bool = hit or not , second bool = headshot or not
+	FServerSideRewindResult ServerSideRewind_Projectile(
+		const FVector_NetQuantize& Start,
+		const FVector_NetQuantize100& InitialVelocity,
+		class ABlasterCharacter* HitCharacter,
+		const float& HitTime);
+
 	FServerSideRewindResult ConfirmHit(
 		ABlasterCharacter* HitCharacter, 
 		FFramePackage& FrameToCheck, 
@@ -164,6 +181,12 @@ protected: //base
 		TArray<FFramePackage>& FramesToCheck, //this now also contain 'Character' member
 		const FVector_NetQuantize& Start, 
 		const TArray<FVector_NetQuantize>& HitLocations);
+
+	FServerSideRewindResult ConfirmHit_Projectile(
+		ABlasterCharacter* HitCharacter,
+		FFramePackage& FrameToCheck,
+		const FVector_NetQuantize& Start,
+		const FVector_NetQuantize100& InitialVelocity);
 
 	FFramePackage InterpBetweenFrames(const FFramePackage& OlderFrame, const FFramePackage& YoungerFrame, float const& HitTime );
 	//pass in 'FrameTocheck' to move HitChar::Boxes into

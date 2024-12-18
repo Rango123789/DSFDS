@@ -18,6 +18,7 @@ ULagCompensationComponent::ULagCompensationComponent()
 
 }
 
+
 void ULagCompensationComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -154,6 +155,37 @@ void ULagCompensationComponent::ServerScoreRequest_Implementation(const FVector_
 		);
 	}
 }
+
+//stephen dont have 'AWeapon* DamageCauser', he pass in 'Character->EquippedWeapon->Damage', that is the whole reason he did Projectile::Damage = Weapon::Damage when he shoot Projectile out of weapon in ProjectileWeapon.
+//but my question is, why could we just pass in 'AWeapon* DamageCauser = GetOwner()' , we did set Weapon is owner of the projectile right?
+// because Projectile is not replicated so it didnt know which owner is which owner?
+//even if projectile is not replicated in case this function is called, but Weapon class itself is replicated right?
+//[ANSER] okay now I know why we must do it like stephen did, because I still in fact use 'Weapon->Damage' from ServerScoreRequest LOL, so if i create AProjectile* Projectile instead, I fail to pass it into the server because it is NOT a replicated actor -->puzzle solved!!!! 
+//MEANING create parameter is not needed at all, we didrectly pass in Character->Combat->EquippedWeapon->Damage
+//so that we can avoid sending it around LOL 
+//BUT anyway I'm happy so far so I dont adapt to stephen, I keep mind! as I did set Projectile::Owner = Weapon!
+void ULagCompensationComponent::ServerScoreRequest_Projectile_Implementation(const FVector_NetQuantize& Start, const FVector_NetQuantize100& InitialVelocity, ABlasterCharacter* HitCharacter, const float& HitTime, AWeapon* DamageCauser)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Enter: ServerScoreRequest_Projectile"))
+
+	if (HitCharacter == nullptr || DamageCauser == nullptr || Character == nullptr) return;
+	//at this point, except params to be passed from RPCWrapper, any other values inside the function will use values in the server proxies, including 'Char::LagComp::FrameHistory':
+	FServerSideRewindResult Result = ServerSideRewind_Projectile(Start, InitialVelocity, HitCharacter, HitTime);
+
+	if (Result.bHitConfirmed == true)
+	{
+		UGameplayStatics::ApplyDamage(
+			HitCharacter,
+			DamageCauser->GetDamge(),
+			Character->GetController(),
+			DamageCauser,
+			UDamageType::StaticClass()
+		);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Exit: ServerScoreRequest_Projectile"))
+}
+
 
 //STEPHEN idea, possibly better performance: 
 void ULagCompensationComponent::ServerScoreRequest_Shotgun_Implementation(const FVector_NetQuantize& Start, const TArray<FVector_NetQuantize>& HitLocations, const TArray<class ABlasterCharacter*>& HitCharacters, const float& HitTime, AWeapon* DamageCauser)
@@ -355,6 +387,147 @@ FServerSideRewindResult_Shotgun ULagCompensationComponent::ServerSideRewind_Shot
 	return ConfirmHit_Shotgun(FramesToCheck, Start, HitLocations);
 }
 
+FServerSideRewindResult ULagCompensationComponent::ServerSideRewind_Projectile(const FVector_NetQuantize& Start, const FVector_NetQuantize100& InitialVelocity, ABlasterCharacter* HitCharacter, const float& HitTime)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Enter: ServerSideRewind_Projectile"))
+	FFramePackage FrameToCheck = GetFrameToCheck(HitCharacter, HitTime);
+
+	//this is the equivalent sign that we can return early after refactorizing some return T1 statement with the sub function that return whatever else lol:
+	if (FrameToCheck.BoxInfoMap.Num() == 0)
+	{
+		return FServerSideRewindResult{ false, false };
+	}
+	//STAGE2: use the 'FramePackage_ForNextStage', perhaps use it to move Char::Boxes to and then Trace against it, after that move it back:
+	return ConfirmHit_Projectile(HitCharacter, FrameToCheck, Start, InitialVelocity);
+	UE_LOG(LogTemp, Warning, TEXT("Exit: ServerSideRewind_Projectile"))
+}
+
+FServerSideRewindResult ULagCompensationComponent::ConfirmHit_Projectile(ABlasterCharacter* HitCharacter, FFramePackage& FrameToCheck, const FVector_NetQuantize& Start, const FVector_NetQuantize100& InitialVelocity)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Enter: ConfirmHit_Projectile"))
+	if (HitCharacter == nullptr) return FServerSideRewindResult{};
+	//step1: CacheBoxes() - save their bare-bones information into FFramePackage
+	FFramePackage CurrentFrame;
+	//You must call it from HitCharacter, not Directly call 'SaveFramePackage(CurrentFrame)' that is of this Attacking Char: 
+	HitCharacter->GetLagComponent()->SaveFramePackage(CurrentFrame);
+
+	//step2: MoveBoxes, enable HeadBox -> trace, enable the rest -> trace: because there is only "one bullet" so if it doesn't hit head then leave its collision enabled with the rest wont cause any difference, but if it is a shotgun shoting many pieces that you need to disable HeadBox after checking? but I think as long as they are checked separately it should be okay too? no it is because here we return early if we detect headshot, but in shotgun we didn't do it, the same piece will hit headbox (count as headshot) and then headbox and count as body hit again LOL
+	MoveBoxes(FrameToCheck, HitCharacter);
+
+	//step3: enable HeadBox -> trace
+	UBoxComponent* HeadBox = HitCharacter->BoxComponentMap[FName("head")];
+	if (HeadBox) HeadBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+	//MISSING step: the trace is done in the server in REAL time and a lot of chars may move around and block the trace (meant for the past), so you want to avoid it as well!
+	//this will be enabled back in RestoreBoxes as well (hence no need to worry to reset it):
+	if (HitCharacter->GetMesh())
+	{
+		//Character->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		HitCharacter->GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	//i think we should set this to Block Visisbility even from Char::BoxComp_i, avoiding so much work in real time!
+	//UPDATE: now it has been set from there!
+	//HeadBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+
+//DIFFERENT1:
+	//FHitResult HitResult;
+	//FVector End = Start + (HitLocation - Start) * 1.25f; 
+	//GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_HitBox);  
+//these ready can be shared
+	FPredictProjectilePathParams PathParams;
+	FPredictProjectilePathResult PathResult;
+	
+	//this avoid to hit the shooting char itself, however I dont think this is needed as we did create custom ObjectType and this chance is already ZERO, anyway it is good to have that habit:
+	PathParams.ActorsToIgnore.Add(GetOwner());
+
+	//Stephen didn't set this any more in this lesson, why?
+		//PathParams.bTraceWithChannel = true;
+	
+	//PathParams.TraceChannel = ECollisionChannel::ECC_Visibility;
+	PathParams.TraceChannel = ECC_HitBox;
+	
+	//stephen: this allows us to predict projectile path and we can actually generate hit events as we tracing against the collision objects in our world!
+	PathParams.bTraceWithCollision = true;
+	//PathParams.ObjectTypes = TArray<EObjectTypeQuery>(...);
+
+	//Debuging purpose DrawDebugType = none by default:
+	PathParams.DrawDebugType = EDrawDebugTrace::ForDuration;
+	PathParams.DrawDebugTime = 10.f;
+
+	//this is 2 most important parameters:
+	PathParams.LaunchVelocity = InitialVelocity;
+	PathParams.StartLocation =  Start;
+
+	//this decide the sub accuracy, bigger means more accurate but cost performance:
+	PathParams.MaxSimTime = MaxRecordTime;
+	PathParams.SimFrequency = 20.f;
+
+	PathParams.ProjectileRadius = 4.f;
+
+	//PathParams.OverrideGravityZ; //only use if needed
+
+	UGameplayStatics::PredictProjectilePath(this, PathParams, PathResult);
+
+	//Stephen didn't have && Cast<ABlasterCharacter>(HitResult.GetActor()), but we need it;
+	//well the fact is we cast it from the outside already, in Fire::DoLineTraceSingle, so it is not needed
+	//but anyway it wont hurt!
+	if (PathResult.HitResult.bBlockingHit && Cast<ABlasterCharacter>(PathResult.HitResult.GetActor()))
+	{
+		//show HEAD box if hit:
+		if (PathResult.HitResult.Component.IsValid())
+		{
+			UBoxComponent* BoxComp = Cast<UBoxComponent>(PathResult.HitResult.Component);
+			if (BoxComp)
+				DrawDebugBox(GetWorld(), BoxComp->GetComponentLocation(), BoxComp->GetScaledBoxExtent(), FQuat(BoxComp->GetComponentRotation()), FColor::Red, false, 12.f);
+		}
+
+		//resetBoxes to where it was and return early:
+		ResetBoxes(CurrentFrame, HitCharacter);
+		//return TPair<bool, bool>(true, true); //hit, headshot
+
+		return FServerSideRewindResult{ true, true };
+	}
+
+	//Step4:  enable the rest -> trace
+		//if it reach this line, we doesn't have head shot:
+		//turn on Collision for the rest box (not that it is set to block Visibility in Char already:
+	for (auto& Pair : HitCharacter->BoxComponentMap)
+	{
+		Pair.Value->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	}
+
+//DIFFERENT2:
+	//GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_HitBox);
+
+	UGameplayStatics::PredictProjectilePath(this, PathParams, PathResult);
+
+	//no matter we hit any of the rest or not, we always need to ResetBoxes:
+	ResetBoxes(CurrentFrame, HitCharacter);
+
+	if (PathResult.HitResult.bBlockingHit && Cast<ABlasterCharacter>(PathResult.HitResult.GetActor()))
+	{
+		//show BODY box if hit:
+		if (PathResult.HitResult.Component.IsValid())
+		{
+			UBoxComponent* BoxComp = Cast<UBoxComponent>(PathResult.HitResult.Component);
+			if (BoxComp)
+				DrawDebugBox(GetWorld(), BoxComp->GetComponentLocation(), BoxComp->GetScaledBoxExtent(), FQuat(BoxComp->GetComponentRotation()), FColor::Blue, false, 12.f);
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("Enter: ConfirmHit_Projectile"))
+
+		//return TPair<bool, bool>(true, false); //hit, not headshot
+		return FServerSideRewindResult{ true, false };
+	}
+
+
+	//return TPair<bool, bool>(false, false); //not hit, not headshot
+	return FServerSideRewindResult{ false, false };
+}
+
+
+
 FServerSideRewindResult ULagCompensationComponent::ConfirmHit(ABlasterCharacter* HitCharacter, FFramePackage& FrameToCheck, const FVector_NetQuantize& Start, const FVector_NetQuantize& HitLocation)
 {
 	if (HitCharacter == nullptr) return FServerSideRewindResult{};
@@ -391,6 +564,14 @@ FServerSideRewindResult ULagCompensationComponent::ConfirmHit(ABlasterCharacter*
 	//but anyway it wont hurt!
 	if (HitResult.bBlockingHit && Cast<ABlasterCharacter>(HitResult.GetActor()) )
 	{
+		//show HEAD box if hit:
+		if (HitResult.Component.IsValid())
+		{
+			UBoxComponent* BoxComp = Cast<UBoxComponent>(HitResult.Component);
+			if(BoxComp)
+			DrawDebugBox(GetWorld(), BoxComp->GetComponentLocation(),BoxComp->GetScaledBoxExtent(), FQuat(BoxComp->GetComponentRotation()), FColor::Red, false, 12.f);
+		}
+
 		//resetBoxes to where it was and return early:
 		ResetBoxes(CurrentFrame, HitCharacter);
 		//return TPair<bool, bool>(true, true); //hit, headshot
@@ -412,6 +593,14 @@ FServerSideRewindResult ULagCompensationComponent::ConfirmHit(ABlasterCharacter*
 
 	if (HitResult.bBlockingHit && Cast<ABlasterCharacter>(HitResult.GetActor()))
 	{
+		//show BODY box if hit:
+		if (HitResult.Component.IsValid())
+		{
+			UBoxComponent* BoxComp = Cast<UBoxComponent>(HitResult.Component);
+			if (BoxComp)
+				DrawDebugBox(GetWorld(), BoxComp->GetComponentLocation(), BoxComp->GetScaledBoxExtent(), FQuat(BoxComp->GetComponentRotation()), FColor::Blue, false, 12.f);
+		}
+
 		//return TPair<bool, bool>(true, false); //hit, not headshot
 		return FServerSideRewindResult{ true, false };
 	}
@@ -482,6 +671,15 @@ FServerSideRewindResult_Shotgun ULagCompensationComponent::ConfirmHit_Shotgun(TA
 		//but anyway it wont hurt!
 		if (HitResult.bBlockingHit && Cast<ABlasterCharacter>(HitResult.GetActor()))
 		{
+
+			//show HEAD box if hit:
+			if (HitResult.Component.IsValid())
+			{
+				UBoxComponent* BoxComp = Cast<UBoxComponent>(HitResult.Component);
+				if (BoxComp)
+					DrawDebugBox(GetWorld(), BoxComp->GetComponentLocation(), BoxComp->GetScaledBoxExtent(), FQuat(BoxComp->GetComponentRotation()), FColor::Red, false, 12.f);
+			}
+
 			//so now we desparately need to Cast it:
 			ABlasterCharacter* HitCharacter = Cast<ABlasterCharacter>(HitResult.GetActor());
 				//resetBoxes to where it was and return early:
@@ -534,6 +732,15 @@ FServerSideRewindResult_Shotgun ULagCompensationComponent::ConfirmHit_Shotgun(TA
 		//but anyway it wont hurt!
 		if (HitResult.bBlockingHit && Cast<ABlasterCharacter>(HitResult.GetActor()))
 		{
+			//show BODY box if hit:
+			if (HitResult.Component.IsValid())
+			{
+				UBoxComponent* BoxComp = Cast<UBoxComponent>(HitResult.Component);
+				if (BoxComp)
+					DrawDebugBox(GetWorld(), BoxComp->GetComponentLocation(), BoxComp->GetScaledBoxExtent(), FQuat(BoxComp->GetComponentRotation()), FColor::Blue, false, 12.f);
+			}
+
+
 			//so now we desparately need to Cast it:
 			ABlasterCharacter* HitCharacter = Cast<ABlasterCharacter>(HitResult.GetActor());
 
@@ -561,6 +768,8 @@ FServerSideRewindResult_Shotgun ULagCompensationComponent::ConfirmHit_Shotgun(TA
 	//after all the things added to it, we simply return it ONCE in the end:
 	return ServerSideRewindResult_Shotgun;
 }
+
+
 
 //enter this function we surely know OlderFrame.Timer < HitTime < YoungerFrame.Time
 FFramePackage ULagCompensationComponent::InterpBetweenFrames(const FFramePackage& OlderFrame, const FFramePackage& YoungerFrame, const float& HitTime)
@@ -622,7 +831,7 @@ void ULagCompensationComponent::MoveBoxes(const FFramePackage& FrameToMoveTo, AB
 		//this is absolutely not needed in our case since our box was there and didn't change its size at all, however in the case of Capsule, we may need this
 		//you must use 'BoxExtent' to modify the size of boxes in Char, do not use 'Scale', otherwise this line will be a disater :D :D.
 			//Pair.Value->SetBoxExtent(BoxExtent); 
-		DrawDebugBox(GetWorld(), BoxLocation, BoxExtent, FQuat(BoxRotation), FColor::Red, false, 10.f);
+		DrawDebugBox(GetWorld(), BoxLocation, BoxExtent, FQuat(BoxRotation), FColor::Red, false, 3.f);
 	}
 }
 

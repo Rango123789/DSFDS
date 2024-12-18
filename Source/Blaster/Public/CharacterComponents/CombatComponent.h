@@ -20,6 +20,7 @@ public:
 
 	//We use the same key for them:
 	void Equip(class AWeapon* InWeapon);
+	void Equip_SpecializedforSwap(AWeapon* InWeapon);
 	void EquipSecondWeaponToBackpack(AWeapon* InWeapon);
 	void SwapWeapons();
 
@@ -52,6 +53,7 @@ public:
 
 	void CheckAndSetHUD_ThrowGrenade();
 
+	//handle with AnimNotifies:
 	UFUNCTION(BlueprintCallable)
 	void ReloadEnd();
 	//this is specialized for shootgun:
@@ -60,6 +62,13 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void ThrowEnd();
+
+	UFUNCTION(BlueprintCallable)
+	void SwapEnd();
+
+	UFUNCTION(BlueprintCallable)
+	void StartSwapAttachment();
+
 
 	//stephen didn't have this, he spawn it with Input_Throw LOL, hence must solve 'client part' as well, but me dont need according to universal rule: 'as long as montage is played all devices in the end, any notify will trigger in all devices'
 	UFUNCTION(BlueprintCallable)
@@ -199,6 +208,8 @@ private:
 	//extra bState for CD to use locally for client-side prediction purpose: Reloading && use FRABRIK back immediately:
 	bool bLocalReloading = false;
 
+	//bool bLocalSwapping = false;
+
 	UFUNCTION()
 	void OnRep_IsAiming();
 
@@ -284,6 +295,8 @@ public:
 
 	int32 GetCarriedAmmo() { return CarriedAmmo; }
 	bool CanSwapWeapon() { return EquippedWeapon && SecondWeapon ; }
+
+	AWeapon* GetSecondWeapon() { return SecondWeapon; }
 
 };
 

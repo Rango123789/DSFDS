@@ -57,8 +57,6 @@ void AProjectile::Tick(float DeltaTime)
 }
 
 
-
-
 // Called when the game starts or when spawned
 void AProjectile::BeginPlay()
 {
@@ -82,15 +80,13 @@ void AProjectile::BeginPlay()
 	//In fact we call it here, then we dont need to call it in child::BeginPlay() at all, for now we dont call it here:
 	//SpawnSmokeTrailSystem();
 
-	//Only the server projectile copy can generate hit event FIRST
+	//UPDATE: if it is replicated actor, only server can pass this check
+	//But if it is non-replicated actor, any projectile in any device can pass this check
 	if (HasAuthority() && CollisionBox)
 	{
-		//i just add this, stephen didn't add this :)
-		CollisionBox->SetNotifyRigidBodyCollision(true); //C++ name for Generate Hit Event from BP
-
 		CollisionBox->OnComponentHit.AddDynamic(this, &ThisClass::OnBoxHit);
+		CollisionBox->SetNotifyRigidBodyCollision(true); //C++ name for Generate Hit Event from BP
 	}
-
 	////Instigator is set from Weapon firing this projectile, this give a chance to fix, attacker running forwards and hit himself while firing , say, Rocket. Hopefully the requirement has been done before it reach this line of code:
 	//if (CollisionBox) CollisionBox->IgnoreActorWhenMoving(GetInstigator(), true);
 }

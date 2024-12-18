@@ -22,6 +22,8 @@ AWeapon::AWeapon()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	bUseServerSideRewind_Initial = bUseServerSideRewind;
+
 	//We want replicate this Weapon accross all clients from the server:
 	bReplicates = true; //NEW1
 
@@ -78,6 +80,8 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AWeapon, WeaponState);
 	//DOREPLIFETIME(AWeapon, Ammo);
+
+	DOREPLIFETIME_CONDITION(AWeapon, bUseServerSideRewind , COND_OwnerOnly);
 }
 
 // Called when the game starts or when spawned
@@ -267,6 +271,11 @@ void AWeapon::OnRep_Ammo()
 	}
 }
 
+void AWeapon::OnReportPingStatus_Callback(bool bHighPing)
+{
+	bUseServerSideRewind = !bHighPing;
+}
+
 void AWeapon::OnRep_Owner()
 {
 	//after the change, if Owner is changed to null, then we set Char and PC to null as well
@@ -289,7 +298,6 @@ void AWeapon::OnRep_Owner()
 	//if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
 }
 
-
 void AWeapon::CheckAndSetHUD_Ammo()
 {
 	//OPTION2: remember to add UPROPERTY() will help 'invalid address' into null to avoid undefined behavour when its owner elimned:
@@ -300,8 +308,6 @@ void AWeapon::CheckAndSetHUD_Ammo()
 
 	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(Ammo);
 }
-
-
 
 void AWeapon::ShowPickupWidget(bool bShowWdiget)
 {
@@ -328,17 +334,93 @@ void AWeapon::OnWeaponStateSet()
 	{
 	case EWeaponState::EWS_Equipped:
 		OnEquipped();
-
 		break;
 
 	case EWeaponState::EWS_EquippedSecond: //copy the Equipped and adapt it! well they're identical LOL:
 		OnEquippedSecond();
-
 		break;
+
 	case EWeaponState::EWS_Droppped:
 		OnDropped();
-
 		break;
+	}
+}
+
+void AWeapon::OnEquipped()
+{
+	ShowPickupWidget(false);
+	//Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
+	//if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
+	if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
+
+	//Our SMG dont need these to locally similated, move it out fix the bug:
+	WeaponMesh->SetSimulatePhysics(false); //TIRE1
+	WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+
+	if (WeaponType != EWeaponType::EWT_SMG)
+	{
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
+	}
+	if (WeaponType == EWeaponType::EWT_SMG)
+	{
+		//this is the require of 'locally simulated bones in PA'
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		//WeaponMesh->SetSimulatePhysics(true);  //no need
+		//WeaponMesh->SetEnableGravity(true); //no need
+		//GLOBALLY we turn it off all collision responses, hence this become 'PURE locally Simualted', but this has consequence steps:
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	}
+	//turn off CustomDepth
+	WeaponMesh->MarkRenderStateDirty();
+	WeaponMesh->SetRenderCustomDepth(false);
+
+//bind delegate part
+	OwnerCharacter = OwnerCharacter == nullptr ? GetOwner<ABlasterCharacter>() : OwnerCharacter;
+	if (OwnerCharacter) BlasterPlayerController = BlasterPlayerController == nullptr ? OwnerCharacter->GetController<ABlasterPlayerController>() : BlasterPlayerController;
+	//stephen: risky, but anyway it will work as it all happen in the server
+	//if(BlasterPlayerController && !BlasterPlayerController->OnReportPingStatus_Delegate.IsBound()  && HasAuthority() && bUseServerSideRewind)
+	//me:  -->I even make it actually make it work back and forth with  bUseServerSideRewind_Initial (instead of  bUseServerSideRewind directly that it subject to change LOL)
+	if (BlasterPlayerController && HasAuthority() && bUseServerSideRewind_Initial)
+	{
+		BlasterPlayerController->OnReportPingStatus_Delegate.AddDynamic(this, &ThisClass::OnReportPingStatus_Callback);
+	}
+}
+
+void AWeapon::OnEquippedSecond()
+{
+	ShowPickupWidget(false);
+	//Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
+	//if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
+	if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
+
+	//Our SMG dont need these to locally similated, move it out fix the bug:
+	WeaponMesh->SetSimulatePhysics(false); //TIRE1
+	WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
+
+	if (WeaponType != EWeaponType::EWT_SMG)
+	{
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
+	}
+	if (WeaponType == EWeaponType::EWT_SMG)
+	{
+		//this is the require of 'locally simulated bones in PA'
+		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	}
+
+	//turn off CustomDepth: stephen turn on CustomDepth for second weapon, but I dont like it, so this is my decision:
+	WeaponMesh->MarkRenderStateDirty();
+	WeaponMesh->SetRenderCustomDepth(false);
+
+//bind delegate part
+	OwnerCharacter = OwnerCharacter == nullptr ? GetOwner<ABlasterCharacter>() : OwnerCharacter;
+	if (OwnerCharacter) BlasterPlayerController = BlasterPlayerController == nullptr ? OwnerCharacter->GetController<ABlasterPlayerController>() : BlasterPlayerController;
+	//stephen:
+	//if(BlasterPlayerController && BlasterPlayerController->OnReportPingStatus_Delegate.IsBound() && HasAuthority() && bUseServerSideRewind)
+	//me: 
+	if (BlasterPlayerController && HasAuthority() && bUseServerSideRewind_Initial)
+	{
+		BlasterPlayerController->OnReportPingStatus_Delegate.RemoveDynamic(this, &ThisClass::OnReportPingStatus_Callback);
 	}
 }
 
@@ -369,62 +451,16 @@ void AWeapon::OnDropped()
 	//turn ON CustomDepth:
 	WeaponMesh->SetCustomDepthStencilValue(251);
 	WeaponMesh->SetRenderCustomDepth(true);
-}
-
-void AWeapon::OnEquippedSecond()
-{
-	ShowPickupWidget(false);
-	//Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
-	//if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
-	if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
-
-	//Our SMG dont need these to locally similated, move it out fix the bug:
-	WeaponMesh->SetSimulatePhysics(false); //TIRE1
-	WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
-
-	if (WeaponType != EWeaponType::EWT_SMG)
+//bind delegate part
+	OwnerCharacter = OwnerCharacter == nullptr ? GetOwner<ABlasterCharacter>() : OwnerCharacter;
+	if(OwnerCharacter) BlasterPlayerController = BlasterPlayerController == nullptr ? OwnerCharacter->GetController<ABlasterPlayerController>() : BlasterPlayerController;
+	//stephen:
+	//if(BlasterPlayerController && BlasterPlayerController->OnReportPingStatus_Delegate.IsBound() && HasAuthority() && bUseServerSideRewind)
+	//me: no point in allowing it to change if its Initial value is FALSE from begining!
+	if (BlasterPlayerController && HasAuthority() && bUseServerSideRewind_Initial)
 	{
-		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
+		BlasterPlayerController->OnReportPingStatus_Delegate.RemoveDynamic(this, &ThisClass::OnReportPingStatus_Callback);
 	}
-	if (WeaponType == EWeaponType::EWT_SMG)
-	{
-		//this is the require of 'locally simulated bones in PA'
-		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	}
-
-	//turn off CustomDepth: stephen turn on CustomDepth for second weapon, but I dont like it, so this is my decision:
-	WeaponMesh->MarkRenderStateDirty();
-	WeaponMesh->SetRenderCustomDepth(false);
-}
-
-void AWeapon::OnEquipped()
-{
-	ShowPickupWidget(false);
-	//Only server need to touch this, option1 HasAuthority, option2 add or not doesn't matter
-	//if(HasAuthority() && Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option1
-	if (Sphere) Sphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); //option2, add or not doesn't matter
-
-	//Our SMG dont need these to locally similated, move it out fix the bug:
-	WeaponMesh->SetSimulatePhysics(false); //TIRE1
-	WeaponMesh->SetEnableGravity(false);   //TIRE3 - no need nor should you do this LOL
-
-	if (WeaponType != EWeaponType::EWT_SMG)
-	{
-		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); //TIRE2 , if =PhysicsAndQuery but disable SimulatePhysics then we can get a warning, so set it back to what it is in Constructor+BeginPlay
-	}
-	if (WeaponType == EWeaponType::EWT_SMG)
-	{
-		//this is the require of 'locally simulated bones in PA'
-		WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		//WeaponMesh->SetSimulatePhysics(true);  //no need
-		//WeaponMesh->SetEnableGravity(true); //no need
-		//GLOBALLY we turn it off all collision responses, hence this become 'PURE locally Simualted', but this has consequence steps:
-		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	}
-	//turn off CustomDepth
-	WeaponMesh->MarkRenderStateDirty();
-	WeaponMesh->SetRenderCustomDepth(false);
 }
 
 //this is the NEW , redudant version but good for organization:
@@ -524,7 +560,6 @@ void AWeapon::OnRep_WeaponState()
 //	};
 //}
 
-
 void AWeapon::Fire(const FVector& HitTarget)
 {
 	//play Fire animtion:
@@ -580,3 +615,26 @@ FVector AWeapon::RandomEndWithScatter(const FVector& HitTarget)
 }
 
 
+#if WITH_EDITOR
+//this function trigger whenever we make a change on UPROPERTY property from UE5:
+void AWeapon::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	FName PropertyName = PropertyChangedEvent.GetPropertyName();
+	//long way:
+	//FName PropertyName
+	//	= PropertyChangedEvent.Property != nullptr ? PropertyChangedEvent.Property->GetFName() : NAME_None;
+	//this check if that property is the  InitalSpeed variable, if true, make UPMC::InitialSpeed follow it too!
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(AWeapon, bUseServerSideRewind))
+	{
+		bUseServerSideRewind_Initial = bUseServerSideRewind;
+	}
+
+	//this return FName(TEXT("MemberName"))
+	FName InitalSpeed_Name = GET_MEMBER_NAME_CHECKED(AWeapon, bUseServerSideRewind);
+
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *InitalSpeed_Name.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *PropertyName.ToString());
+}
+#endif

@@ -165,7 +165,7 @@ void UBlaster_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	if (BlasterCharacter->IsLocallyControlled() && CharacterState != ECharacterState::ECS_Throwing)
 	{
 		//if is DC, NOT locally reloading (get change to false before ECharacterState::Reloading), not throwing, the allow FABRIK to work back immediately:
-		bShouldUseFABRIK = !BlasterCharacter->GetIsLocalReloading();
+		bShouldUseFABRIK = !BlasterCharacter->GetIsLocalReloading() && !BlasterCharacter->bIsLocalSwapping;
 	}
 
 	//this may or may not needed, as we stop counting AO_Yaw from Char::Tick() already

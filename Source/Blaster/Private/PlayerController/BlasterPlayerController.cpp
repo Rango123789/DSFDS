@@ -17,6 +17,11 @@ ABlasterPlayerController::ABlasterPlayerController()
 	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("PC,  Constructor Time: %f "), GetWorld()->GetTimeSeconds())
 }
 
+void ABlasterPlayerController::Server_ReportPingStatus_Implementation(bool bHighPing)
+{
+	OnReportPingStatus_Delegate.Broadcast(bHighPing);
+}
+
 void ABlasterPlayerController::BeginPlay()
 {
 	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("PC,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
@@ -46,6 +51,14 @@ void ABlasterPlayerController::Tick(float DeltaTime)
 	//update Delta_ServerMinusClient every 5s. factorize this into 'CheckTimeSync()'
 	UpdateServerClient_Delta_Periodically(DeltaTime);
 
+	CheckPing(DeltaTime);
+}
+
+void ABlasterPlayerController::CheckPing(float DeltaTime)
+{
+	//no need to check ping and give warning if it is the server, there is no lag there!
+	if (HasAuthority()) return;
+
 	//if you want to start to count again aftter it finish PingAnimation, then add this If()
 	//; otherwise you can remove it and follow stephen!
 	//you can access check on UserWidget::IsAnimationPlaying(WBPAnimation_PingWarning) instead so that you dont need to create an extra bHighPingAnimationPlaying. 
@@ -58,16 +71,20 @@ void ABlasterPlayerController::Tick(float DeltaTime)
 	{
 		//PlayerState is public member of PC, or you can use GetPlayerState<T>() if you want:
 		//GetPing() return ping/4 is OBSOLETE, so I dont use it
-		//if(PlayerState) UE_LOG(LogTemp, Warning, TEXT("Ping: %f"), PlayerState->GetPingInMilliseconds())
-
+		if(PlayerState) UE_LOG(LogTemp, Warning, TEXT("Ping: %f"), PlayerState->GetPingInMilliseconds())
 		//if(true) //test for now
-		if (PlayerState && PlayerState->GetPingInMilliseconds() >= HighPingThreshold )
+		if (PlayerState && PlayerState->GetPingInMilliseconds() >= HighPingThreshold)
 		{
 			bHighPingAnimationPlaying = true;
 			RunningTime_HighPing = 0; //you can let it here, mean you continue to check until Ping get high, or put it just outside to really test it in the next CheckPingFrequency
 
 			StartHighPingWarning();
+
+			//this is the best place to call it without needing to create extra accumilating time:
+			//call from a client[/server itself] and execute in the server - that is all we need currently
+			Server_ReportPingStatus(true);
 		}
+		else Server_ReportPingStatus(false);
 	}
 
 	if (bHighPingAnimationPlaying == true)
@@ -76,7 +93,7 @@ void ABlasterPlayerController::Tick(float DeltaTime)
 		if (RunningTime_HighPingAnimation > PingWarningDuration)
 		{
 			bHighPingAnimationPlaying = false;
-			RunningTime_HighPingAnimation = 0; 
+			RunningTime_HighPingAnimation = 0;
 
 			StopHighPingWarning();
 		}

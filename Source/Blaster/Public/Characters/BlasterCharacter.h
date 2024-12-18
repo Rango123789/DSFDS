@@ -59,6 +59,7 @@ public:
 	void PlayElimMontage();
 	void PlayReloadMontage();
 	void PlayThrowMontage();
+	void PlaySwapMontage();
 	void JumpToShotgunEndSection();
 	//sound and effects:
 
@@ -102,6 +103,8 @@ public:
 	//exceptional public DATA:
 	UPROPERTY()
 	TMap<FName, class UBoxComponent*> BoxComponentMap;
+
+	bool bIsLocalSwapping = false; 
 
 protected:
 	/***functions***/
@@ -280,6 +283,9 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* AM_ThrowMontage;
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* AM_SwapMontage;
 
 	//sound and effects:
 	UPROPERTY(EditAnywhere) 
@@ -480,6 +486,7 @@ public:
 
 	bool GetIsElimminated() { return bIsEliminated; };
 	bool GetIsLocalReloading();
+	//bool GetIsLocalSwapping();
 	class ULagCompensationComponent* GetLagComponent() { return LagComponent; }
 };
  

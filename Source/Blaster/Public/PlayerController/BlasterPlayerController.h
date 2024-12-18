@@ -6,6 +6,8 @@
 #include "GameFramework/PlayerController.h"
 #include "BlasterPlayerController.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReportPingDelegate, bool, bHighPing);
+
 /**
  * 
  */
@@ -16,6 +18,7 @@ class BLASTER_API ABlasterPlayerController : public APlayerController
 public:	
 	ABlasterPlayerController(); //for testing
 	virtual void Tick(float DeltaTime) override;
+	void CheckPing(float DeltaTime);
 	void UpdateServerClient_Delta_Periodically(float DeltaTime);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -75,6 +78,13 @@ public:
 	float RunningTime_HighPingAnimation = 0.f;
 
 	bool bHighPingAnimationPlaying = false;
+
+	//for server-side rewind purpose:
+	FOnReportPingDelegate OnReportPingStatus_Delegate;
+
+	UFUNCTION(Server, Reliable)
+	void Server_ReportPingStatus(bool bHighPing);
+
 
 protected:
 	virtual void BeginPlay() override;

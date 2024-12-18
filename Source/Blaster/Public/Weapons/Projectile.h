@@ -27,6 +27,9 @@ public:
     UPROPERTY(EditAnywhere)
     float Damage = 10.f;
 
+    //my idea so not we wont accept it do ServerRewind if server hold the weapon in all cases:
+    bool bServerHoldWeapon = true;
+
 /***functions***/
 //category1: auto-generated functions:
     AProjectile();

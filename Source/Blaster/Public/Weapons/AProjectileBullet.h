@@ -23,6 +23,8 @@ public:
 protected:
 	void BeginPlay() override;
 
+	void TestPredictProjectilePath();
+
 
 
 };
