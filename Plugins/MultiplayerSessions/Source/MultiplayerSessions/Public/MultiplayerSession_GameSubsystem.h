@@ -43,7 +43,7 @@ public:
 	void DestroySession();
 
 	//
-	// Our own custom delegates for Menu class to bind its callbacks to 
+	// Our own custom delegates for Menu class to bind its callbacks to , these are for external interctions with the Menu's callback outside
 	//
 	FOnCreateSessionCompleteDelegate_Multiplayer OnCreateSessionCompleteDelegate_Multiplayer;
 	FOnFindSessionsCompleteDelegate_Multiplayer OnFindSessionsCompleteDelegate_Multiplayer;
@@ -71,6 +71,9 @@ private:
 	TSharedPtr<FOnlineSessionSettings> LastSessionSettings; //we didn't make it member in testing version
 	TSharedPtr<FOnlineSessionSearch> LastSessionSearch;
 
+	//these are built-in delegates types, can simply declare and use it, but it can't work as granted until you add them into Delegate list! Meaning only when you add to the list the Steam and Onlinesubststem can make indirectly broadcast these delegate objects and indirectly trigger their callbacks
+	// OH MY GOD! It starts to make sense!!!!
+	//this for "internal reactions" in this MSSubsystem class: MSSubsystem::HostingX:: XDeleagate.Broadcast ~>OnXDelegate()
 	FOnCreateSessionCompleteDelegate OnCreateSessionCompleteDelegate;
 	FDelegateHandle CreateSession_Handle;
 

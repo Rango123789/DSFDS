@@ -121,6 +121,10 @@ void AWeapon::BeginPlay()
 		UOverhead_UserWidget* Overhead_UserWidget = Cast<UOverhead_UserWidget>(Overhead_WidgetComponent->GetUserWidgetObject());
 		if (Overhead_UserWidget) Overhead_UserWidget->ShowPlayerNetRole(this);
 	}
+
+	//Simulating cheating on FireDelay: shoot 10 rounds per 0.1s, which is dangerous:
+	//if (!HasAuthority()) FireDelay = 0.01;
+
 }
 
 // Called every frame
@@ -177,8 +181,6 @@ void AWeapon::UpdateHUD_Ammo()
 {
 	if (OwnerCharacter == nullptr || OwnerCharacter->GetCombatComponent() == nullptr || Ammo <= 0) return;
 
-//this part is for all devices, however you must understand that current we apply GOLDEN2_CD, the owning client will have it UPDATED first even before the server and other clients by ping+ping. Meaming owning clients has EquippedWeapon::Ammo being subtracted first and has it SMALLER value than the server and other clients during the project:
-
 	Ammo--; //no more relicated nor trigger OnRep_Ammo
 
 	CheckAndSetHUD_Ammo();
@@ -192,13 +194,11 @@ void AWeapon::UpdateHUD_Ammo()
 		//pass in CurrentServerAmmo = Ammo
 		ClientUpdateHUD_Ammo(Ammo); //only the owning client receive this
 	}
-
 	//if it is current the owning client, then let it know that its has some one more UNPROCESSED UpdateAmmo when it execute this hosting function:
 	else if (OwnerCharacter->IsLocallyControlled())
 	{
 		NumOfUnprocessedUpdateAmmo += 1;
 	}
-
 	//if it is NON-controlling clients (other clients), then by GOLDEN2_CD it will naturally update locally in the end, so set NumOfUnprocessedUpdateAmmo doesn't make any sense. Not to mention we increase their NumOfUnprocessedUpdateAmmo but can never decrease them LOL, because only the owning client receive an execute ClientUpdateHUD_Ammo(), other clients have no change to touch it nor did they need to touch it LOL:
 	//For example what if you change it in second device that is not currently the owner of the weapon, but then he picks it and become owner of the weapon and he start with NumOfUnprocessedUpdateAmmo = x > 0, which is stupid and incorrect then!
 	else
@@ -228,14 +228,13 @@ void AWeapon::ClientUpdateHUD_Ammo_Implementation(int32 CurrentServerAmmo)
 //this is currently called in UpdateHUD_CarriedAmmo &&  UpdateHUD_CarriedAmmo_Shotgun (that is currently called in the server only)
 void AWeapon::SetAmmo(int32 InAmmo)
 {
-	Ammo = InAmmo;
+	Ammo = InAmmo; //more no trigger OnRep_Ammo, we need to handle it ourself
 	//this is no need, I did it outside wherever I call SetAmmo already:
 	CheckAndSetHUD_Ammo();
 
 	//you can put if(!IslocallyControlled()) to avoid the case it server is the CD itself, that it re-excecute the code
 	//that is the reason why stephen put 'if(HasAuthority()) return; inside ClientSetAmmo(Ammo)! I got it! - OPTION2
-	ClientSetAmmo(Ammo);
-
+	ClientSetAmmo(Ammo); //I think a multicast is better, UNLESS you must handle it when a different char pick it up
 }
 
 void AWeapon::ClientSetAmmo_Implementation(int32 CurrentServerAmmo)
@@ -245,7 +244,6 @@ void AWeapon::ClientSetAmmo_Implementation(int32 CurrentServerAmmo)
 
 	Ammo = CurrentServerAmmo;
 	CheckAndSetHUD_Ammo();
-
 //these code is just for shotgun:
 	//any weapon can trigger this hosting function should have owner, so dont worry:
 	if (OwnerCharacter == nullptr || OwnerCharacter->GetCombatComponent() == nullptr) return;

@@ -18,6 +18,15 @@
 #include "Kismet/GameplayStatics.h" //for DeprojectScreenToWorld
 //#include "TimerManager.h" //NEWs
 
+//TESTING
+//#include "Menu_UserWidget.h" //ONLY work after you add the plugin module here
+//#include "MultiplayerSession_GameSubsystem.h" //ONLY work after you add the plugin module here
+//#include "../../../../Plugins/MultiplayerSessions/Source/MultiplayerSessions/Public/MultiplayerSession_GameSubsystem.h"
+//#include "../../../../Plugins/MultiplayerSessions/Source/MultiplayerSessions/Public/Menu_UserWidget.h"
+//#include "../../../../Plugins/MultiplayerSessions/Source/MultiplayerSessions/Public/Menu_UserWidget.h"
+//#include "MultiplayerSessions/MultiplayerSessions.h"
+//#include "Plugins/MultiplayerSessions/Menu_UserWidget.h"
+
 UCombatComponent::UCombatComponent()
 	//: TimerDelegate( FTimerDelegate::CreateUObject(this, &ThisClass::FireTimer_Callback) )
 {
@@ -26,6 +35,9 @@ UCombatComponent::UCombatComponent()
 	PrimaryComponentTick.bCanEverTick = true; //if you tick later, then turn it on
 
 	SetIsReplicated(true);
+
+	//UMenu_UserWidget Key;
+	//UMultiplayerSession_GameSubsystem* key22;
 
 	//TimerDelegate.BindUFunction(this, FName("FireTimer_Callback")); 
 
@@ -64,6 +76,11 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME_CONDITION(UCombatComponent, ThrowGrenade, COND_OwnerOnly); //only owning proxy need to receive it
 
 	DOREPLIFETIME(UCombatComponent, CharacterState);
+}
+
+void UCombatComponent::ClientResetToUnoccupied_Implementation()
+{
+	CharacterState = ECharacterState::ECS_Unoccupied;
 }
 
 void UCombatComponent::BeginPlay()
@@ -135,6 +152,7 @@ void UCombatComponent::ServerInput_Reload_Implementation()
 	//if it reach this hosting function and it is CD, then the server always did this already, so no need to repeat it. Either case, we still need to exclude !Character->IsLocallyControlled() in OnRep_CharacterState too, I know this is crazy but 2 stages are independent!
 	//the only reason why we dont do it right in TIRE1 but here is because we also need to call (*) above!
 	if( !Character->IsLocallyControlled() ) Character->PlayReloadMontage(); //call it in  OnRep_CharacterState too for clients
+	ClientResetToUnoccupied();
 }
 
 //these versions are not used: reason, try to change 'Replicated Enum state var' of out Replication pattern pose a risk.
@@ -490,7 +508,7 @@ void UCombatComponent::FireProjectileWeapon(bool InIsFiring)
 	DoLineTrace_UnderCrosshairs(HitResult);
 	//GOLDEN2X:
 	DoAction_Fire(InIsFiring, HitResult.ImpactPoint); //GOOD SPOT! the DC will have it locally first
-	ServerInput_Fire(InIsFiring, HitResult.ImpactPoint); //~>MultiRPC~>All devices:: Weapon::Fire + ...
+	ServerInput_Fire(InIsFiring, HitResult.ImpactPoint, EquippedWeapon->GetFireDelay()); //~>MultiRPC~>All devices:: Weapon::Fire + ...
 }
 
 void UCombatComponent::FireHitScanWeapon(bool InIsFiring)
@@ -506,7 +524,7 @@ void UCombatComponent::FireHitScanWeapon(bool InIsFiring)
 
 	//GOLDEN2X:
 	DoAction_Fire(InIsFiring, FinalHitTarget); //GOOD SPOT! the DC will have it locally first
-	ServerInput_Fire(InIsFiring, FinalHitTarget); //~>MultiRPC~>All devices:: Weapon::Fire + ...
+	ServerInput_Fire(InIsFiring, FinalHitTarget, EquippedWeapon->GetFireDelay()); //~>MultiRPC~>All devices:: Weapon::Fire + ...
 }
 
 void UCombatComponent::FireShotgunWeapon(bool InIsFiring)
@@ -524,10 +542,10 @@ void UCombatComponent::FireShotgunWeapon(bool InIsFiring)
 
 	//GOLDEN2X: call version for shotgun:
 	DoAction_Fire_Shotgun(InIsFiring, HitTargets, HitScanWeapon_Shotgun); //GOOD SPOT! the DC will have it locally first
-	ServerInput_Fire_Shotgun(InIsFiring, HitTargets, HitScanWeapon_Shotgun); //~>MultiRPC~>All devices:: Weapon::Fire + ...
+	ServerInput_Fire_Shotgun(InIsFiring, HitTargets, HitScanWeapon_Shotgun,EquippedWeapon->GetFireDelay()); //~>MultiRPC~>All devices:: Weapon::Fire + ...
 }
 
-void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target)
+void UCombatComponent::ServerInput_Fire_Implementation(bool InIsFiring, const FVector_NetQuantize& Target, float FireDelay)
 {
 	////move up to serverRPC
 	//bIsFiring = InIsFiring; //We can't remove it here as this is for replication perupose :)
@@ -589,7 +607,7 @@ void UCombatComponent::DoAction_Fire(bool InIsFiring, const FVector_NetQuantize&
 }
 
 //for shotgun:
-void UCombatComponent::ServerInput_Fire_Shotgun_Implementation(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun)
+void UCombatComponent::ServerInput_Fire_Shotgun_Implementation(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun, float FireDelay)
 {
 	MulticastInput_Fire_Shotgun(InIsFiring, HitTargets, HitScanWeapon_Shotgun);
 }
@@ -642,7 +660,40 @@ void UCombatComponent::DoAction_Fire_Shotgun(bool InIsFiring, const TArray<FVect
 	}
 }
 
+//define predicate (function retturn bool) for 'FUNCTION( , WithValidation)' , no need to re-declare it in .h:
+//it has the same signature as the ServerRPC, same name but with suffix _Validate:
+bool UCombatComponent::ServerInput_Fire_Validate(bool InIsFiring, const FVector_NetQuantize& Target, float FireDelay)
+{
+	//careful you dont want to kick players when they dont have a weapon :D 
+	if (EquippedWeapon == nullptr) true; 
 
+	//me: floating point type can have a small amount of discrepency/inaccurcy, so doing like this is absolutely stupid, especially you compare them in different devices:
+
+	//return FireDelay == EquippedWeapon->GetFireDelay(); //this is stupid
+	//return (abs(EquippedWeapon->GetFireDelay() - FireDelay) <= 0.001f); //this is the orgin of FMath functions
+
+	//stephen: you can return either of them
+	bool bIsNearlyZero = FMath::IsNearlyZero(EquippedWeapon->GetFireDelay() - FireDelay, 0.001f); //10^-3
+	bool bIsNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->GetFireDelay(), FireDelay); //10^-8 by default
+	return bIsNearlyEqual; // || return bIsNearlyZero;
+}
+
+bool UCombatComponent::ServerInput_Fire_Shotgun_Validate(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, class AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun, float FireDelay)
+{
+	//careful you dont want to kick players when they dont have a weapon :D 
+	if (EquippedWeapon == nullptr) true;
+
+	//me: floating point type can have a small amount of discrepency/inaccurcy, so doing like this is absolutely stupid, especially you compare them in different devices:
+
+	//return FireDelay == EquippedWeapon->GetFireDelay(); //this is stupid
+	//return (abs(EquippedWeapon->GetFireDelay() - FireDelay) <= 0.001f); //this is better
+
+	//stephen: you can return either of them
+	//bool bIsNearlyZero = FMath::IsNearlyZero(EquippedWeapon->GetFireDelay() - FireDelay, 0.001f); //10^-3
+	bool bIsNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->GetFireDelay(), FireDelay, 0.001f); //10^-8 by default
+	return bIsNearlyEqual;
+
+}
 
 void UCombatComponent::Start_FireTimer()
 {
@@ -711,7 +762,7 @@ void UCombatComponent::Input_Fire_WithoutAssingmentLine()
 	FHitResult HitResult;
 	DoLineTrace_UnderCrosshairs(HitResult);
 
-	ServerInput_Fire(bIsFiring, HitResult.ImpactPoint); //rather than member HitPoint
+	ServerInput_Fire(bIsFiring, HitResult.ImpactPoint, EquippedWeapon->GetFireDelay()); //rather than member HitPoint
 
 	Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
 }
@@ -985,6 +1036,10 @@ void UCombatComponent::ExtractCarriedAmmoFromMap_UpdateHUDAmmos_ReloadIfEmpty()
 	{
 		Input_Reload(); //self-organized (i.e self replicated in some way)
 	}
+
+	//UPDATE: this will help to fix other client NEW owner update its Weapon::Ammo when pick it up: you can also do it locally inside Weapon::CheckAndSetHUD_Ammo(), but I say no, it make it less flexibility, currently Equip()::ThisHostingfunction trigger in the server only:
+	EquippedWeapon->ClientSetAmmo(EquippedWeapon->GetAmmo());
+
 	//I decide to call it here, safe enough from SetOwner above LOL:
 	EquippedWeapon->CheckAndSetHUD_Ammo(); //no need, Input_Reload is self-handled already? no in case it can't pass the if check, then this will be needed LOL
 }
@@ -1207,6 +1262,8 @@ void UCombatComponent::ReloadEnd()
 	//later on stephen add 'bLocalReloading' to CanFire()
 	if (Character->IsLocallyControlled()) bLocalReloading = false;
 
+	//client must wait 'ping' after reach ReloadEnd() to do other actions, say fire, again
+	//so stephen idea is that we also send ClientRPC( __ = ECS_Unoccupied) AFTER we play ReloadAnimation in the server
 	if (Character->HasAuthority())
 	{
 		CharacterState = ECharacterState::ECS_Unoccupied;
@@ -1226,7 +1283,9 @@ void UCombatComponent::ReloadEnd()
 		}
 	}
 	//If you want..., you call this either here or in Combat::ServerInput_Reload, not both:
-	if (Character->HasAuthority()) UpdateHUD_CarriedAmmo();
+	
+	//if (Character->HasAuthority()) UpdateHUD_CarriedAmmo();
+	UpdateHUD_CarriedAmmo(); //try achieve client-side prediction when ReloadEnd reach locally, go and check if the code insde is self-handled or DIA! - it works like a charm
 }
 
 void UCombatComponent::ReloadOneAmmo()

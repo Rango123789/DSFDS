@@ -93,6 +93,9 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerInput_Throw();
 
+	UFUNCTION(Client, Unreliable)
+	void ClientResetToUnoccupied();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -113,8 +116,11 @@ private:
 	void FireShotgunWeapon(bool InIsFiring);
 
 	//for all weapons except shotgun:
-	UFUNCTION(Server, Reliable)
-	void ServerInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
+		//UFUNCTION(Server, Reliable)
+		//void ServerInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
+
+	UFUNCTION(Server, Reliable, WithValidation) //simulating cheating
+	void ServerInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target, float FireDelay);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastInput_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
@@ -122,8 +128,11 @@ private:
 	void DoAction_Fire(bool InIsFiring, const FVector_NetQuantize& Target);
 
 	//for shotgun:
-	UFUNCTION(Server, Reliable)
-	void ServerInput_Fire_Shotgun(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, class AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun);
+		//UFUNCTION(Server, Reliable)
+		//void ServerInput_Fire_Shotgun(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, class AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun);
+
+	UFUNCTION(Server, Reliable, WithValidation) //simulating cheating
+	void ServerInput_Fire_Shotgun(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, class AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun, float FireDelay);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastInput_Fire_Shotgun(bool InIsFiring, const TArray<FVector_NetQuantize>& HitTargets, AHitScanWeapon_Shotgun* HitScanWeapon_Shotgun);
@@ -142,7 +151,7 @@ private:
 
 	void Input_Fire_WithoutAssingmentLine();
 
-		float FireDelay=0.25;
+		//float FireDelay=0.25;
 
 		bool bIsAutomatic = true;
 
