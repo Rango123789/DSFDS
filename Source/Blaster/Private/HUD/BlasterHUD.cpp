@@ -3,6 +3,7 @@
 #include "HUD/CharacterOverlay_UserWidget.h"
 #include "HUD/UW_Announcement.h"
 #include "PlayerController/BlasterPlayerController.h"
+#include "HUD/UserWidget_ReturnToMainMenu.h"
 
 ABlasterHUD::ABlasterHUD()
 {
@@ -17,6 +18,7 @@ void ABlasterHUD::BeginPlay()
 
 	SetupBlasterHUD();
 }
+
 void ABlasterHUD::SetupBlasterHUD()
 {
 	//APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
@@ -34,9 +36,14 @@ void ABlasterHUD::SetupBlasterHUD()
 	{
 		UserWidget_Announcement = CreateWidget<UUserWidget_Announcement>(PlayerController, Announcement_Class);
 	}
-
+		//why did I do this so early? well in fact the default text is empty I guess
 	if (UserWidget_Announcement) UserWidget_Announcement->AddToViewport();
 
+	//I should create the widget object as soon as possible, but I'm not gonna AddToViewport() here (unless I set visibility to HIDDEN), i PLAN to press Q and call UserWidget_ReturnToMainMenu::MenuSetup() that in turn call 'AddToViewport()', yeah!
+	if (PlayerController && ReturnToMainMenu_Class)
+	{
+		UserWidget_ReturnToMainMenu = CreateWidget<UUserWidget_ReturnToMainMenu>(PlayerController, ReturnToMainMenu_Class);
+	}
 }
 
 void ABlasterHUD::PollInit_HUD()

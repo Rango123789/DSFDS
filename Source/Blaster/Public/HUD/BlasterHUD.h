@@ -49,6 +49,11 @@ protected:
 	UPROPERTY()
 	UUserWidget_Announcement* UserWidget_Announcement = nullptr;
 
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UUserWidget_ReturnToMainMenu> ReturnToMainMenu_Class;
+	UPROPERTY()
+	UUserWidget_ReturnToMainMenu* UserWidget_ReturnToMainMenu = nullptr;
+
 	
 	FHUDPackage HUDPackage; //this will be assigned AWeapon::values via Character::Combat (as this is where you can access both EquippedWeapon and PlayerController()->GetHUD();
 
@@ -61,4 +66,5 @@ public:
 
 	UCharacterOverlay_UserWidget* GetCharacterOverlay_UserWidget() { return CharacterOverlay_UserWidget; }
 	UUserWidget_Announcement* GetUserWidget_Announcement() { return UserWidget_Announcement; }
+	UUserWidget_ReturnToMainMenu* GetUserWidget_ReturnToMainMenu() { return UserWidget_ReturnToMainMenu; }
 };

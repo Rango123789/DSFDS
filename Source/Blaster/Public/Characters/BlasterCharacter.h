@@ -34,7 +34,6 @@ public:
 	virtual void Jump() override;
 	 /**</X>*/
 
-
 //category3: callbacks and RPC
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
@@ -105,6 +104,9 @@ public:
 	TMap<FName, class UBoxComponent*> BoxComponentMap;
 
 	bool bIsLocalSwapping = false; 
+
+	UFUNCTION(Server, Reliable)
+	void ServerLeaveGameRequest();
 
 protected:
 	/***functions***/
@@ -371,6 +373,8 @@ private:
 
 	void Input_Reload(const FInputActionValue& Value);
 	void Input_Throw(const FInputActionValue& Value);
+	//void Input_ReturnToMainMenu(const FInputActionValue& Value);
+
 
 //category4: regular functions 
 	void HideCharacterIfCameraClose();
@@ -413,6 +417,9 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	class UInputAction* IA_Throw;
+
+	//UPROPERTY(EditAnywhere)
+	//class UInputAction* IA_ReturnToMainMenu;
 
 	//montages:
 

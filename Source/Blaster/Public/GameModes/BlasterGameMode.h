@@ -28,6 +28,9 @@ public:
 
 	virtual void PlayerEliminated(class ABlasterCharacter* ElimininatedCharacter, class ABlasterPlayerController* EliminatedController, class ABlasterPlayerController* AttackerController);
 	virtual void RequestRespawn(ABlasterCharacter* ElimininatedCharacter, ABlasterPlayerController* EliminatedController);
+
+	//parameter can be either Char || PC || PS, but PS is what our function directly need so yeah:
+	void HandleLeaveGameRequest(class APlayerState_Blaster* LeavingPlayerState);
 protected:
 	void virtual BeginPlay() override;
 

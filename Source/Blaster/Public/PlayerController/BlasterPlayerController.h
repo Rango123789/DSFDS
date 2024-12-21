@@ -89,6 +89,22 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	//for any input can be done in PC rather than in Char as usual that it can be absent:
+	virtual void SetupInputComponent() override;
+
+	//this is separate IMC for PC
+	UPROPERTY(EditAnywhere)
+	class UInputMappingContext* IMC_Blaster_PC;
+
+	UPROPERTY(EditAnywhere)
+	class UInputAction* IA_ReturnToMainMenu;
+
+	//important bool to know it is open or collapsed:
+	bool bIsRetunWidgetOpen = false;
+
+	void Input_ReturnToMainMenu(const struct FInputActionValue& Value);
+
+
 	//HUD and its Overlay widget (move from Character)
 	UPROPERTY()
 	class ABlasterHUD* BlasterHUD = nullptr;

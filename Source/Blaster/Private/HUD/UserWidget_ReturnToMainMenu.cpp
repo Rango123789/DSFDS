@@ -12,7 +12,7 @@ bool UUserWidget_ReturnToMainMenu::Initialize()
 
 	//MenuSetup(); //do it outside when you create the widget also okay, but dont do it unless we have to
 
-	if(Button_ReturnButton) Button_ReturnButton->OnClicked.AddDynamic(this, &ThisClass::OnClicked_ReturnButton);
+	//if(Button_ReturnButton) Button_ReturnButton->OnClicked.AddDynamic(this, &ThisClass::OnClicked_ReturnButton);
 
 	return true; //conventional line
 }
@@ -36,11 +36,17 @@ void UUserWidget_ReturnToMainMenu::MenuSetup()
 	SetVisibility(ESlateVisibility::Visible);  //it should be Visible by default, but anyway
 	SetIsFocusable(true); //it should be true by default, but anyway
 
+	//stephen bind callback for Button::OnClick here:
+	if (Button_ReturnButton && !Button_ReturnButton->OnClicked.IsBound()) Button_ReturnButton->OnClicked.AddDynamic(this, &ThisClass::OnClicked_ReturnButton);
+
 	//MOVE the binding callback up here:
-	MSS =  GetGameInstance()->GetSubsystem<UMultiplayerSession_GameSubsystem>();
-	if (MSS) MSS->OnDestroySessionCompleteDelegate_Multiplayer.AddDynamic(this, &ThisClass::OnDestroySessionComplete_Multiplayer);
+	if(MSS == nullptr) MSS =  GetGameInstance()->GetSubsystem<UMultiplayerSession_GameSubsystem>();
+	if (MSS)
+	{
+		MSS->OnDestroySessionCompleteDelegate_Multiplayer.AddDynamic(this, &ThisClass::OnDestroySessionComplete_Multiplayer);
+	}
 //conventional things: InputMode , Cursor
-	if (GetWorld())
+	if (GetWorld() && Button_ReturnButton)
 	{
 		PC = PC == nullptr? GetWorld()->GetFirstPlayerController() : PC; 
 		//the reason I choose this is that you may also need to press 'Q' again to stay (where user input require at least GameOnly)
@@ -64,6 +70,11 @@ void UUserWidget_ReturnToMainMenu::MenuTearDown()
 {
 //side things:
 	RemoveFromParent(); //OR ESlateVisibility = hidden will also do!
+
+	if (MSS)
+	{
+		MSS->OnDestroySessionCompleteDelegate_Multiplayer.RemoveDynamic(this, &ThisClass::OnDestroySessionComplete_Multiplayer);
+	}
 
 //main things:
 	if (GetWorld())
@@ -115,6 +126,7 @@ void UUserWidget_ReturnToMainMenu::OnDestroySessionComplete_Multiplayer(bool bWa
 	if (bWasSuccessful == true)
 	{
 		//you should 'unbind' the callback when you succeed right? otherwise this is the consequence: this class will be removed from parent, potentially destroy this widget object too, where the GameInstance::MMS persist across level - not good!
+		//note that there could be a second callback in Menu bind to this very same delegate from MSSubsystem LOL, isn't interesting? 2 callbacks from external classes to a REAL indepdendent class MSSubsystem!
 		if (MSS) MSS->OnDestroySessionCompleteDelegate_Multiplayer.RemoveDynamic(this, &ThisClass::OnDestroySessionComplete_Multiplayer);
 
 		//Ready all side things before come back to the StartMap: it need UIOnly inputmode, Show Cursor ; ...

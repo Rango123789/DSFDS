@@ -11,6 +11,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameState/GameState_Blaster.h"
 #include "CharacterComponents/CombatComponent.h"
+#include <EnhancedInputSubsystems.h>
+#include <EnhancedInputComponent.h>
+#include "HUD/UserWidget_ReturnToMainMenu.h"
 
 ABlasterPlayerController::ABlasterPlayerController()
 {
@@ -21,6 +24,8 @@ void ABlasterPlayerController::Server_ReportPingStatus_Implementation(bool bHigh
 {
 	OnReportPingStatus_Delegate.Broadcast(bHighPing);
 }
+
+
 
 void ABlasterPlayerController::BeginPlay()
 {
@@ -40,8 +45,71 @@ void ABlasterPlayerController::BeginPlay()
 
 	//get DATA from GameMode for clients_PC + server_PC accidentally:
 	ServerCheckMatchState(); //GOLDEN4 to propogated DATA from GM to clients
+
+	//setup Input in PlayerController: basiscally the same: the question is which one take precedence when Char is still alive, priority affect anything, is it additive?
+	if (IMC_Blaster_PC)
+	{
+		UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(
+			GetLocalPlayer());
+
+		if (Subsystem)
+		{
+			Subsystem->AddMappingContext(IMC_Blaster_PC, 0);
+		}
+	}
 }
-  
+
+void ABlasterPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	UEnhancedInputComponent* EnhancedInputComp = Cast<UEnhancedInputComponent>(InputComponent);
+
+	if (EnhancedInputComp)
+	{
+		EnhancedInputComp->BindAction(IA_ReturnToMainMenu, ETriggerEvent::Triggered, this, &ThisClass::Input_ReturnToMainMenu);
+	}
+}
+
+void ABlasterPlayerController::Input_ReturnToMainMenu(const FInputActionValue& Value)
+{
+
+	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+	if (BlasterHUD && BlasterHUD->GetUserWidget_ReturnToMainMenu())
+	{
+		if (bIsRetunWidgetOpen == false)
+		{
+			BlasterHUD->GetUserWidget_ReturnToMainMenu()->MenuSetup();
+		}
+		else
+		{
+			BlasterHUD->GetUserWidget_ReturnToMainMenu()->MenuTearDown();
+		}
+		//this is an interesting statement LOL:
+		bIsRetunWidgetOpen = !bIsRetunWidgetOpen;
+	}
+
+
+}
+ 
+//move to PC
+//void ABlasterCharacter::Input_ReturnToMainMenu(const FInputActionValue& Value)
+//{
+//	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
+//
+//	if (BlasterPlayerController)
+//	{
+//		BlasterHUD = BlasterHUD == nullptr ? BlasterPlayerController->GetHUD<ABlasterHUD>() : BlasterHUD;
+//
+//		if (BlasterHUD && BlasterHUD->GetUserWidget_ReturnToMainMenu())
+//		{
+//			BlasterHUD->GetUserWidget_ReturnToMainMenu()->MenuSetup();
+//		}
+//	}
+//}
+
+
 void ABlasterPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);

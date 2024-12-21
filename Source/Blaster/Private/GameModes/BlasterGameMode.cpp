@@ -140,4 +140,9 @@ void ABlasterGameMode::RequestRespawn(ABlasterCharacter* ElimininatedCharacter, 
 	}
 }
 
+void ABlasterGameMode::HandleLeaveGameRequest(APlayerState_Blaster* LeavingPlayerState)
+{
+
+}
+
 

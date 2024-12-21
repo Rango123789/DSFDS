@@ -166,7 +166,6 @@ void ULagCompensationComponent::ServerScoreRequest_Implementation(const FVector_
 //BUT anyway I'm happy so far so I dont adapt to stephen, I keep mind! as I did set Projectile::Owner = Weapon!
 void ULagCompensationComponent::ServerScoreRequest_Projectile_Implementation(const FVector_NetQuantize& Start, const FVector_NetQuantize100& InitialVelocity, ABlasterCharacter* HitCharacter, const float& HitTime, AWeapon* DamageCauser)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Enter: ServerScoreRequest_Projectile"))
 
 	if (HitCharacter == nullptr || DamageCauser == nullptr || Character == nullptr) return;
 	//at this point, except params to be passed from RPCWrapper, any other values inside the function will use values in the server proxies, including 'Char::LagComp::FrameHistory':
@@ -183,7 +182,6 @@ void ULagCompensationComponent::ServerScoreRequest_Projectile_Implementation(con
 		);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Exit: ServerScoreRequest_Projectile"))
 }
 
 

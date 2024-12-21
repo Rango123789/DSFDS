@@ -880,6 +880,8 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 		EnhancedPlayerInputComponent->BindAction(IA_Reload, ETriggerEvent::Triggered, this, &ThisClass::Input_Reload);
 		EnhancedPlayerInputComponent->BindAction(IA_Throw, ETriggerEvent::Triggered, this, &ThisClass::Input_Throw);
+
+		//EnhancedPlayerInputComponent->BindAction(IA_ReturnToMainMenu, ETriggerEvent::Triggered, this, &ThisClass::Input_ReturnToMainMenu);
 	}
 }
 
@@ -1124,6 +1126,22 @@ void ABlasterCharacter::Input_Throw(const FInputActionValue& Value)
 	if (CombatComponent) CombatComponent->Input_Throw();
 }
 
+//move to PC
+//void ABlasterCharacter::Input_ReturnToMainMenu(const FInputActionValue& Value)
+//{
+//	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
+//
+//	if (BlasterPlayerController)
+//	{
+//		BlasterHUD = BlasterHUD == nullptr ? BlasterPlayerController->GetHUD<ABlasterHUD>() : BlasterHUD;
+//
+//		if (BlasterHUD && BlasterHUD->GetUserWidget_ReturnToMainMenu())
+//		{
+//			BlasterHUD->GetUserWidget_ReturnToMainMenu()->MenuSetup();
+//		}
+//	}
+//}
+
 void ABlasterCharacter::HideCharacterIfCameraClose()
 {
 	//We must not hide in other machines, as the still need to see you LOL
@@ -1169,6 +1187,24 @@ bool ABlasterCharacter::GetIsLocalReloading()
 {
 	return CombatComponent && CombatComponent->bLocalReloading; 
 }
+
+//this is meant to be called from CD when WBP_Return::Button is shown and Clicked:
+void ABlasterCharacter::ServerLeaveGameRequest_Implementation()
+{
+	if (GetWorld() == nullptr) return;
+
+	//when reaching this body, it is already in the server, we now can access authoGameMode and call GM::HandleLeaveGameRequest(), all the rest job is done from there and on:
+	ABlasterGameMode* GM =Cast<ABlasterGameMode>( GetWorld()->GetAuthGameMode());
+	//you can in fact access it directly without via PC: (but it is originally member of PC)
+	PlayerState_Blaster = PlayerState_Blaster == nullptr ? GetPlayerState<APlayerState_Blaster>() : PlayerState_Blaster;
+
+	if (GM && PlayerState_Blaster)
+	{
+		//go into GM and implement this function:
+		GM->HandleLeaveGameRequest(PlayerState_Blaster);
+	}
+}
+
 
 //bool ABlasterCharacter::GetIsLocalSwapping()
 //{

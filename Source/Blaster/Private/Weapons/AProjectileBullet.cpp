@@ -114,7 +114,6 @@ void AAProjectileBullet::PostEditChangeProperty(FPropertyChangedEvent& PropertyC
 
 void AAProjectileBullet::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Enter: AAProjectileBullet::OnBoxHit"))
 	ABlasterCharacter* HitCharacter = Cast<ABlasterCharacter>(OtherActor);
 	ABlasterPlayerController* InstigatorController = nullptr;
 
@@ -149,7 +148,6 @@ void AAProjectileBullet::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* Oth
 		//if (!HasAuthority() && bUseServerSideRewind_TIRE2 ) //this can't pass , non-replicated actor HasAuthority() instead
 		if (bUseServerSideRewind_TIRE2 && GetInstigator()->IsLocallyControlled())// only this can pass , cause double damage 
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Enter: AAProjectileBullet::OnBoxHit && !HasAuthority() ") )
 			float HitTime = InstigatorController->GetServerTime_Synched() - InstigatorController->RTT / 2;
 
 			//we did set Owner of projectile = the weapon (rather than = Character itself like stephen, that instigator is enough), DO NOT confuse: owner of weapon is still character, we talking about projectile TIRE3 here:
@@ -164,7 +162,6 @@ void AAProjectileBullet::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* Oth
 					TraceStart, InitialVelocity, HitCharacter, HitTime, DamageCauser );
 			}
 		}
-		UE_LOG(LogTemp, Warning, TEXT("Exit AAProjectileBullet::OnBoxHit"))
 	}
 	//this must be final, because it has the line 'Destroy()', that cause the extra code ineffective
 	//you want to play HitParticle no matter you did hit any char or not:
