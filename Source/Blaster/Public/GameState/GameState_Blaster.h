@@ -47,6 +47,12 @@ public:
 	UFUNCTION()
 	void OnRep_BlueTeamscore();
 
+	void UpdateHUDRedTeamScore();
+	void UpdateHUDBlueTeamScore();
+
+	void CheckAndSetRedTeamScore();
+	void CheckAndSetBlueeamScore();
+
 protected:
 	void virtual BeginPlay() override;
 };

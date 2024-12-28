@@ -26,9 +26,11 @@ public:
 	void SetMatchTimeLeftText(const FString& InString);
 	void SetThrowGrenadeText(const int& InThrowGrenade);
 
-	void SetRedTeamScoreText(const int& InRedTeamScore);
+	void SetRedTeamScoreText(const FString& InString);
 
-	void SetBlueTeamScoreText(const int& InBlueTeamScore);
+	void SetBlueTeamScoreText(const FString& InString);
+
+	void SetTeamScoreSpacerText(const FString& InString);
 	
 	void PlayWBPAnimation_PingWarning();
 	void StopWBPAnimation_PingWarning();
@@ -74,7 +76,8 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_BlueTeamScore;
 
-
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TextBlock_TeamScoreSpacer;
 
 	//for play WBPAnim_PingWarning
 	UPROPERTY(meta = (BindWidgetAnim) , Transient)

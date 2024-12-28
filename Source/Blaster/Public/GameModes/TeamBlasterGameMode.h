@@ -15,6 +15,9 @@ class BLASTER_API ATeamBlasterGameMode : public ABlasterGameMode
 	GENERATED_BODY()
 
 public:
+
+	ATeamBlasterGameMode();
+
 	/** Called after a successful login.  This is the first place it is safe to call replicated functions on the PlayerController. 
 	= I dont see any PC::PostLogin or PC::Logout that propogate this ORIGIN lol, so may it names differently, like OnPossess or else? */
 	virtual void PostLogin(APlayerController* NewPlayer) override;

@@ -23,6 +23,9 @@ class BLASTER_API ABlasterGameMode : public AGameMode
 	GENERATED_BODY()
 
 public:
+	//set it to false by default, in case child::constructor dont change it (because child isn't selected) then this will be the default, otherwise it will change to child new value - this is what we want.
+	bool bIsTeamMatch = false;
+
 	ABlasterGameMode();
 	virtual void Tick(float DeltaTime) override;
 
@@ -34,6 +37,7 @@ public:
 
 	//custom virtual function:
 	virtual float CalculateDamage(AController* AttackController, AController* VictimController, const float& BaseDamage);
+
 
 protected:
 	void virtual BeginPlay() override;

@@ -351,7 +351,8 @@ void ABlasterCharacter::SpawnDefaultWeapon()
 	if (GetWorld() == nullptr || CombatComponent == nullptr) return;
 	
 	//to make sure we only spawn for the Char when in GameMap, not in LobbyMap, anyway this is optional:
-	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>( GetWorld()->GetAuthGameMode() );
+	//ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>( GetWorld()->GetAuthGameMode() );
+	BlasterGameMode = BlasterGameMode == nullptr ? Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode()) : BlasterGameMode;
 
 	if (BlasterGameMode)
 	{
@@ -648,7 +649,8 @@ void ABlasterCharacter::TimerCallback_Elim()
 	//what the heck why it is so 'around' why dont we just call directly from ABlasterGameMode::PlayerEliminated() instead?
 	//also why you must call Char::Elim from GameMode instead of directly here in char::ReceiveDamage? 
 
-	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
+	//ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
+	BlasterGameMode = BlasterGameMode == nullptr ? Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode()) : BlasterGameMode;
 	//you miss this line: 
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
 

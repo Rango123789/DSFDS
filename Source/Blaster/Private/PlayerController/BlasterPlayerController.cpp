@@ -92,23 +92,6 @@ void ABlasterPlayerController::Input_ReturnToMainMenu(const FInputActionValue& V
 
 }
  
-//move to PC
-//void ABlasterCharacter::Input_ReturnToMainMenu(const FInputActionValue& Value)
-//{
-//	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
-//
-//	if (BlasterPlayerController)
-//	{
-//		BlasterHUD = BlasterHUD == nullptr ? BlasterPlayerController->GetHUD<ABlasterHUD>() : BlasterHUD;
-//
-//		if (BlasterHUD && BlasterHUD->GetUserWidget_ReturnToMainMenu())
-//		{
-//			BlasterHUD->GetUserWidget_ReturnToMainMenu()->MenuSetup();
-//		}
-//	}
-//}
-
-
 void ABlasterPlayerController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -283,6 +266,7 @@ void ABlasterPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABlasterPlayerController, MatchState);
+	DOREPLIFETIME(ABlasterPlayerController, bIsTeamMatch);
 }
 
 void ABlasterPlayerController::PollInit()
@@ -306,13 +290,19 @@ void ABlasterPlayerController::UpdateServerClient_Delta_Periodically(float Delta
 }
 
 //I decide to give the same name, why not!
-void ABlasterPlayerController::OnMatchStateSet(const FName& InMatchState)
+void ABlasterPlayerController::OnMatchStateSet(const FName& InMatchState, bool InIsTeamMatch)
 {
 	MatchState = InMatchState;
+	bIsTeamMatch = InIsTeamMatch; //call it here mean it set server times, but in fact to the same value so no worry
 
 	if (MatchState == MatchState::InProgress)
 	{
-		HandleMatchHasStarted();
+		//DoActionY()
+		if (bIsTeamMatch) InitTeamScores();
+		else HideTeamScores();
+
+		//DoActionX()
+		HandleMatchHasStarted(); 
 	}
 	else if (MatchState == MatchState::CoolDown)
 	{
@@ -331,6 +321,13 @@ void ABlasterPlayerController::OnRep_MatchState()
 	{
 		HandleCoolDown();
 	}
+}
+
+void ABlasterPlayerController::OnRep_bIsTeamMatch()
+{
+	//DoActionY()
+	if (bIsTeamMatch) InitTeamScores();
+	else HideTeamScores();
 }
 
 //Name this function the same name as GameMode::HandleMatchHasStarted()<~InProgress <~GM::OnMatchStateSet()
@@ -409,7 +406,7 @@ void ABlasterPlayerController::ClientCheckMatchState_Implementation(float InLeve
 	MatchState = InMatchName;
 	ColdDownTime = InCoolDownTime;
 	//In worst case, the client joint 'after' the point MG::OnMatchStateSet()~>InProgress trigger, that it wont have those code update to clients at all, where the server PC will surely be updated, and possibly the only one, hence we dont add this line in Server___ above  
-	OnMatchStateSet(MatchState); //PC:: _propogate()
+	OnMatchStateSet(MatchState, bIsTeamMatch); //PC:: _propogate()
 
 	// Only Do this if you didn't do it in BlasterHUD, which I did, so I dont need, calling it here is no different than calling in PC::BeginPlay as this will be in turn called in BeginPlay, and UE5.2 didn't work in PC::BeginPlay, so it wont work for me :) PC constructor is done before BlasterHUD. hence PC::BeginPlay is done before PC::HUD I guess
 	// if(MatchState=WaitingToStart && BlasterHUD) CreateWidget + AddToViewport WBP_Announcement 
@@ -547,6 +544,63 @@ void ABlasterPlayerController::SetHUDThrowGrenade(int InThrowGrenade)
 	if (CharacterOverlay_UserWidget == nullptr) return;
 	//Back to main business:
 	CharacterOverlay_UserWidget->SetThrowGrenadeText(InThrowGrenade);
+}
+
+
+void ABlasterPlayerController::SetHUDRedTeamScore(int InRedTeamScore)
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+	//Back to main business:
+	FString InString = FString::FromInt(InRedTeamScore);
+	CharacterOverlay_UserWidget->SetRedTeamScoreText(InString);
+}
+
+void ABlasterPlayerController::SetHUDBlueTeamScore(int InBlueTeamScore)
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+	//Back to main business:
+	FString InString = FString::FromInt(InBlueTeamScore);
+	CharacterOverlay_UserWidget->SetBlueTeamScoreText(InString);
+}
+
+void ABlasterPlayerController::HideTeamScores()
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+
+	//Back to main business:
+	CharacterOverlay_UserWidget->SetRedTeamScoreText(FString());
+	CharacterOverlay_UserWidget->SetBlueTeamScoreText(FString());
+	CharacterOverlay_UserWidget->SetTeamScoreSpacerText(FString());
+}
+
+void ABlasterPlayerController::InitTeamScores()
+{
+	//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	CharacterOverlay_UserWidget = CharacterOverlay_UserWidget == nullptr ? BlasterHUD->GetCharacterOverlay_UserWidget() : CharacterOverlay_UserWidget;
+	if (CharacterOverlay_UserWidget == nullptr) return;
+
+	//Back to main business:
+	CharacterOverlay_UserWidget->SetRedTeamScoreText(FString("0"));
+	CharacterOverlay_UserWidget->SetBlueTeamScoreText(FString("0"));
+	CharacterOverlay_UserWidget->SetTeamScoreSpacerText(FString("|"));
 }
 
 

@@ -33,14 +33,19 @@ public:
 	void SetHUDCarriedAmmo(int InCarriedAmmo);
 	void SetHUDThrowGrenade(int InThrowGrenade);
 
+	void SetHUDRedTeamScore(int InRedTeamScore);
+	void SetHUDBlueTeamScore(int InBlueTeamScore);
+	//to be call in X::BeginPlay() or like when BP_BlasterGM is selected
+	void HideTeamScores();
+	//to be call in X::BeginPlay() or like when BP_TeamBlasterGM is selected
+	void InitTeamScores();
+
+
 	void UpdateHUDTime();
 	void SetHUDMatchTimeLeft(int32 MatchTimeLeft);
 	void SetHUDWarmUpTimeLeft(int32 InTimeLeft);
 
 	void SetHUDAnnounceAndInfo();
-
-
-
 
 	//if this run in the server, only the CD receives it, so to broadcast message to all devices we must interate over the whole array of PCs and call this ClientRPC per each PC: similar to what we did in GM::OnMatchStateSet()
 	UFUNCTION(Client, Reliable)
@@ -109,9 +114,8 @@ protected:
 
 	//HUD and its Overlay widget (move from Character)
 	UPROPERTY()
-	//class ABlasterHUD* BlasterHUD = nullptr;
 	TObjectPtr<class ABlasterHUD> BlasterHUD;
-	//TObjectPtr<ABlasterHUD> BlasterHUD;
+
 
 	UPROPERTY()
 	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget = nullptr;
@@ -139,12 +143,21 @@ protected:
 
 	uint32 TimeLeftInt_LastSecond = 0;
 
-	//old, to be propogated from Gm
+	//to be propogated from GM
 	UPROPERTY(ReplicatedUsing = OnRep_MatchState)
 	FName MatchState;
-
 	UFUNCTION()
 	void OnRep_MatchState();
+
+	//to be propogated from GM
+	UPROPERTY(ReplicatedUsing = OnRep_bIsTeamMatch)
+	bool bIsTeamMatch;
+		//I feel like we can hitchhike with OnRep_MatchState()? avoid this need?
+		//also we currently only need bIsMatchTeam to be replicated to clients, nothing more!
+	    //no we need it because 'DoActionY in OnRep_X is risky'
+	UFUNCTION()
+	void OnRep_bIsTeamMatch();
+
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheckMatchState();
@@ -159,7 +172,8 @@ protected:
 	void Client_ReportRequestBackToRequestingClient(float TimeOfClientWhenRequesting, float TimeOfServerWhenReceivedRequest);
 
 public:
-	void OnMatchStateSet(const FName& InMatchState); //more than set, so I do it in .cpp
+	//stephen set InIsTeamMatch = false by default, but really this is absolute redudant as we will call and pass GM::bIsTeamMatch at the time we call it there, so LOL, you dont have to do this: 
+	void OnMatchStateSet(const FName& InMatchState, bool InIsTeamMatch = false); //more than set, so I do it in .cpp
 	void HandleMatchHasStarted(); 
 	void HandleCoolDown();
 	FName GetMatchState() { return MatchState; }

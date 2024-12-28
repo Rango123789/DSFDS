@@ -4,6 +4,11 @@
 #include "GameState/GameState_Blaster.h"
 #include "PlayerStates/PlayerState_Blaster.h"
 
+ATeamBlasterGameMode::ATeamBlasterGameMode()
+{
+	bIsTeamMatch = true;
+}
+
 float ATeamBlasterGameMode::CalculateDamage(AController* AttackController, AController* VictimController, const float& BaseDamage)
 {
 	//DO NOT call Super:: , we dont want it.

@@ -63,17 +63,21 @@ void UCharacterOverlay_UserWidget::SetThrowGrenadeText(const int& InThrowGrenade
 	if (TextBlock_ThrowGrenade) TextBlock_ThrowGrenade->SetText(FText::FromString(InString));
 }
 
-void UCharacterOverlay_UserWidget::SetRedTeamScoreText(const int& InRedTeamScore)
+void UCharacterOverlay_UserWidget::SetRedTeamScoreText(const FString& InString)
 {
-	FString InString = FString::FromInt(InRedTeamScore);
 	if (TextBlock_RedTeamScore) TextBlock_RedTeamScore->SetText(FText::FromString(InString));
 }
 
-void UCharacterOverlay_UserWidget::SetBlueTeamScoreText(const int& InBlueTeamScore)
+void UCharacterOverlay_UserWidget::SetBlueTeamScoreText(const FString& InString)
 {
-	FString InString = FString::FromInt(InBlueTeamScore);
 	if (TextBlock_BlueTeamScore) TextBlock_BlueTeamScore->SetText(FText::FromString(InString));
 }
+
+void UCharacterOverlay_UserWidget::SetTeamScoreSpacerText(const FString& InString)
+{
+	if (TextBlock_TeamScoreSpacer) TextBlock_TeamScoreSpacer->SetText(FText::FromString(InString));
+}
+
 
 void UCharacterOverlay_UserWidget::PlayWBPAnimation_PingWarning()
 {

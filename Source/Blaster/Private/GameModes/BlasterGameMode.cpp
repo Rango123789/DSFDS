@@ -78,13 +78,13 @@ void ABlasterGameMode::OnMatchStateSet()
 	for (It; It; ++It) //this pattern is weird compared to:  for (int i = 1; i <= 10; ++i){...}
 	{
 		//this didn't work:
-			//APlayerController* Controller = *It;
+			//APlayerController* PlayerController = *It;
 		//but this work1:
-		APlayerController* Controller = Cast<APlayerController>(*It);
+		APlayerController* PlayerController = Cast<APlayerController>(*It);
 		//but this work2:
-		ABlasterPlayerController* PlayerController = Cast<ABlasterPlayerController>(*It);
+		ABlasterPlayerController* BlasterPlayerController = Cast<ABlasterPlayerController>(*It);
 
-		if(PlayerController) PlayerController->OnMatchStateSet(MatchState); //this helper funciton do more than just set
+		if (PlayerController) BlasterPlayerController->OnMatchStateSet(MatchState, bIsTeamMatch); //this helper funciton do more than just set
 	}
 }
 
@@ -108,6 +108,25 @@ void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* ElimininatedCharacter
 	if (PS_Attacker != PS_Elimmed) //(*)
 	{
 		PS_Attacker->UpdateHUD_Score();
+
+		//UPDATE: Shocking news, stephen make GM::PlayerElimmed VITUAL
+		//, and override it in TeamGM::PlayerElimmed
+		//, calling super:: and add the code above!
+		// However I would need to Cast to PS_Attacker again, so I'm to tire of it:
+		//Access the GameState and call the CONTEXTUAL function:
+		if (bIsTeamMatch)
+		{
+			AGameState_Blaster* GameState_Blaster = GetWorld()->GetGameState<AGameState_Blaster>();
+			if (PS_Attacker->GetTeam() == ETeam::ET_RedTeam)
+			{
+				if(GameState_Blaster) GameState_Blaster->UpdateHUDRedTeamScore();
+			}
+			if (PS_Attacker->GetTeam() == ETeam::ET_BlueTeam)
+			{
+				if (GameState_Blaster) GameState_Blaster->UpdateHUDBlueTeamScore();
+			}
+		}
+
 
 	//INSERT1: backup the array, make a copy, note that elements are copied pointer but they still point to the same DATA as the ORIGINAL array's elements :D :
 		TArray<APlayerState_Blaster*> TopScorePlayerStates_BeforeUpdate = GameState_Blaster->TopStorePlayerStates;
