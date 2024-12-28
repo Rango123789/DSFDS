@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Pickups/Pickup.h"
 #include "Blaster/WeaponTypes.h"
+//#include "Weapons/Weapon.h"
 #include "Pickup_Ammo.generated.h"
 
 /**

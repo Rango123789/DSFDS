@@ -33,10 +33,15 @@ public:
 	void SetupBlasterHUD();
 	void PollInit_HUD();
 	void virtual Tick(float DeltaTime) override;
+
+	void CreateAndAddElimAnnounce(const FString& AttackPlayer, const FString& ElimmedPlayer);
+
+	UFUNCTION()
+	void TimerCallback_RemoveElimAnnounce(class UUserWidget_ElimAnnounce* Message, bool TestBool);
+
 protected:
 	/***functions***/
 	virtual void BeginPlay() override;
-
 
 /***data members****/
 	UPROPERTY(EditAnywhere)
@@ -52,8 +57,23 @@ protected:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class UUserWidget_ReturnToMainMenu> ReturnToMainMenu_Class;
 	UPROPERTY()
-	UUserWidget_ReturnToMainMenu* UserWidget_ReturnToMainMenu = nullptr;
+	UUserWidget_ReturnToMainMenu* UserWidget_ReturnToMainMenu;
 
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UUserWidget_ElimAnnounce> ElimAnnounce_Class;
+	
+	//this is optional, we can create a local variable in the method: 
+	// UPDATE: we must create LOCAL variable. not the permanent variable LOL, because the member variable subject to change as new player are killed! 
+	// UPDATE2: no in fact the value has been passed into the .BindFunction in the same frame, so trust me, LOCAL or MEMBER wont call any differences!
+		//UPROPERTY()
+		//UUserWidget_ElimAnnounce* UserWidget_ElimAnnounce;
+	
+	//this is needed for our purpose:
+	UPROPERTY()
+	TArray<UUserWidget_ElimAnnounce* > UserWidget_ElimAnnounce_Array;
+
+	UPROPERTY(EditAnywhere)
+	float TimerDelay_RemoveElimAnnounce = 8.f;
 	
 	FHUDPackage HUDPackage; //this will be assigned AWeapon::values via Character::Combat (as this is where you can access both EquippedWeapon and PlayerController()->GetHUD();
 
@@ -67,4 +87,5 @@ public:
 	UCharacterOverlay_UserWidget* GetCharacterOverlay_UserWidget() { return CharacterOverlay_UserWidget; }
 	UUserWidget_Announcement* GetUserWidget_Announcement() { return UserWidget_Announcement; }
 	UUserWidget_ReturnToMainMenu* GetUserWidget_ReturnToMainMenu() { return UserWidget_ReturnToMainMenu; }
+	//UUserWidget_ElimAnnounce* GetUserWidget_ElimAnnounce() { return UserWidget_ElimAnnounce; }
 };

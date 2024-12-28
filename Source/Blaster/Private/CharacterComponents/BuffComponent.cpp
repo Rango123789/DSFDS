@@ -11,7 +11,7 @@ UBuffComponent::UBuffComponent()
 	
 	//this time i test doing it here to see if it will actually change in the HOSTING actor: 
 	// IT WORK TOO! but this is not recommeded, let's do it in HOSTING actor
-	SetIsReplicated(true);
+	SetIsReplicatedByDefault(true);
 }
 
 //void UBuffComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

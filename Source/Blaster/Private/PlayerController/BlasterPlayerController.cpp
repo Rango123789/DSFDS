@@ -14,6 +14,7 @@
 #include <EnhancedInputSubsystems.h>
 #include <EnhancedInputComponent.h>
 #include "HUD/UserWidget_ReturnToMainMenu.h"
+#include "HUD/UserWidget_ElimAnnounce.h"
 
 ABlasterPlayerController::ABlasterPlayerController()
 {
@@ -25,11 +26,9 @@ void ABlasterPlayerController::Server_ReportPingStatus_Implementation(bool bHigh
 	OnReportPingStatus_Delegate.Broadcast(bHighPing);
 }
 
-
-
 void ABlasterPlayerController::BeginPlay()
 {
-	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("PC,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
+	//if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("PC,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
 
 	Super::BeginPlay();
 
@@ -139,7 +138,7 @@ void ABlasterPlayerController::CheckPing(float DeltaTime)
 	{
 		//PlayerState is public member of PC, or you can use GetPlayerState<T>() if you want:
 		//GetPing() return ping/4 is OBSOLETE, so I dont use it
-		if(PlayerState) UE_LOG(LogTemp, Warning, TEXT("Ping: %f"), PlayerState->GetPingInMilliseconds())
+		//if(PlayerState) UE_LOG(LogTemp, Warning, TEXT("Ping: %f"), PlayerState->GetPingInMilliseconds())
 		//if(true) //test for now
 		if (PlayerState && PlayerState->GetPingInMilliseconds() >= HighPingThreshold)
 		{
@@ -165,6 +164,54 @@ void ABlasterPlayerController::CheckPing(float DeltaTime)
 
 			StopHighPingWarning();
 		}
+	}
+}
+
+void ABlasterPlayerController::ClientSetHUD_ElimAnnounce_Implementation(APlayerState_Blaster* AttackPlayer, APlayerState_Blaster* ElimmedPlayer)
+{
+//this 4 lines is my style:
+	BlasterHUD = BlasterHUD == nullptr ? Cast<ABlasterHUD>(GetHUD()) : BlasterHUD;
+	if (BlasterHUD == nullptr) return;
+
+	//because you didn't create it at first in BlasterHUD now, so this line will stop you LOL:
+	/*UserWidget_ElimAnnounce = UserWidget_ElimAnnounce == nullptr ? BlasterHUD->GetUserWidget_ElimAnnounce() : UserWidget_ElimAnnounce;
+	if (UserWidget_ElimAnnounce == nullptr) return;*/
+
+//back to main business:
+	//get the PlayerState associate with this current PC: (to be element of PC array)
+	APlayerState_Blaster* ThisPlayer = GetPlayerState<APlayerState_Blaster>() ;
+
+	if(ThisPlayer == nullptr || AttackPlayer == nullptr || ElimmedPlayer == nullptr) return;
+
+	const FString& ThisPlayerName = ThisPlayer->GetPlayerName(); //in fact no need LOL
+	const FString& AttackPlayerName = AttackPlayer->GetPlayerName();
+	const FString& ElimmedPlayerName = ElimmedPlayer->GetPlayerName();
+
+//OPTION1: just print same message [Player1] kill [Player2] for all players LOL, I think this is not bad at all! 
+	//UserWidget_ElimAnnounce->SetTextBlock_Elim(AttackPlayerName, ElimmedPlayerName);
+
+//OPTION2: print message consider Pronouns LOL - UPDATE, we now use 'CreateAndAddElimAnnounce' instead of access and call UW::SetTextBlock_Elim , all same job + extra has been done in new function:
+	//there is 3 killing cases: This Player didn't get involved at all, this Player is the killer, this player is the victim
+	if (ThisPlayer == AttackPlayer && ThisPlayer != ElimmedPlayer)
+	{
+		BlasterHUD->CreateAndAddElimAnnounce("You", ElimmedPlayerName);
+	}
+	else if (ThisPlayer != AttackPlayer && ThisPlayer == ElimmedPlayer)
+	{
+		BlasterHUD->CreateAndAddElimAnnounce(AttackPlayerName, "You");
+	}
+	else if (ThisPlayer != AttackPlayer && ThisPlayer != ElimmedPlayer)
+	{
+		BlasterHUD->CreateAndAddElimAnnounce(AttackPlayerName, ElimmedPlayerName);
+	}
+	//there is 2 suicide cases: this player kill himself, other player kill himself
+	else if (AttackPlayer == ElimmedPlayer && ThisPlayer == AttackPlayer)
+	{
+		BlasterHUD->CreateAndAddElimAnnounce("You", "yourself");
+	}
+	else if (AttackPlayer == ElimmedPlayer && ThisPlayer != AttackPlayer)
+	{
+		BlasterHUD->CreateAndAddElimAnnounce(AttackPlayerName, "themself");
 	}
 }
 
@@ -209,6 +256,16 @@ void ABlasterPlayerController::OnPossess(APawn* InPawn)
 			//if (CharacterOverlay_UserWidget == nullptr) return;
 
 			//CharacterOverlay_UserWidget->AddToViewport();
+
+	//for crown stuff LOL:
+	AGameState_Blaster* GameState_Blaster = GetWorld()->GetGameState<AGameState_Blaster>();
+	if (PlayerState_Blaster && GameState_Blaster)
+	{
+		if (GameState_Blaster->TopStorePlayerStates.Contains(PlayerState_Blaster))
+		{
+			if(BlasterCharacter && HasAuthority()) BlasterCharacter->MulticastShowCrown();
+		}
+	}
 }
 
 void ABlasterPlayerController::ReceivedPlayer()
@@ -583,7 +640,7 @@ void ABlasterPlayerController::SetHUDAnnounceAndInfo()
 
 		AGameState_Blaster* GameState_Blaster = GetWorld()->GetGameState<AGameState_Blaster>(); //UGameplayStatics::GetGameState(this);  
 		TArray<APlayerState_Blaster*> PlayerStates_TopScore;
-		if (GameState_Blaster) PlayerStates_TopScore = GameState_Blaster->PlayerStates_TopScore;
+		if (GameState_Blaster) PlayerStates_TopScore = GameState_Blaster->TopStorePlayerStates;
 
 		if (PlayerStates_TopScore.Num() == 0)
 		{
@@ -680,7 +737,7 @@ void ABlasterPlayerController::StartHighPingWarning()
 
 	//Back to main business:
 	CharacterOverlay_UserWidget->PlayWBPAnimation_PingWarning();
-	UE_LOG(LogTemp, Warning, TEXT("pass PC::StartHighPingWarning "))
+	//UE_LOG(LogTemp, Warning, TEXT("pass PC::StartHighPingWarning "))
 }
 
 void ABlasterPlayerController::StopHighPingWarning()

@@ -5,6 +5,7 @@
 #include "Components/Button.h"
 #include "MultiplayerSession_GameSubsystem.h"
 #include "GameFramework/GameModeBase.h"
+#include <Characters/BlasterCharacter.h>
 
 bool UUserWidget_ReturnToMainMenu::Initialize()
 {
@@ -102,37 +103,45 @@ void UUserWidget_ReturnToMainMenu::OnClicked_ReturnButton()
 	Button_ReturnButton->SetIsEnabled(false);
 
 //main things:
-	//access MSSubsystem, you see you can access it anywhere immediately (as long as you include required file or add required module):
-		//MSS = MSS == nullptr? GetGameInstance()->GetSubsystem<UMultiplayerSession_GameSubsystem>() : MSS; ////MOVE up to ...
-	
-	//we need to bind an extra callback of this UW_ReturnToMenu to MSSubsystem::OnDestroySessonDelegate / OnDestroySessonDelegate_Multiplayer, so that it will trigger when 'OS::OSInterface::DestroySession' response - i,e you can bind it right here if you want:
-		//if(MSS) MSS->OnDestroySessionCompleteDelegate_Multiplayer.AddDynamic(this, &ThisClass::OnDestroySessionComplete_Multiplayer); //MOVE up to ...
-
-	//call MSSubsystem::DestroySession() to quit (or directly access and call OS::OSInterface::DestroySession)
-	if(MSS) MSS->DestroySession(); //no matter the outcome, it will trigger the OnDestroySessionComplete_Multiplayer below
+	//now will be moved (i.e delayed) to  TimerCallback_Elim[/like] with SpawnRequestion
+		//if(MSS) MSS->DestroySession(); 
+	//now we do this first instead: access Char, calling Char::ServerLeaveGameRequest()
+	if (GetWorld() && GetWorld()->GetFirstPlayerController())
+	{
+		ABlasterCharacter* BlasterCharacter
+			= Cast<ABlasterCharacter>( GetWorld()->GetFirstPlayerController()->GetCharacter() );
+		if (BlasterCharacter)
+		{
+			//you must bind it before call the chain lol: you dont need to RemoveDynamic for this, because if Char is left then its DATA goes with it too, if not, then let it bound, it is fine:
+			if(!BlasterCharacter->OnSendingDestroySessionRequestDelegate_Char.IsBound())
+			BlasterCharacter->OnSendingDestroySessionRequestDelegate_Char.AddDynamic(this, &ThisClass::OnSendingDestroySessionRequestDelegate_Char_callback);
+			//this is the whole chain:
+			BlasterCharacter->ServerLeaveGameRequest();
+		}
+	}
 }
 
+//at first it should be in TimerCallback_Elim(), but we decide to create FDelegate from char and broadcast it back here
+//so that Char class dont even need to know about this WBP_Return widget nor need to include this class type there:
+void UUserWidget_ReturnToMainMenu::OnSendingDestroySessionRequestDelegate_Char_callback()
+{
+	//no matter the outcome, it will trigger the OnDestroySessionComplete_Multiplayer below
+	if(MSS) MSS->DestroySession(); 
+}
+
+//this is self-handled when it fails already:
 void UUserWidget_ReturnToMainMenu::OnDestroySessionComplete_Multiplayer(bool bWasSuccessful)
 {
 	if (bWasSuccessful == false)
 	{
 		//must allow player another chance if he fails lol:
 		Button_ReturnButton->SetIsEnabled(true);
-
-		//if fails, try to send DestroySession request again: this is optional and up to you, but after all it is not recommended LOL, what if the player lose Net connection and it gives him an infinate loop LOL?
-		//if (MSS) MSS->DestroySession();
 	}
 
 	if (bWasSuccessful == true)
 	{
-		//you should 'unbind' the callback when you succeed right? otherwise this is the consequence: this class will be removed from parent, potentially destroy this widget object too, where the GameInstance::MMS persist across level - not good!
-		//note that there could be a second callback in Menu bind to this very same delegate from MSSubsystem LOL, isn't interesting? 2 callbacks from external classes to a REAL indepdendent class MSSubsystem!
 		if (MSS) MSS->OnDestroySessionCompleteDelegate_Multiplayer.RemoveDynamic(this, &ThisClass::OnDestroySessionComplete_Multiplayer);
 
-		//Ready all side things before come back to the StartMap: it need UIOnly inputmode, Show Cursor ; ...
-
-		//Travel back to StartMap: if it is the server use GameMode to travel, if it is a client use PC to travel - not why this is recommended and classical practice lol:
-		//the funny fact is that we use 'GM/PC::ReturnToMainMenu' to return to 'Default Map' set in Project Setting(currently StarterMap), rather than "OpenLevel / ServerTravel" and must specify the path/name of the level LOL, so yeah!
 		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
 
 		if (GameMode)

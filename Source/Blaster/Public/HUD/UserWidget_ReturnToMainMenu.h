@@ -24,6 +24,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void MenuTearDown();
 
+	UFUNCTION()
+	void OnSendingDestroySessionRequestDelegate_Char_callback();
+
 protected:
 	//think of it as BeginPlay(), but whether it can trigger move betwen level I'm not sure (but what I'm sure is that if we call MenuTearDown()/RemoveFromParent() it wont be called any more, simply because the WidgetObject could be destroyed after it, unless we did create a reference to store the return of CreateWidget() at first place; in any case, RemoveFromParent() is enough to stop Initalize() from re-calling I guess even if the widget object is still behind the scene - not AddtoViewport, not happen!)
 	//UPDATE: I'm not sure about this when say bind callbacks in it could be too early LOL

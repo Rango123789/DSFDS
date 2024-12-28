@@ -7,6 +7,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "CharacterComponents/LagCompensationComponent.h"
 #include "PlayerController/BlasterPlayerController.h"
+#include "Blaster/Blaster.h"
 
 //HitTarget will be passed from Combat::DoLineTrace():: center screen -> forwards, everything is already setup, we need only to use it:
 //UPDATE: We will pass either 'HitTarget_DoLineTrace1' || f('HitTarget_DoLineTrace1') from outside
@@ -24,7 +25,7 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 	FVector End = Start + (HitTarget - Start) * 1.25f;
 
 	//GetWorld()->LineTraceSingleByChannel( HitResult, Start, End, ECollisionChannel::ECC_Visibility );
-	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility);
+	GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_SkeletalMesh);
 
 //STAGE2: check if it hit any ABasterCharacter_instance and apply damage on him
 
@@ -35,13 +36,13 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 	{
 		if(HitResult.GetActor()) BeamEnd = HitResult.ImpactPoint;
 
-		//DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 3.f, 12, FColor::Cyan, true);
-
 		ABlasterCharacter* HitBlasterCharacter = Cast<ABlasterCharacter>(HitResult.GetActor());
 
 		ABlasterCharacter* AttackBlasterCharacter = Cast<ABlasterCharacter>(GetOwner());
-	       
-		ABlasterPlayerController* AttackController =Cast<ABlasterPlayerController>(AttackBlasterCharacter->GetController()); 
+	      
+		ABlasterPlayerController* AttackController = nullptr;
+
+		if(AttackBlasterCharacter) AttackController = Cast<ABlasterPlayerController>(AttackBlasterCharacter->GetController());
 		//if it hit BlasterCharacter, apply damage on him
 		if (HitBlasterCharacter && AttackBlasterCharacter && AttackController)
 		{
@@ -49,10 +50,13 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 		//if not use serverside request, default to old code
 			if (!bUseServerSideRewind)
 			{
+				//Go and check the name of the head bone (also 'head') that the head capsule in PA based on:
+				float DamageToApply = HitResult.BoneName == FName("head") ? Damage_HeadShot : Damage;
+
 				if (HasAuthority()){
 					UGameplayStatics::ApplyDamage(
 						HitBlasterCharacter, //this will trigger HitBlasterCharacter::ReceiveDamage()
-						Damage,
+						DamageToApply,
 						AttackController,    //this will be important at where you receive it for purpose
 						this,UDamageType::StaticClass());
 				}
@@ -63,14 +67,18 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 				//if using ServerRewind, but the attacking char is controlled by the server, we can simply default back to the old code, no need server rewind:
 				if (HasAuthority() && AttackBlasterCharacter->IsLocallyControlled())
 				{
-					UGameplayStatics::ApplyDamage(
-						HitBlasterCharacter, //this will trigger HitBlasterCharacter::ReceiveDamage()
-						Damage,
-						AttackController,    //this will be important at where you receive it for purpose
-						this, UDamageType::StaticClass());
+					//Go and check the name of the head bone (also 'head') that the head capsule in PA based on:
+					float DamageToApply = HitResult.BoneName == FName("head") ? Damage_HeadShot : Damage;
+
+					if (HasAuthority()) {
+						UGameplayStatics::ApplyDamage(
+							HitBlasterCharacter, //this will trigger HitBlasterCharacter::ReceiveDamage()
+							DamageToApply,
+							AttackController,    //this will be important at where you receive it for purpose
+							this, UDamageType::StaticClass());
+					}
 				}
-				//if using ServerRewind, shooting char is not controlled by the server, we now use ServerSideRewind:
-				//if (!HasAuthority() && AttackBlasterCharacter->IsLocallyControlled())
+				//if using ServerRewind, shooting char is not controlled by the server, we now use ServerSideRewind:  headshot handle in lagcomp
 				if (!HasAuthority() && AttackBlasterCharacter->IsLocallyControlled())
 				{
 					//GetServerTime_Synched() call from anywhere are the same anywhere
@@ -86,34 +94,12 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 							this);
 					}
 				}
-
-
-				//EXCEPTIONAL case:  we know it will return early in ServerSideRewind() if it is too laggy so we do this to compenesate, make sure that laggy client at least has some chance to hit any one LOL:
-				//if you reach inside this block, it is in the server, you can access : thisWeapon::AttackBlasterCharacter::LagComponent::PackageList.Tail()->Value.Time = OldestTime
-				//UPDATE: this will FAIL, HitTime in server device is still 0, I dont know how to calculate correct HitTime LOL
-					//if (HasAuthority() && AttackBlasterCharacter->GetLagComponent() && 
-					//	AttackBlasterCharacter->GetLagComponent()->FramePackageList.GetTail())
-					//{
-					//  float OldestTime = AttackBlasterCharacter->GetLagComponent()->FramePackageList.GetTail()->GetValue().Time;
-					//  float HitTime = AttackController->GetServerTime_Synched() - AttackController->RTT / 2;
-					  //if (HitTime < OldestTime)
-					  //{
-						 // UGameplayStatics::ApplyDamage(
-							//  HitBlasterCharacter, //this will trigger HitBlasterCharacter::ReceiveDamage()
-							//  Damage,
-							//  AttackController,    //this will be important at where you receive it for purpose
-							//  this, UDamageType::StaticClass());
-					  //}
-					  //if you use server and shoot other char , they print the same value
-					  //if you client and shot, this message is NOT even printed?
-					//  UE_LOG(LogTemp, Warning, TEXT("%d , %d"), AttackController->GetServerTime_Synched(), HitTime);
-					//}
-				}
 			}
+		}
 
 		//Apply HitSound + HitParticle on Whatever it hit (henc no need if(Char) )
 		UGameplayStatics::PlaySoundAtLocation(this, HitSound, HitResult.ImpactPoint);
-			//our particl isn't symetric, hence this ImpactNormal.Rotation() rather than ZeroRotator is much better LOL:
+			//our particl isn't symetric, hence this ImpactNormal.Rotation() rather than ZeroRotator is much better:
 		UGameplayStatics::SpawnEmitterAtLocation( this, HitParticle, HitResult.ImpactPoint,
 			HitResult.ImpactNormal.Rotation(), //rather than ZeroRotator
 			true

@@ -146,13 +146,53 @@ void ULagCompensationComponent::ServerScoreRequest_Implementation(const FVector_
 
 	if (Result.bHitConfirmed == true)
 	{
+		float DamageToApply = Result.HeadShot ? DamageCauser->GetDamage_HeadShot() : DamageCauser->GetDamage();
+
 		UGameplayStatics::ApplyDamage(
 			HitCharacter,
-			DamageCauser->GetDamge(),
+			DamageToApply,
 			Character->GetController(),
 			DamageCauser,
 			UDamageType::StaticClass()		
 		);
+	}
+}
+
+
+//STEPHEN idea, possibly better performance: 
+void ULagCompensationComponent::ServerScoreRequest_Shotgun_Implementation(const FVector_NetQuantize& Start, const TArray<FVector_NetQuantize>& HitLocations, const TArray<class ABlasterCharacter*>& HitCharacters, const float& HitTime, AWeapon* DamageCauser)
+{
+	if (DamageCauser == nullptr || Character == nullptr) return;
+
+	FServerSideRewindResult_Shotgun ShotgunResult = ServerSideRewind_Shotgun(Start, HitLocations, HitCharacters, HitTime);
+
+	for (auto HitCharacter : HitCharacters)
+	{
+		if (HitCharacter == nullptr) continue;
+
+	//step1, ready the total damage head * numhit1 +body * numhit2 first:
+		float TotalDamage = 0.f;
+		if (ShotgunResult.HeadShotMap.Contains(HitCharacter))
+		{
+			float TotalHeadDamage = DamageCauser->GetDamage_HeadShot() * ShotgunResult.HeadShotMap[HitCharacter];
+			TotalDamage += TotalHeadDamage;
+		}
+		if (ShotgunResult.BodyShotMap.Contains(HitCharacter))
+		{
+			float TotalBodyDamage = DamageCauser->GetDamage() * ShotgunResult.BodyShotMap[HitCharacter];
+			TotalDamage += TotalBodyDamage;
+		}	
+	//step2, apply the total at once per HitCharacter:
+		if (TotalDamage > 0.f)
+		{
+			UGameplayStatics::ApplyDamage(
+				HitCharacter,
+				TotalDamage,
+				Character->GetController(),
+				DamageCauser,
+				UDamageType::StaticClass()
+			);
+		}
 	}
 }
 
@@ -173,54 +213,17 @@ void ULagCompensationComponent::ServerScoreRequest_Projectile_Implementation(con
 
 	if (Result.bHitConfirmed == true)
 	{
+		float DamageToApply = Result.HeadShot ? DamageCauser->GetDamage_HeadShot() : DamageCauser->GetDamage();
+
 		UGameplayStatics::ApplyDamage(
 			HitCharacter,
-			DamageCauser->GetDamge(),
+			DamageToApply,
 			Character->GetController(),
 			DamageCauser,
 			UDamageType::StaticClass()
 		);
 	}
 
-}
-
-
-//STEPHEN idea, possibly better performance: 
-void ULagCompensationComponent::ServerScoreRequest_Shotgun_Implementation(const FVector_NetQuantize& Start, const TArray<FVector_NetQuantize>& HitLocations, const TArray<class ABlasterCharacter*>& HitCharacters, const float& HitTime, AWeapon* DamageCauser)
-{
-	if (DamageCauser == nullptr || Character == nullptr) return;
-
-	FServerSideRewindResult_Shotgun ShotgunResult = ServerSideRewind_Shotgun(Start, HitLocations, HitCharacters, HitTime);
-
-	for (auto HitCharacter : HitCharacters)
-	{
-		if (HitCharacter == nullptr) continue;
-
-	//step1, ready the total damage head * numhit1 +body * numhit2 first:
-		float TotalDamage = 0.f;
-		if (ShotgunResult.HeadShotMap.Contains(HitCharacter))
-		{
-			float TotalHeadDamage = DamageCauser->GetDamge() * ShotgunResult.HeadShotMap[HitCharacter];
-			TotalDamage += TotalHeadDamage;
-		}
-		if (ShotgunResult.BodyShotMap.Contains(HitCharacter))
-		{
-			float TotalBodyDamage = DamageCauser->GetDamge() * ShotgunResult.BodyShotMap[HitCharacter];
-			TotalDamage += TotalBodyDamage;
-		}
-		
-	//step2, apply the total at once per HitCharacter:
-		if (TotalDamage > 0.f)
-		{
-			UGameplayStatics::ApplyDamage(
-				HitCharacter,
-				TotalDamage,
-				Character->GetController(),
-				DamageCauser,
-				UDamageType::StaticClass()
-			);
-		}
-	}
 }
 
 ////MY IDEA: This is not good for performance as stephen, anyway it apply 2 per character at the most! so I will satisfy a bit of performance here for easy of use lol: 

@@ -31,6 +31,10 @@ public:
 
 	//parameter can be either Char || PC || PS, but PS is what our function directly need so yeah:
 	void HandleLeaveGameRequest(class APlayerState_Blaster* LeavingPlayerState);
+
+	//custom virtual function:
+	virtual float CalculateDamage(AController* AttackController, AController* VictimController, const float& BaseDamage);
+
 protected:
 	void virtual BeginPlay() override;
 

@@ -23,17 +23,21 @@
 #include "Engine/SkeletalMeshSocket.h"//test
 #include "Blaster/Blaster.h"
 #include <Kismet/GameplayStatics.h>
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+
 #include <PlayerStates/PlayerState_Blaster.h>
 #include <HUD/BlasterHUD.h>
 #include "HUD/CharacterOverlay_UserWidget.h"
 #include "Components/BoxComponent.h"
+#include <GameState/GameState_Blaster.h>
 //#include "HUD/BlasterHUD.h"
 //#include "HUD/CharacterOverlay_UserWidget.h"
 
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
 {
-	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("Character,  Constructor Time: %f "), GetWorld()->GetTimeSeconds())
+	//if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("Character,  Constructor Time: %f "), GetWorld()->GetTimeSeconds())
 
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -175,6 +179,49 @@ ABlasterCharacter::ABlasterCharacter()
 	}
 }
 
+void ABlasterCharacter::MulticastShowCrown_Implementation()
+{
+	if (NS_Crown == nullptr) return;
+	//only spawn when there is no N comp yet:
+	if (!NiagaraComponent_Crown)
+	{
+		//OPTION1: if you want to use EAttachLocation::KeepRelativeOffset: then its relative location is from specified USceneComponent param: I choose this way for first time!
+		FVector RelativeLocation(0.f, 0.f, 110.f);
+		//OPTION2: if you want to use EAttachLocation::KeepWorldPosition, then you must pass in "starting value of ABSOLUTE WORLD location":
+		FVector WorldLocation = GetActorLocation() + FVector(0.f, 0.f, 110.f);
+
+		NiagaraComponent_Crown = UNiagaraFunctionLibrary::SpawnSystemAttached(
+				NS_Crown,
+				RootComponent,
+				FName(),
+				RelativeLocation, //OPTION1
+				GetActorRotation(),
+				EAttachLocation::KeepRelativeOffset, //OPTION1
+				true //i think since NS asset is currently infinate loop, if we pass in "true" instad we can skip the fix "crown is still there for a while afte elimmed" - stephen pass in "false" instead
+			);
+	}
+
+	//this MAY NOT needed at all, if you dont 'Deactivate()' but choose to remove this comp in the MulticastRemoveCrown: 
+	if (NiagaraComponent_Crown)
+	{
+		NiagaraComponent_Crown->Activate();
+	}
+}
+
+//if this is called, we can assume that there a VALID comp already:
+void ABlasterCharacter::MulticastRemoveCrown_Implementation()
+{
+	if (NS_Crown == nullptr) return;
+
+	if (NiagaraComponent_Crown)
+	{
+		//option1:
+		NiagaraComponent_Crown->Deactivate();
+		//option2:
+		NiagaraComponent_Crown->DestroyComponent();
+	}
+}
+
 void ABlasterCharacter::BeginPlay()
 {
 	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("Character,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
@@ -184,7 +231,28 @@ void ABlasterCharacter::BeginPlay()
 //stephen dont have these code, as he uses old input system:
 	//Create UEnhancedInputLocalPlayerSubsystem_object associate with ULocalPlayer+APlayerController controlling this pawn:
 	BlasterPlayerController = Cast<ABlasterPlayerController>(GetController());
+
 	PlayerState_Blaster = GetPlayerState<APlayerState_Blaster>();
+	//color for char: must go to PC::OnPossessed, or Char::PossessedBy - this time I choose this!
+	if (PlayerState_Blaster)
+	{
+		if (PlayerState_Blaster->GetTeam() == ETeam::ET_RedTeam)
+		{
+			GetMesh()->SetMaterial(0, MI_Slot0_NonOptimizedCharacter_Red);
+			GetMesh()->SetMaterial(1, MI_Slot0_NonOptimizedCharacter_Red);
+		}
+		else if ((PlayerState_Blaster->GetTeam() == ETeam::ET_BlueTeam))
+		{
+			GetMesh()->SetMaterial(0, MI_Slot0_NonOptimizedCharacter_Blue);
+			GetMesh()->SetMaterial(1, MI_Slot0_NonOptimizedCharacter_Blue);
+		}
+		else //NoTeam
+		{
+			//Do nothing or set it to "Original if you want", since we set it from beginning so perhaps no need
+		}
+	}
+
+
 	if (BlasterPlayerController)
 	{
 		BlasterPlayerController->SetHUDHealth(Health, MaxHealth); 	//this is for GameStart
@@ -237,6 +305,18 @@ void ABlasterCharacter::BeginPlay()
 
 	//spawn a default weapon: so reason why I do it here because I think after PC and so on already has chance to initilize above:
 	SpawnDefaultWeapon();
+
+	//check if it is in the list and give it a crown again: the fact is that PC and PS are always there, but it is assigned back to this new re-spawn char at the momenet are not, no one sure LOL: in worst case, try OnPosses, try PS::OnPawnSet delegate
+	AGameState_Blaster*  GameState_Blaster = GetWorld()->GetGameState<AGameState_Blaster>();
+	
+	//for GameState_Blaster it surely VALID anytime (because we get it from world), but for PlayerState_Blaster I guess medicine1,2,3 could be needed LOL
+	if (PlayerState_Blaster && GameState_Blaster)
+	{
+		if (GameState_Blaster->TopStorePlayerStates.Contains(PlayerState_Blaster))
+		{
+			if(HasAuthority()) MulticastShowCrown();
+		}
+	}
 }
 
 //this is meant to be called from BP::OnPosses, avoiding cluding all input-relevant types from there
@@ -363,6 +443,34 @@ void ABlasterCharacter::Destroyed()
 	}
 }
 
+//this trigger at the time PC possess Char and Char is totally aware of its PC, meaning a high chance it is aware of its PlayerState too: an alternative for PS::OnPossess
+//Update it only call on the server so let's see: YES this is 99% true, however this + BeginPlay does luciky fix it, read C14_4_puzzle to understand why
+void ABlasterCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	PlayerState_Blaster = PlayerState_Blaster == nullptr ? GetPlayerState<APlayerState_Blaster>() : PlayerState_Blaster;
+
+	//color for char:
+	if (PlayerState_Blaster)
+	{
+		if (PlayerState_Blaster->GetTeam() == ETeam::ET_RedTeam)
+		{
+			GetMesh()->SetMaterial(0, MI_Slot0_NonOptimizedCharacter_Red);
+			GetMesh()->SetMaterial(1, MI_Slot0_NonOptimizedCharacter_Red);
+		}
+		else if ((PlayerState_Blaster->GetTeam() == ETeam::ET_BlueTeam))
+		{
+			GetMesh()->SetMaterial(0, MI_Slot0_NonOptimizedCharacter_Blue);
+			GetMesh()->SetMaterial(1, MI_Slot0_NonOptimizedCharacter_Blue);
+		}
+		else //NoTeam
+		{
+			//Do nothing or set it to "Original if you want", since we set it from beginning so perhaps no need
+		}
+	}
+}
+
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -433,6 +541,18 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	//Even if you turn off collision for Elimmed char during elim process
 	//, but RadialDamage can still hurt them, this fix the elimmed can be killed again by RadialDamage during elim process:
 	if (bIsEliminated) return;  // || if(Health <= 0) return;
+	
+	//this line require UPROPERTY() to be safe:
+	BlasterGameMode = BlasterGameMode == nullptr ? Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode()) :  BlasterGameMode;
+	////this line will work even if we dont use UPROPERTY(): 
+	//BlasterGameMode = Cast<ABlasterGameMode>(GetWorld()->GetAuthGameMode());
+
+	if (BlasterGameMode == nullptr) return;
+
+	//This will work no matter you choose BP_BlasterGM or BP_TeamBlasterGM due to polymorphism (as long as you define each version appropriately in parent and its childs)
+	//the char  have this ReceiveDamage trigger is the Victim:
+	//Damage = f(Damage); we call this 'self-modification' statement:
+	Damage = BlasterGameMode->CalculateDamage(InstigatedBy, Controller, Damage);
 
 	//calculate Shield and Health after receive Damage:
 	float DamageToHealth;
@@ -443,8 +563,9 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	}
 	else
 	{
-		Shield = 0.f;
-		DamageToHealth = Damage - Shield;
+		DamageToHealth = Damage - Shield; // (*)
+		Shield = 0.f; //this must be set after (*) lol, otherwise you just minus "0" :D :D
+
 	}
 
 	Health = FMath::Clamp(Health - DamageToHealth, 0, MaxHealth); //now  - DamageToHealh instead
@@ -460,7 +581,7 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	{
 		//Only the server device can get a valid reference to GameMode as it is only created in the server 
 		   // OPTION1
-		ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>( GetWorld()->GetAuthGameMode() );
+		
 		if (BlasterGameMode)
 		{
 			ABlasterPlayerController* AttackerController = Cast<ABlasterPlayerController>(InstigatedBy);
@@ -475,12 +596,14 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	}
 }
 
-void ABlasterCharacter::Elim()
+void ABlasterCharacter::Elim(bool bInPlayerLeavingGame)
 {
-	//CHAIN1: seen to all devices
-	MulticastElim();
+	//if bPlayerLeavingGame replicated, you can do it right, but currently it's NOT replicated so you can it in ElimMulticast instead.
+	
+//CHAIN1: seen to all devices
+	MulticastElim(bInPlayerLeavingGame);
 
-	//CHAIN2: other things happen ONLY in server (and expected to be self-replicated, otherwise must let it go with Multicast above)
+//CHAIN2: other things happen ONLY in server (and expected to be self-replicated, otherwise must let it go with Multicast above)
 	      //disable most input:
 	bDisableMostInput = true;
 	
@@ -529,11 +652,28 @@ void ABlasterCharacter::TimerCallback_Elim()
 	//you miss this line: 
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
 
-	if(BlasterGameMode)	BlasterGameMode->RequestRespawn(this, BlasterPlayerController);
+	if (BlasterGameMode && !bPlayerLeavingGame)
+	{
+		BlasterGameMode->RequestRespawn(this, BlasterPlayerController);
+	}
+	if (bPlayerLeavingGame)
+	{
+		//access MSS and call MSS::DestroySession() here, the exact code that you delay from WBP_Return::Button::OnClick remember?
+		//OR you can create new CUSTOM delegate and its object here, bcreate delegate_callback from WBP_Return and bind it to here
+		//so that our character dont even need to know about WBP_Return NOR MSS (nor include MSS required type LOL)
+			//OPTION1: NOT choose:
+		//UMultiplayerSession_GameSubsystem* MSS = GetGameInstance()->GetSubsystem<UMultiplayerSession_GameSubsystem>(); 
+		//MSS->DestroySession();
+			//OPTION2: choose:
+		OnSendingDestroySessionRequestDelegate_Char.Broadcast();
+	}
 }
 
-void ABlasterCharacter::MulticastElim_Implementation()
+void ABlasterCharacter::MulticastElim_Implementation(bool bInPlayerLeavingGame)
 {
+	//NEWs:
+	bPlayerLeavingGame = bInPlayerLeavingGame;
+
 	//In worst case when Sniper rifle is Aming and get elimmed:
 	//this will help to override the current frame (either end or middle frame) and play backward and help you to reach "first frame" with Scale = 0, Opacity=0
     //also no need to do this when it is not sniper rifle nor not currently IsAiming, doing this in these cases only bring stupid side effect :D :D
@@ -549,21 +689,43 @@ void ABlasterCharacter::MulticastElim_Implementation()
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(GetController()) : BlasterPlayerController;
 	if (BlasterPlayerController) BlasterPlayerController->SetHUDAmmo(0);
 
-	//For animation
+	//For animation:
 	bIsEliminated = true; //that help it switch ABP chain1 to chain2_elim first
 	PlayElimMontage();    //and so now can play on ElimSlot in that chain2_elim
 
 	//ready material before run Timeline:
 	if(SkeletalMesh_Optimized) GetMesh()->SetSkeletalMeshAsset(SkeletalMesh_Optimized);
 	
-	if (MaterialInstance)
+	PlayerState_Blaster = GetPlayerState<APlayerState_Blaster>();
+	UMaterialInstance* MI_Dissolve = nullptr;
+	//color for char:
+	if (PlayerState_Blaster)
 	{
-		MaterialInstanceDynamic = UMaterialInstanceDynamic::Create(MaterialInstance, this);
+		if (PlayerState_Blaster->GetTeam() == ETeam::ET_RedTeam)
+		{
+			MI_Dissolve = MI_Dissolve_ForOptimizedCharacter_Red;
+		}
+		else if ((PlayerState_Blaster->GetTeam() == ETeam::ET_BlueTeam))
+		{
+			MI_Dissolve = MI_Dissolve_ForOptimizedCharacter_Blue;
+		}
+		else //NoTeam
+		{
+			MI_Dissolve = MI_Dissolve_ForOptimizedCharacter;
+		}
+	}
+
+	if (MI_Dissolve)
+	{
+		//MaterialInstanceDynamic = UMaterialInstanceDynamic::Create(MI_Dissolve_ForOptimizedCharacter, this);
+		MaterialInstanceDynamic = UMaterialInstanceDynamic::Create(MI_Dissolve, this);
+
 		GetMesh()->SetMaterial(0, MaterialInstanceDynamic);
 
 		MaterialInstanceDynamic->SetScalarParameterValue(TEXT("DissolveAdding"), -0.5f); 
 		MaterialInstanceDynamic->SetScalarParameterValue(TEXT("Glow"), 80.f); //implicit construction
 	}
+
 	//start Dissolve process: it will start immediately , unlike respawn with Timer in Chain2
 	StartTimeline_Dissolve();
 
@@ -583,6 +745,14 @@ void ABlasterCharacter::MulticastElim_Implementation()
 	//I dont do BotParticleComp = --: 
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BotParticle, SpawnLocation, GetActorRotation(), true); //I pass in bAutoDestroy=true to make sure LOL
 	UGameplayStatics::PlaySoundAtLocation(this, BotSound, SpawnLocation);
+
+	//for crown stuff, we should remove the crown immediately, if it is elimmed but still leading for a momment (show it back it Char::BeginPlay()+ so dont worry):
+	//this is OVERKILL, but good, no need to check whether it is actually in the lead LOL
+	//however according to OPTION1 MulticastShow/RemoveCrown(), if it pass this if check it is actually [still] in the lead lol:
+	if (NiagaraComponent_Crown)
+	{
+		NiagaraComponent_Crown->DestroyComponent();
+	}
 }
 
 void ABlasterCharacter::StartTimeline_Dissolve()
@@ -1122,7 +1292,7 @@ void ABlasterCharacter::Input_Reload(const FInputActionValue& Value)
 //Well because you may 'want' to do LineTrace from UCombatComponent instead, so it is up to you do choose which tire to create RCP lol
 void ABlasterCharacter::Input_Throw(const FInputActionValue& Value)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Char::InputThrow"));
+	//UE_LOG(LogTemp, Warning, TEXT("Char::InputThrow"));
 	if (CombatComponent) CombatComponent->Input_Throw();
 }
 

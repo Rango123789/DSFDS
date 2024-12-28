@@ -25,6 +25,10 @@ public:
 	void SetCarriedAmmoText(const int& InCarriedAmmo);
 	void SetMatchTimeLeftText(const FString& InString);
 	void SetThrowGrenadeText(const int& InThrowGrenade);
+
+	void SetRedTeamScoreText(const int& InRedTeamScore);
+
+	void SetBlueTeamScoreText(const int& InBlueTeamScore);
 	
 	void PlayWBPAnimation_PingWarning();
 	void StopWBPAnimation_PingWarning();
@@ -63,6 +67,14 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* TextBlock_ThrowGrenade;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TextBlock_RedTeamScore;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* TextBlock_BlueTeamScore;
+
+
 
 	//for play WBPAnim_PingWarning
 	UPROPERTY(meta = (BindWidgetAnim) , Transient)

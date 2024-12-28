@@ -33,8 +33,8 @@ UCombatComponent::UCombatComponent()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true; //if you tick later, then turn it on
-
-	SetIsReplicated(true);
+	// IT WORK TOO! but this is not recommeded, let's do it in HOSTING actor
+	SetIsReplicatedByDefault(true);
 
 	//UMenu_UserWidget Key;
 	//UMultiplayerSession_GameSubsystem* key22;
@@ -81,6 +81,11 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 void UCombatComponent::ClientResetToUnoccupied_Implementation()
 {
 	CharacterState = ECharacterState::ECS_Unoccupied;
+	//fix can't reload after shot-shot-reload-shot  :this will help to reset bLocalRealoding for CD too in worst case that ReloadEnd is interrupted to reach 
+	//better off move it into Fire() chain instead, using "let interrupting action to reset the interrupted action itself" technique
+	bLocalReloading = false;
+	//hitchking-fix: that when ReloadMontage interrupt FireMontage/its chain bCanfire get stuck in false:
+	//bCanFire = true; 
 }
 
 void UCombatComponent::BeginPlay()
@@ -129,6 +134,7 @@ void UCombatComponent::Input_Reload()
 		EquippedWeapon && !EquippedWeapon->IsFull() &&
 		CharacterState == ECharacterState::ECS_Unoccupied &&
 		bLocalReloading == false) //I think this is optional, reason: currently 'bLocalReloading' will turn false even before 'CharacterState' turn Unoccupied when ReloadEnd reach!
+		                          //infact it can even stop you from reloading if bLocalReloading is not set back to false successfully after reloading (that the ReloadMontage is interrupted before it can set)
 	{
 		//clien-side prediciton part, non-replicated DoAction():
 			//CharacterState = ECharacterState::ECS_Reloading; //remove
@@ -138,6 +144,9 @@ void UCombatComponent::Input_Reload()
 		//normal replication part: if CD is already the server then we dont need to call this any more, because if so we just DoAction() above in the server already :D :D 
 			//if( Character &&Character->HasAuthority() == false) ServerInput_Reload(); //replaced
 		ServerInput_Reload();
+
+		//"let interrupting action to reset the interrupted action itself" technique: in fact for fun, because Timerline_fire is set to always reach currently:
+		bCanFire = true;
 	}
 }
 
@@ -152,6 +161,8 @@ void UCombatComponent::ServerInput_Reload_Implementation()
 	//if it reach this hosting function and it is CD, then the server always did this already, so no need to repeat it. Either case, we still need to exclude !Character->IsLocallyControlled() in OnRep_CharacterState too, I know this is crazy but 2 stages are independent!
 	//the only reason why we dont do it right in TIRE1 but here is because we also need to call (*) above!
 	if( !Character->IsLocallyControlled() ) Character->PlayReloadMontage(); //call it in  OnRep_CharacterState too for clients
+
+	//this is the challenge2, but luckily help to solve some of this lesson LOL:
 	ClientResetToUnoccupied();
 }
 
@@ -494,10 +505,35 @@ void UCombatComponent::Input_Fire(bool InIsFiring)
 			break;
 		}
 
-	//RecursiveTimer for automatic fire:
-		Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
+		//"let interrupting action to reset the interrupted action itself" technique:
+		bLocalReloading = false;
+
 	}
+	//RecursiveTimer for automatic fire: must move it out here LOL,  to guarantee that bCanFire can be set to true at least!
+	Start_FireTimer(); //this is the right place to call .SetTimer (which will be recursive very soon)
 }
+
+
+//this is currently called CD ONLY:
+bool UCombatComponent::CanFire()
+{
+	//bLocalReloading is for client-side prection purpose, we take it into account to, so that we can't fire after we press Reload button, potentially fix relevant bugs:
+	if (bLocalReloading) return false;
+
+	return
+		(bCanFire &&
+			EquippedWeapon && EquippedWeapon->GetAmmo() > 0 &&
+			//this make Fire can't interrupt any montage generally:
+			CharacterState == ECharacterState::ECS_Unoccupied)
+		||
+		(bCanFire &&
+			EquippedWeapon && EquippedWeapon && EquippedWeapon->GetAmmo() > 0 &&
+			//this is an exception for Shotgun, even if it is Reloading:
+			EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun &&
+			CharacterState == ECharacterState::ECS_Reloading
+			);
+}
+
 
 void UCombatComponent::FireProjectileWeapon(bool InIsFiring)
 {
@@ -719,26 +755,6 @@ void UCombatComponent::FireTimer_Callback()
 	{
 		Input_Reload();
 	}
-}
-
-//this is currently called CD ONLY:
-bool UCombatComponent::CanFire()
-{
-	//bLocalReloading is for client-side prection purpose, we take it into account to, so that we can't fire after we press Reload button, potentially fix relevant bugs:
-	if (bLocalReloading) return false;
-
-	return
-	  ( bCanFire &&
-		EquippedWeapon && EquippedWeapon->GetAmmo() > 0 &&
-		//this make Fire can't interrupt any montage generally:
-		CharacterState == ECharacterState::ECS_Unoccupied )
-		||
-	  ( bCanFire &&
-		EquippedWeapon && EquippedWeapon && EquippedWeapon->GetAmmo() > 0 &&
-		//this is an exception for Shotgun, even if it is Reloading:
-		EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun  &&
-		CharacterState == ECharacterState::ECS_Reloading
-			);
 }
 
 void UCombatComponent::Input_Fire_WithoutAssingmentLine()

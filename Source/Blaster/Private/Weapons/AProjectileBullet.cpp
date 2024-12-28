@@ -107,8 +107,8 @@ void AAProjectileBullet::PostEditChangeProperty(FPropertyChangedEvent& PropertyC
 	//this return FName(TEXT("MemberName"))
 	FName InitalSpeed_Name = GET_MEMBER_NAME_CHECKED(AAProjectileBullet, InitalSpeed_ProjectilePath);
 
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *InitalSpeed_Name.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *PropertyName.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *InitalSpeed_Name.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *PropertyName.ToString());
 }
 #endif
 
@@ -134,7 +134,9 @@ void AAProjectileBullet::OnBoxHit(UPrimitiveComponent* HitComponent, AActor* Oth
 		//if (HasAuthority() && !bUseServerSideRewind_TIRE2) //will cause double damage by non-Replicated projectile spawnd by the server 
 		if (HasAuthority() && !bUseServerSideRewind_TIRE2 && bServerHoldWeapon) //this FIX
 		{
-			UGameplayStatics::ApplyDamage(HitCharacter,Damage,GetInstigator()->GetController(), this, UDamageType::StaticClass()
+			float DamageToApply = Hit.BoneName == FName("head") ? Damage_HeadShot : Damage;
+
+			UGameplayStatics::ApplyDamage(HitCharacter, DamageToApply ,GetInstigator()->GetController(), this, UDamageType::StaticClass()
 			);
 		}
 

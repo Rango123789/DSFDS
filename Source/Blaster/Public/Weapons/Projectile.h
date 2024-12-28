@@ -25,7 +25,10 @@ public:
 
     //Move it up here for ease of use:    
     UPROPERTY(EditAnywhere)
-    float Damage = 10.f;
+    float Damage = 15.f;
+
+    UPROPERTY(EditAnywhere)
+    float Damage_HeadShot = 45.f;
 
     //my idea so not we wont accept it do ServerRewind if server hold the weapon in all cases:
     bool bServerHoldWeapon = true;

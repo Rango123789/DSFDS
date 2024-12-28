@@ -9,6 +9,8 @@
 #include "Components/TimelineComponent.h" //have to put it here for FOnTimeline
 #include "BlasterCharacter.generated.h" 
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSendingDestroySessionRequestDelegate_Char);
+
 UCLASS()
 class BLASTER_API ABlasterCharacter : public ACharacter, public IInteractWithCrossHairsInterface
 {
@@ -26,8 +28,9 @@ public:
 	/**<Actor>*/
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
-
 	virtual void Destroyed() override;
+	//alternative for PC::OnPossess() medicin
+	virtual void PossessedBy(AController* NewController) override;
 	 /**</Actor>*/
 
 	/**<X>*/
@@ -87,9 +90,9 @@ public:
 
 	//this is just an option of GOLDEN0, you can even call it directly in ReceiveDamage, and then paste into OnRep_Health() as well
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastElim();
+	void MulticastElim(bool bInPlayerLeavingGame);
 
-	void Elim();
+	void Elim(bool bInPlayerLeavingGame);
 	
 	void SetupEnhancedInput_IMC();
 
@@ -107,6 +110,18 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void ServerLeaveGameRequest();
+
+	//will be set value in MulticastElim() so dont need to be marked Replicated:
+	bool bPlayerLeavingGame = false;
+
+	FOnSendingDestroySessionRequestDelegate_Char OnSendingDestroySessionRequestDelegate_Char;
+
+	//Show crown: you can create a single MulticastRPC with bool param, but stephen choose to create 2 separates, so that RPC dont need to send any DATA for paramter part:
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastShowCrown();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastRemoveCrown();
 
 protected:
 	/***functions***/
@@ -150,6 +165,9 @@ protected:
 	UPROPERTY()
 	class APlayerState_Blaster* PlayerState_Blaster; //NEWs
 
+	UPROPERTY()
+	class ABlasterGameMode* BlasterGameMode;//NEWs
+
 	//not sure it is a good idea to create a member of this where this is only meaningful to the server device
 	//class ABlasterGameMode* BlasterGameMode;
 
@@ -176,7 +194,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	class ULagCompensationComponent* LagComponent = nullptr;
-
 
 	//boxes for server-rewind technique:
 	UPROPERTY(VisibleAnywhere)
@@ -238,6 +255,13 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	UBoxComponent* foot_r;
 
+	//temp:
+	UPROPERTY()
+	class UNiagaraComponent* NiagaraComponent_Crown;
+
+	UPROPERTY(EditAnywhere)
+	class UNiagaraSystem* NS_Crown;
+
 	//for Timeline: (I move them apart later)
 	UPROPERTY(VisibleAnywhere)
 	class UTimelineComponent* TimelineComponent; //this is UActorComp ->need CreateDefaultSubobject<T>
@@ -254,12 +278,33 @@ protected:
 	UFUNCTION()
 	void OnTimelineFloat_Callback_Dissolve(float DissolveAdding);
 
-	//Ready Material for Timeline_callback (where external things work on top of DYNAMIC value of Timeline's curve)
+	/*
+	*Materials
+	*/
+	UPROPERTY(EditAnywhere)
+	UMaterialInstance* MI_Slot0_NonOptimizedCharacter; //to be picked from BP
+	UPROPERTY(EditAnywhere)
+	UMaterialInstance* MI_Slot0_NonOptimizedCharacter_Red; //to be picked from BP
+	UPROPERTY(EditAnywhere)
+	UMaterialInstance* MI_Slot0_NonOptimizedCharacter_Blue; //to be picked from BP
+
+	UPROPERTY(EditAnywhere)
+	UMaterialInstance* MI_Slot1_NonOptimizedCharacter; //to be picked from BP
+	UPROPERTY(EditAnywhere)
+	UMaterialInstance* MI_Slot1_NonOptimizedCharacter_Red; //to be picked from BP
+	UPROPERTY(EditAnywhere)
+	UMaterialInstance* MI_Slot1_NonOptimizedCharacter_Blue; //to be picked from BP
+
+	//MI_Disspolve
 	UPROPERTY(EditAnywhere) 
-	UMaterialInstance* MaterialInstance; //to be picked from BP
+	UMaterialInstance* MI_Dissolve_ForOptimizedCharacter; //to be picked from BP
+	UPROPERTY(EditAnywhere)
+	UMaterialInstance* MI_Dissolve_ForOptimizedCharacter_Red; //to be picked from BP if a player is RedTeam
+	UPROPERTY(EditAnywhere)
+	UMaterialInstance* MI_Dissolve_ForOptimizedCharacter_Blue; //to be picked from BP if a player is BlueTeam
 
 	UPROPERTY(VisibleAnywhere)
-	UMaterialInstanceDynamic* MaterialInstanceDynamic; // to work on top of 'MaterialInstance' and to be DIRECTLY assigned for GetMesh() through out Timeline
+	UMaterialInstanceDynamic* MaterialInstanceDynamic; //to work on top of 'MaterialInstance' and to be DIRECTLY assigned for GetMesh() through out Timeline.
 
 	//OPTIONAL: In case you want to change GetMesh() from non-optimized to optimized as Elim reach
 	UPROPERTY(EditAnywhere)

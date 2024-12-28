@@ -10,20 +10,27 @@ void APlayerState_Blaster::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(APlayerState_Blaster , Defeat);
+	DOREPLIFETIME(APlayerState_Blaster, Team);
 }
 
 //if you look down we keep re-check them back, so this BeginPlay is no longer needed LOL
 void APlayerState_Blaster::BeginPlay()
 {
+	if (GetWorld()) UE_LOG(LogTemp, Warning, TEXT("PS,  BeginPlay Time: %f "), GetWorld()->GetTimeSeconds())
+
 	BlasterCharacter = GetPawn<ABlasterCharacter>(); //no need
 	BlasterPlayerController = Cast<ABlasterPlayerController>(GetPlayerController());
 
-	//we can test this without medicine1+2 and see how it goes;
+	//we can test this without medicine1+2 and see how it goes:
 	if (BlasterPlayerController)
 	{
 		BlasterPlayerController->SetHUDScore(GetScore()); //medicine2
 		BlasterPlayerController->SetHUDDefeat(Defeat); //medicine2
 	}
+}
+
+void APlayerState_Blaster::OnRep_Team()
+{
 }
 
 //this part will only help for client part, the server must handle itself from where you change the Score

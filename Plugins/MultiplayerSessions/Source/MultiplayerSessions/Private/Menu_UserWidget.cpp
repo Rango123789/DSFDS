@@ -24,7 +24,8 @@ void UMenu_UserWidget::MenuSetup(int NumOfPublicConnections, FString TypeOfMatch
 	//widget-relevant setup_TIRE0 : you can also do it directly in WBP_child[s]
 	//, but now you set it here right in C++ parent so that it will be the defaults for any of the WBP_child[s]
 	SetVisibility(ESlateVisibility::Visible);
-	bIsFocusable = true;
+	//bIsFocusable = true;
+	SetIsFocusable(true);
 
     //input-mode relevant: now we want UIOnly so that we can interfact with widget buttons++
 	if (UWorld* World = GetWorld(); World)
@@ -130,7 +131,8 @@ void UMenu_UserWidget::OnCreateSessionComplete_Multiplayer(bool bWasSuccessful)
 		, FString(TEXT("Session FAIL to create! Menu callback responses to MSubsystem!")));
 
 		//when it fails to create session, then it is good to enable it for next try
-		HostButton->bIsEnabled = true; 
+		//HostButton->bIsEnabled = true; 
+		HostButton->SetIsEnabled(true);
 	}
 }
 
@@ -141,7 +143,7 @@ void UMenu_UserWidget::OnClicked_JoinButton()
 
 	if (MultiplayerSessionSubsystem)
 	{
-		JoinButton->bIsEnabled = false;
+		JoinButton->SetIsEnabled(false);
 		MultiplayerSessionSubsystem->FindSessions(10000);
 	}
 }
@@ -153,7 +155,8 @@ void UMenu_UserWidget::OnFindSessionsComplete_Multiplayer(bool bWasSuccessful, c
 	//Stephen doesn't check Num() since For-each loop can handle empty array without being crashed.
 	if (SearchResults.Num() <= 0 || !bWasSuccessful)
 	{
-		JoinButton->bIsEnabled = true;
+		//JoinButton->bIsEnabled = true;
+		JoinButton->SetIsEnabled(true);
 		return; //if bWasSuccessful=true, but Num = 0 - connection OKAY but find no session
 	}
 
@@ -210,7 +213,8 @@ void UMenu_UserWidget::OnJoinSessionComplete_Multiplayer(EOnJoinSessionCompleteR
 	else
 	{	//print unknown error: - I think "Found no session" is no specific!
 		   if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Cyan,FString(TEXT("Unknown Error!")), false);
-		   JoinButton->bIsEnabled = true;
+		   //JoinButton->bIsEnabled = true;
+		   JoinButton->SetIsEnabled(true);
 	}
 
 	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Orange, FString(TEXT("End of CUSTOM_callback3()")), false);

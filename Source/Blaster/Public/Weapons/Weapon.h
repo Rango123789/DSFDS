@@ -181,10 +181,13 @@ protected: //base
     UPROPERTY(EditAnywhere)
     float Damage = 15.f; //move from HitScanWeapon
 
+    UPROPERTY(EditAnywhere)
+    float Damage_HeadShot = 45.f; 
+
     UPROPERTY(Replicated, EditAnywhere)
     bool bUseServerSideRewind = false;
 
-    UPROPERTY(Replicated, EditAnywhere)
+    //UPROPERTY(Replicated, EditAnywhere)
     bool bUseServerSideRewind_Initial = false;
 
     UFUNCTION()
@@ -260,6 +263,7 @@ public:
     void SetIsDefaultWeapon(bool InIsDefaultWeapon) { bIsDefaultWeapon = InIsDefaultWeapon; }
     EFireType GetFireType() { return FireType; }
     bool GetUseScatter() { return bUseScatter; }
-    float GetDamge() { return Damage; }
+    float GetDamage() { return Damage; }
+    float GetDamage_HeadShot() { return Damage_HeadShot; }
     bool GetUseServerSideRequest() { return bUseServerSideRewind; }
 };

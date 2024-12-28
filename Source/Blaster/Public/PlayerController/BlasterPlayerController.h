@@ -24,28 +24,30 @@ public:
 
 	void PollInit();
 
-	void UpdateHUDTime();
-
 	void SetHUDHealth(float Health, float MaxHealth);
 	void SetHUDShield(float Shield, float MaxShield);
 	void SetHUDScore(int InScore);
 	void SetHUDDefeat(int InDefeat);
 
 	void SetHUDAmmo(int InAmmo);
-
 	void SetHUDCarriedAmmo(int InCarriedAmmo);
-
 	void SetHUDThrowGrenade(int InThrowGrenade);
 
+	void UpdateHUDTime();
 	void SetHUDMatchTimeLeft(int32 MatchTimeLeft);
-
 	void SetHUDWarmUpTimeLeft(int32 InTimeLeft);
 
 	void SetHUDAnnounceAndInfo();
 
-	virtual void OnPossess(APawn* InPawn) override;
 
-	virtual void ReceivedPlayer() override; //Synched with server clock as soon as possible
+
+
+	//if this run in the server, only the CD receives it, so to broadcast message to all devices we must interate over the whole array of PCs and call this ClientRPC per each PC: similar to what we did in GM::OnMatchStateSet()
+	UFUNCTION(Client, Reliable)
+	void ClientSetHUD_ElimAnnounce(class APlayerState_Blaster* AttackPlayer, class APlayerState_Blaster* ElimmedPlayer);
+
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void ReceivedPlayer() override; //Synched with server clock as soon as possible in here
 
 //synching time:
 	UPROPERTY(EditAnywhere)
@@ -107,12 +109,18 @@ protected:
 
 	//HUD and its Overlay widget (move from Character)
 	UPROPERTY()
-	class ABlasterHUD* BlasterHUD = nullptr;
+	//class ABlasterHUD* BlasterHUD = nullptr;
+	TObjectPtr<class ABlasterHUD> BlasterHUD;
+	//TObjectPtr<ABlasterHUD> BlasterHUD;
+
 	UPROPERTY()
 	class UCharacterOverlay_UserWidget* CharacterOverlay_UserWidget = nullptr;
 
 	UPROPERTY()
 	class UUserWidget_Announcement* UserWidget_Announcement = nullptr;
+
+	UPROPERTY()
+	class UUserWidget_ElimAnnounce* UserWidget_ElimAnnounce = nullptr;
 
 	UPROPERTY()
 	class ABlasterGameMode* BlasterGameMode;

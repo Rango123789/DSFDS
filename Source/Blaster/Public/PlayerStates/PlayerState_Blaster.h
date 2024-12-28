@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+#include "Blaster/Team.h"
 #include "PlayerState_Blaster.generated.h"
 
 /**
@@ -32,6 +33,19 @@ protected:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Defeat);
 	int Defeat{};
+
+	/*
+	* Team
+	*/
+	UPROPERTY(ReplicatedUsing = OnRep_Team)
+	ETeam Team = ETeam::ET_NoTeam;
+
+	//Stephen use this to solve client part that that can't change color when GameStart (meaning they can't change PS::Team forever, that is the only time we sort the GS::PlayerArray into 2 teams)
+	UFUNCTION()
+	void OnRep_Team();
+
 public:
 	int GetDefeat() { return  Defeat; }
+	void SetTeam(ETeam InTeam) { Team = InTeam; }
+	ETeam GetTeam() { return Team; }
 };

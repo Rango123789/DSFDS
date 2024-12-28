@@ -632,7 +632,7 @@ void AWeapon::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent
 	//this return FName(TEXT("MemberName"))
 	FName InitalSpeed_Name = GET_MEMBER_NAME_CHECKED(AWeapon, bUseServerSideRewind);
 
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *InitalSpeed_Name.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *PropertyName.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *InitalSpeed_Name.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *PropertyName.ToString());
 }
 #endif

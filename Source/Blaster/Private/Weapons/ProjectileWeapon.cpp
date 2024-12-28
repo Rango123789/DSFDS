@@ -41,6 +41,7 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 		SpawnedProjectile = GetWorld()->SpawnActor<AProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);
 		 //I dont think there is any relevance to 'passing non-replicated pointer' rule? - see explain in the bottom
 		SpawnedProjectile->Damage = Damage;
+		SpawnedProjectile->Damage_HeadShot = Damage_HeadShot;
 
 		//affect next STAGE:
 		SpawnedProjectile->bUseServerSideRewind_TIRE2 = false;
@@ -59,6 +60,7 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 				//stephen chaneg this to true to avoid 'double damage', anyway stephen way is wrong
 				// I dont think there is any relevance to 'passing non-replicated pointer' rule? - see explain in the bottom
 				SpawnedProjectile->Damage = Damage;
+				SpawnedProjectile->Damage_HeadShot = Damage_HeadShot;
 
 				//affect next STAGE:
 				SpawnedProjectile->bUseServerSideRewind_TIRE2 = false; 
@@ -88,7 +90,9 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 				SpawnedProjectile->TraceStart = SpawnedProjectile->GetActorLocation();
 				SpawnedProjectile->InitialVelocity = SpawnedProjectile->GetActorForwardVector() * SpawnedProjectile->InitalSpeed_ProjectilePath;
 
+				//only this case you really need it, other cases are 'consequences' (or optional if the intended damage is P::Damage or if they're set to be the same, which they should)
 				SpawnedProjectile->Damage = Damage;
+				SpawnedProjectile->Damage_HeadShot = Damage_HeadShot;
 
 				SpawnedProjectile->bServerHoldWeapon = false; // in fact doesn't important at all
 			}
