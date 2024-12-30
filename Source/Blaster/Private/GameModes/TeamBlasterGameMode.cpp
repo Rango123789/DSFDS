@@ -3,10 +3,48 @@
 #include "GameModes/TeamBlasterGameMode.h"
 #include "GameState/GameState_Blaster.h"
 #include "PlayerStates/PlayerState_Blaster.h"
+#include "Characters/BlasterCharacter.h"
+#include "PlayerController/BlasterPlayerController.h"
 
 ATeamBlasterGameMode::ATeamBlasterGameMode()
 {
 	bIsTeamMatch = true;
+}
+
+//+Currently you could only receive damage from players of other team or yourself
+//, so it could only reach GM::PlayerElimmed in those cases
+//+ So in GM::PlayerElimmed you can simply compare whether AttackerController and Victim controller are the same and decide to give score to the Attacker!
+void ATeamBlasterGameMode::PlayerEliminated(ABlasterCharacter* ElimininatedCharacter, ABlasterPlayerController* EliminatedController, ABlasterPlayerController* AttackerController)
+{
+	Super::PlayerEliminated(ElimininatedCharacter,  EliminatedController, AttackerController);
+
+	//return in Super::, wont return here, so must check again LOL:
+	//this is like a circle:
+	if (ElimininatedCharacter == nullptr || AttackerController == nullptr) return;
+
+	//extra things when we need to use AttackerPC:
+	APlayerState_Blaster* PS_Elimmed = EliminatedController->GetPlayerState<APlayerState_Blaster>();
+	APlayerState_Blaster* PS_Attacker = AttackerController->GetPlayerState<APlayerState_Blaster>();
+	//GameState_AGameStateBase is direct member of AGameModeBase, hence AGameMode, so you can cast from GM::GameState, but I prefer to use this Get template for more convenient: 
+	AGameState_Blaster* GameState_Blaster = GetGameState<AGameState_Blaster>();
+
+	if (PS_Elimmed == nullptr || PS_Attacker == nullptr || GameState_Blaster == nullptr) return;
+
+	//only when they're different should add Score for the Attacker:
+	if (PS_Attacker != PS_Elimmed) //(*)
+	{
+		if (bIsTeamMatch) //no need any more, it must be true to be here LOL
+		{
+			if (PS_Attacker->GetTeam() == ETeam::ET_RedTeam)
+			{
+				if (GameState_Blaster) GameState_Blaster->UpdateHUDRedTeamScore();
+			}
+			if (PS_Attacker->GetTeam() == ETeam::ET_BlueTeam)
+			{
+				if (GameState_Blaster) GameState_Blaster->UpdateHUDBlueTeamScore();
+			}
+		}
+	}
 }
 
 float ATeamBlasterGameMode::CalculateDamage(AController* AttackController, AController* VictimController, const float& BaseDamage)

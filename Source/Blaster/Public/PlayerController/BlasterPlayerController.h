@@ -47,6 +47,10 @@ public:
 
 	void SetHUDAnnounceAndInfo();
 
+	void GetTextInfo_CoolDownState_SoloMatch(FString& InfoText);
+
+	void GetTextInfo_CoolDownState_TeamMatch(FString& InfoText);
+
 	//if this run in the server, only the CD receives it, so to broadcast message to all devices we must interate over the whole array of PCs and call this ClientRPC per each PC: similar to what we did in GM::OnMatchStateSet()
 	UFUNCTION(Client, Reliable)
 	void ClientSetHUD_ElimAnnounce(class APlayerState_Blaster* AttackPlayer, class APlayerState_Blaster* ElimmedPlayer);

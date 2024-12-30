@@ -89,6 +89,9 @@ void ABlasterGameMode::OnMatchStateSet()
 }
 
 //this trigger hence ReceiveDamage and Healh <=0
+//+Currently you could only receive damage from players of other team or yourself
+//, so it could only reach GM::PlayerElimmed in those cases
+//+ So in GM::PlayerElimmed you can simply compare whether AttackerController and Victim controller are the same and decide to give score to the Attacker!
 void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* ElimininatedCharacter, ABlasterPlayerController* EliminatedController, ABlasterPlayerController* AttackerController)
 {
 //this is like a circle:
@@ -114,18 +117,17 @@ void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* ElimininatedCharacter
 		//, calling super:: and add the code above!
 		// However I would need to Cast to PS_Attacker again, so I'm to tire of it:
 		//Access the GameState and call the CONTEXTUAL function:
-		if (bIsTeamMatch)
-		{
-			AGameState_Blaster* GameState_Blaster = GetWorld()->GetGameState<AGameState_Blaster>();
-			if (PS_Attacker->GetTeam() == ETeam::ET_RedTeam)
-			{
-				if(GameState_Blaster) GameState_Blaster->UpdateHUDRedTeamScore();
-			}
-			if (PS_Attacker->GetTeam() == ETeam::ET_BlueTeam)
-			{
-				if (GameState_Blaster) GameState_Blaster->UpdateHUDBlueTeamScore();
-			}
-		}
+			//if (bIsTeamMatch)
+			//{
+			//	if (PS_Attacker->GetTeam() == ETeam::ET_RedTeam)
+			//	{
+			//		if(GameState_Blaster) GameState_Blaster->UpdateHUDRedTeamScore();
+			//	}
+			//	if (PS_Attacker->GetTeam() == ETeam::ET_BlueTeam)
+			//	{
+			//		if (GameState_Blaster) GameState_Blaster->UpdateHUDBlueTeamScore();
+			//	}
+			//}
 
 
 	//INSERT1: backup the array, make a copy, note that elements are copied pointer but they still point to the same DATA as the ORIGINAL array's elements :D :

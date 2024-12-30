@@ -671,14 +671,15 @@ void ABlasterPlayerController::SetHUDAnnounceAndInfo()
 			//READY:
 	FString AnnounceText;
 	FString InfoText;
-	//this is no need, WaitingToStart will default to hardcode text from WBP_Announce, nor did we call it anywhere yet when it reaches WaitingToStart LOL
+
+	//this is no need, WaitingToStart will default to hardcode text from WBP_Announce, nor did we call it anywhere yet when it reaches WaitingToStart LOL (OnMatchStateSet:: case WaitingToStart is emty), this only make sense when we call it there, which we didn't, Only me have this code :D
 	// BUT i reckon it will come in handy later when we start a NEW match without re-seting BlasterHUD and its member widgets (if this is possible):
 	if (MatchState == MatchState::WaitingToStart)
 	{
 		AnnounceText = FString("Match Starts in:");
 		InfoText	 = FString("Fly Round: W,A,S,D");
+		if (UserWidget_Announcement) UserWidget_Announcement->SetAnnounceText(AnnounceText);
 	}
-	if (UserWidget_Announcement) UserWidget_Announcement->SetAnnounceText(AnnounceText);
 
 	//this check is also optional, as we call this function in HandleCoolDown(), that is already checked CoolDown already LOL:
 	if (MatchState == MatchState::CoolDown)
@@ -686,41 +687,78 @@ void ABlasterPlayerController::SetHUDAnnounceAndInfo()
 		AnnounceText = FString("New Match Starts in:");
 		//empty for now, later we print the winner
 		InfoText = FString();
-
-		//change InfoText to printing TopScore Player's name instead of empty lol:
-			//you got GS::PlayerStates_TopScore(), your job is to use this to print out all the PlayerName in it
-			//you got PS::GetPlayerName() as well, which is the NickName you choose in Steam I guess, hopefully it is not BP_BlasterCharacter_C1 lol!
-		APlayerState_Blaster* ThisPlayerState = GetPlayerState<APlayerState_Blaster>();
-
-		AGameState_Blaster* GameState_Blaster = GetWorld()->GetGameState<AGameState_Blaster>(); //UGameplayStatics::GetGameState(this);  
-		TArray<APlayerState_Blaster*> PlayerStates_TopScore;
-		if (GameState_Blaster) PlayerStates_TopScore = GameState_Blaster->TopStorePlayerStates;
-
-		if (PlayerStates_TopScore.Num() == 0)
-		{
-			InfoText = FString("There is no winner.");
-		}
-		else if (PlayerStates_TopScore.Num() == 1)
-		{
-			//different devices will compare to this same PlayerStates_TopScore[0], only the PS of either one of them matches this the winner and get 'if text', the rest doesn't match get 'else text'
-			//note: stephen compare 2 GameState instead? no in fact 2 Playerstate like me LOL
-			if (ThisPlayerState == PlayerStates_TopScore[0]) InfoText = FString("You're winner.");
-			else InfoText = FString("The winner is ") + PlayerStates_TopScore[0]->GetPlayerName();
-		}
-		else //reach this else mean there is 2 or more winner, we gotta iterator over the array and print all of its elements LOL, no other choice:
-		{
-			InfoText = FString("The winner are:\n");
-			for (int i = 0; i < PlayerStates_TopScore.Num(); i++)
-			{
-				InfoText.Append("    ");
-				InfoText.Append(PlayerStates_TopScore[i]->GetPlayerName());
-				InfoText.Append("\n");
-			}
-		}
-
+//start to factorize for InfoText:
+		if (bIsTeamMatch == false) GetTextInfo_CoolDownState_SoloMatch(InfoText);
+		else GetTextInfo_CoolDownState_TeamMatch(InfoText);
+//end factorize
 		if (UserWidget_Announcement) UserWidget_Announcement->SetInfoText(InfoText);
 	}
 }
+
+void ABlasterPlayerController::GetTextInfo_CoolDownState_SoloMatch(FString& InfoText)
+{
+	APlayerState_Blaster* ThisPlayerState = GetPlayerState<APlayerState_Blaster>();
+
+	AGameState_Blaster* GameState_Blaster = GetWorld()->GetGameState<AGameState_Blaster>(); //UGameplayStatics::GetGameState(this);  
+	TArray<APlayerState_Blaster*> PlayerStates_TopScore;
+	if (GameState_Blaster) PlayerStates_TopScore = GameState_Blaster->TopStorePlayerStates;
+
+	if (PlayerStates_TopScore.Num() == 0)
+	{
+		InfoText = FString("There is no winner.");
+	}
+	else if (PlayerStates_TopScore.Num() == 1)
+	{
+		if (ThisPlayerState == PlayerStates_TopScore[0]) InfoText = FString("You're winner.");
+		else InfoText = FString("The winner is ") + PlayerStates_TopScore[0]->GetPlayerName();
+	}
+	else
+	{
+		InfoText = FString("The winner are:\n");
+		for (int i = 0; i < PlayerStates_TopScore.Num(); i++)
+		{
+			InfoText.Append("    ");
+			InfoText.Append(PlayerStates_TopScore[i]->GetPlayerName());
+			InfoText.Append("\n");
+		}
+	}
+}
+
+//We dont need GS::PlayerArray to announce winner team, we only need GS::XTeamScore
+//but if you decide to also print out the TopScore Player[s] you will need it again
+void ABlasterPlayerController::GetTextInfo_CoolDownState_TeamMatch(FString& InfoText)
+{
+	APlayerState_Blaster* ThisPlayerState = GetPlayerState<APlayerState_Blaster>();
+
+	AGameState_Blaster* GameState_Blaster = GetWorld()->GetGameState<AGameState_Blaster>(); //UGameplayStatics::GetGameState(this);  
+	if (GameState_Blaster == nullptr) return;
+
+		//no need here any more, will need if you decide to also print out the TopScore Player[s]:
+		TArray<APlayerState_Blaster*> PlayerStates_TopScore;
+		PlayerStates_TopScore = GameState_Blaster->TopStorePlayerStates;
+	
+
+	uint32 RedTeamScore = GameState_Blaster->RedTeamScore;
+	uint32 BlueTeamScore = GameState_Blaster->BlueTeamScore;
+
+	if (RedTeamScore == BlueTeamScore && RedTeamScore == 0)
+	{
+		InfoText = "No winner!\n";
+	}
+	else if (RedTeamScore == BlueTeamScore && RedTeamScore != 0)
+	{
+		InfoText = "Teams are tied!\n";
+	}
+	else if (RedTeamScore > BlueTeamScore)
+	{
+		InfoText = "Red Team is winner;\n";
+	}
+	else if (RedTeamScore < BlueTeamScore)
+	{
+		InfoText = "Blue Team is winner;\n";
+	}
+}
+
 
 //the turn ON/OFF of WBP_Announce and WBP_Overlay already done externally, partly in PC::OnMatchStateSet(), so you dont have to worry about it here:
 void ABlasterPlayerController::UpdateHUDTime()
